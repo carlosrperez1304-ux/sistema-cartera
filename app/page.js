@@ -119,6 +119,47 @@ export default function App() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [toasts, setToasts] = useState([]);
   const [vistaKanban, setVistaKanban] = useState(false);
+  const [modoCompacto, setModoCompacto] = useState(false);
+  const [metaMensual, setMetaMensual] = useState(0);
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [colorAcento, setColorAcento] = useState('#635bff');
+  const [tags, setTags] = useState({});
+  const [showTagModal, setShowTagModal] = useState(false);
+  const [tagClienteId, setTagClienteId] = useState(null);
+  const [tagInput, setTagInput] = useState('');
+  const [showBusquedaAvanzada, setShowBusquedaAvanzada] = useState(false);
+  const [filtroMontoMin, setFiltroMontoMin] = useState('');
+  const [filtroMontoMax, setFiltroMontoMax] = useState('');
+  const [filtroEstados, setFiltroEstados] = useState([]);
+  const [recordatoriosDias, setRecordatoriosDias] = useState(7);
+
+  // Cargar preferencias guardadas
+  useEffect(() => {
+    const savedMeta = localStorage.getItem('meta-mensual');
+    const savedColor = localStorage.getItem('color-acento');
+    const savedTags = localStorage.getItem('cliente-tags');
+    const savedRecordatorio = localStorage.getItem('recordatorio-dias');
+    const savedCompacto = localStorage.getItem('modo-compacto');
+    if (savedMeta) setMetaMensual(parseFloat(savedMeta) || 0);
+    if (savedColor) setColorAcento(savedColor);
+    if (savedTags) setTags(JSON.parse(savedTags));
+    if (savedRecordatorio) setRecordatoriosDias(parseInt(savedRecordatorio) || 7);
+    if (savedCompacto) setModoCompacto(savedCompacto === 'true');
+  }, []);
+
+  // Aplicar color de acento como variable CSS
+  useEffect(() => {
+    document.documentElement.style.setProperty('--accent', colorAcento);
+    const hex = colorAcento.replace('#','');
+    const r = parseInt(hex.substring(0,2),16), g = parseInt(hex.substring(2,4),16), b = parseInt(hex.substring(4,6),16);
+    document.documentElement.style.setProperty('--accent-glow', `rgba(${r},${g},${b},0.15)`);
+    localStorage.setItem('color-acento', colorAcento);
+  }, [colorAcento]);
+
+  useEffect(() => { localStorage.setItem('meta-mensual', metaMensual); }, [metaMensual]);
+  useEffect(() => { if (Object.keys(tags).length > 0) localStorage.setItem('cliente-tags', JSON.stringify(tags)); }, [tags]);
+  useEffect(() => { localStorage.setItem('recordatorio-dias', recordatoriosDias); }, [recordatoriosDias]);
+  useEffect(() => { localStorage.setItem('modo-compacto', modoCompacto); }, [modoCompacto]);
 
   const obtenerMesActual = () => {
     const hoy = new Date();
@@ -328,7 +369,10 @@ export default function App() {
     if (searchTerm) resultado = resultado.filter(c => c.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || (c.contacto || '').includes(searchTerm) || c.id.toString().includes(searchTerm));
     if (fechaDesde) resultado = resultado.filter(c => c.fechaCotizacion && c.fechaCotizacion >= fechaDesde);
     if (fechaHasta) resultado = resultado.filter(c => c.fechaCotizacion && c.fechaCotizacion <= fechaHasta);
-    if (filter !== 'todos') {
+    if (filtroMontoMin !== '') resultado = resultado.filter(c => (parseFloat(c.monto) || 0) >= parseFloat(filtroMontoMin));
+    if (filtroMontoMax !== '') resultado = resultado.filter(c => (parseFloat(c.monto) || 0) <= parseFloat(filtroMontoMax));
+    if (filtroEstados.length > 0) resultado = resultado.filter(c => filtroEstados.includes(c.estado));
+    else if (filter !== 'todos') {
       if (filter === 'no-generaron') resultado = resultado.filter(c => c.estado === 'No Generaron');
       else resultado = resultado.filter(c => c.estado.toLowerCase() === filter);
     }
@@ -694,6 +738,94 @@ export default function App() {
     showToast(`Mes ${mesNombre} guardado correctamente`, 'success');
   };
 
+  // ─── AVATAR helper ───────────────────────────────────────
+  const AVATAR_COLORS = ['#635bff','#f97316','#059669','#0284c7','#dc2626','#8b5cf6','#14b8a6','#f59e0b','#e11d48','#0891b2'];
+  const getAvatar = (nombre) => {
+    const idx = (nombre || '?').charCodeAt(0) % AVATAR_COLORS.length;
+    return { letra: (nombre || '?')[0].toUpperCase(), color: AVATAR_COLORS[idx] };
+  };
+
+  // ─── TAGS ─────────────────────────────────────────────────
+  const TAG_PREDEFINIDOS = ['VIP', 'Prioritario', 'Nuevo', 'Problema', 'Regular'];
+  const TAG_CLASSES = { 'VIP': 'vip', 'Prioritario': 'prioritario', 'Nuevo': 'nuevo', 'Problema': 'problema' };
+  const agregarTag = (clienteId, tag) => {
+    if (!tag.trim()) return;
+    const actuales = tags[clienteId] || [];
+    if (actuales.includes(tag)) return;
+    setTags(t => ({ ...t, [clienteId]: [...actuales, tag.trim()] }));
+  };
+  const eliminarTag = (clienteId, tag) => {
+    setTags(t => ({ ...t, [clienteId]: (t[clienteId] || []).filter(x => x !== tag) }));
+  };
+
+  // ─── RESUMEN EJECUTIVO PDF ────────────────────────────────
+  const generarResumenPDF = () => {
+    import('jspdf').then(({ default: jsPDF }) => {
+      import('jspdf-autotable').then(() => {
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const mesNombre = obtenerNombreMes(mesVisualizando);
+        // Header
+        doc.setFillColor(15, 28, 63); doc.rect(0, 0, 210, 45, 'F');
+        doc.setTextColor(255,255,255); doc.setFontSize(22); doc.setFont(undefined,'bold');
+        doc.text('CartaMaster', 15, 18);
+        doc.setFontSize(11); doc.setFont(undefined,'normal');
+        doc.text('Resumen Ejecutivo Mensual', 15, 27);
+        doc.text(mesNombre, 15, 35);
+        doc.text(`Generado: ${new Date().toLocaleDateString('es-DO')}`, 120, 35);
+        // KPIs
+        doc.setTextColor(15,28,63); doc.setFontSize(13); doc.setFont(undefined,'bold');
+        doc.text('Indicadores Clave', 15, 58);
+        const kpis = [
+          ['Total Clientes', estadisticas.total],
+          ['Pagados', `${estadisticas.pagado} (${estadisticas.pagadoPct}%)`],
+          ['Facturados', `${estadisticas.facturado} (${estadisticas.facturadoPct}%)`],
+          ['Vencidos', `${estadisticas.vencido} (${estadisticas.vencidoPct}%)`],
+          ['Cotizados', estadisticas.cotizado],
+          ['Notificados', estadisticas.notificado],
+        ];
+        doc.autoTable({ startY: 63, head: [['Indicador','Valor']], body: kpis, styles: { fontSize: 9, cellPadding: 3 }, headStyles: { fillColor: [99,91,255], textColor: 255 }, columnStyles: { 0: { fontStyle:'bold' } }, margin: { left: 15, right: 15 } });
+        // Montos
+        let y = doc.lastAutoTable.finalY + 8;
+        doc.setFontSize(13); doc.setFont(undefined,'bold'); doc.text('Resumen Financiero', 15, y);
+        const montos = [
+          ['Monto Cotizado', `$${(estadisticas.montoCotizado||0).toLocaleString('en-US')}`],
+          ['Monto Notificado', `$${(estadisticas.montoNotificado||0).toLocaleString('en-US')}`],
+          ['Monto Pagado', `$${(estadisticas.montoPagado||0).toLocaleString('en-US')}`],
+          ['Monto Facturado', `$${(estadisticas.montoFacturado||0).toLocaleString('en-US')}`],
+          ['Monto Vencido', `$${(estadisticas.montoVencido||0).toLocaleString('en-US')}`],
+        ];
+        doc.autoTable({ startY: y+5, head: [['Concepto','Monto']], body: montos, styles: { fontSize: 9, cellPadding: 3 }, headStyles: { fillColor: [15,28,63], textColor: 255 }, columnStyles: { 1: { fontStyle:'bold', halign:'right' } }, margin: { left: 15, right: 15 } });
+        // Créditos
+        y = doc.lastAutoTable.finalY + 8;
+        doc.setFontSize(13); doc.setFont(undefined,'bold'); doc.text('Créditos', 15, y);
+        const creditData = [
+          ['Activos', creditoStats.activo], ['Por Vencer', creditoStats.porVencer],
+          ['Vencidos', creditoStats.vencido], ['Pagados', creditoStats.pagado],
+          ['Monto Total Activo', `$${creditoStats.totalMonto.toLocaleString('en-US',{minimumFractionDigits:2})}`],
+        ];
+        doc.autoTable({ startY: y+5, head: [['Estado','Cantidad/Monto']], body: creditData, styles: { fontSize: 9, cellPadding: 3 }, headStyles: { fillColor: [99,91,255], textColor: 255 }, margin: { left: 15, right: 15 } });
+        // Clientes vencidos
+        const vencidos = clientes.filter(c => c.estado === 'Vencido');
+        if (vencidos.length > 0) {
+          y = doc.lastAutoTable.finalY + 8;
+          if (y > 240) { doc.addPage(); y = 20; }
+          doc.setFontSize(13); doc.setFont(undefined,'bold'); doc.text('Clientes Vencidos', 15, y);
+          doc.autoTable({ startY: y+5, head: [['ID','Nombre','Monto','Contacto']], body: vencidos.map(c => [c.id, c.nombre, `$${(parseFloat(c.monto)||0).toLocaleString('en-US')}`, c.contacto||'-']), styles: { fontSize: 8, cellPadding: 2 }, headStyles: { fillColor: [239,68,68], textColor: 255 }, margin: { left: 15, right: 15 } });
+        }
+        // Footer
+        const totalPages = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+          doc.setPage(i);
+          doc.setTextColor(148,163,184); doc.setFontSize(8); doc.setFont(undefined,'normal');
+          doc.text('CartaMaster — Reporte Confidencial', 15, 287);
+          doc.text(`Página ${i} de ${totalPages}`, 170, 287);
+        }
+        doc.save(`resumen-ejecutivo-${mesVisualizando}.pdf`);
+        showToast('Resumen ejecutivo generado', 'success');
+      });
+    });
+  };
+
   if (!hydrated) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#f0f3f8', fontSize: '1.1rem', color: '#64748b' }}>Cargando...</div>;
 
   if (!isAuthenticated && !session) {
@@ -746,6 +878,7 @@ export default function App() {
           <button className={`topbar-btn ${activeTab === 'credito' ? 'active' : ''}`} onClick={() => setActiveTab('credito')}>💳 Crédito</button>
           <button className="topbar-btn" onClick={() => setShowBusquedaGlobal(true)} title="Búsqueda global (F)">🔍</button>
           <button className="topbar-btn" onClick={() => setDarkMode(!darkMode)} title="Modo oscuro">{darkMode ? '☀️' : '🌙'}</button>
+          <button className="topbar-btn" onClick={() => setShowConfigModal(true)} title="Configuración">⚙️</button>
           <button className="topbar-btn" onClick={() => { if (session) signOut(); else handleLogout(); }} style={{ marginLeft: '0.5rem' }}>🚪 Cerrar Sesión</button>
         </div>
       </div>
@@ -764,6 +897,7 @@ export default function App() {
             <div className="sidebar-item" onClick={exportarNoGeneraron}><span className="icon">📊</span> No Generaron</div>
             <div className="sidebar-item" onClick={exportarFacturados}><span className="icon">📊</span> Facturados</div>
             <div className="sidebar-item" onClick={exportarPDF}><span className="icon">📄</span> PDF - Cartera</div>
+            <div className="sidebar-item" onClick={generarResumenPDF}><span className="icon">📑</span> Resumen PDF</div>
             <div className="sidebar-item" onClick={backupJSON}><span className="icon">💾</span> Backup JSON</div>
             <div className="sidebar-item" onClick={() => setShowImportModal(true)}><span className="icon">📥</span> Importar Excel</div>
           </div>
@@ -892,6 +1026,104 @@ export default function App() {
                   </div>
                   <div style={{ display: 'flex', gap: '0.35rem', height: '8px', borderRadius: '6px', overflow: 'hidden' }}>
                     {buckets.map(b => <div key={b.label} style={{ flex: b.clientes.length || 0.001, background: b.color, transition: 'flex 0.4s' }}></div>)}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Meta Mensual */}
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.2rem', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)' }}>🎯 Meta de Cobros del Mes</div>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <input type="number" value={metaMensual || ''} onChange={e => setMetaMensual(parseFloat(e.target.value) || 0)} placeholder="Meta ($)" style={{ width: '120px', padding: '0.35rem 0.6rem', border: '1px solid var(--border2)', borderRadius: '7px', fontSize: '0.82rem', background: 'var(--surface2)', color: 'var(--text)', fontFamily: 'var(--mono)' }} />
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>meta mensual</span>
+                </div>
+              </div>
+              {metaMensual > 0 ? (() => {
+                const cobrado = estadisticas.montoPagado || 0;
+                const pct = Math.min((cobrado / metaMensual) * 100, 100);
+                const claseBar = pct >= 100 ? 'success' : pct >= 60 ? '' : pct >= 30 ? 'warning' : 'danger';
+                return (
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem', fontSize: '0.82rem' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Cobrado: <strong style={{ color: '#059669', fontFamily: 'var(--mono)' }}>${cobrado.toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong></span>
+                      <span style={{ color: 'var(--text-muted)' }}>Meta: <strong style={{ fontFamily: 'var(--mono)' }}>${metaMensual.toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong></span>
+                      <strong style={{ color: pct >= 100 ? '#059669' : pct >= 60 ? 'var(--accent)' : '#dc2626', fontFamily: 'var(--mono)' }}>{pct.toFixed(1)}%</strong>
+                    </div>
+                    <div className="meta-bar"><div className={`meta-bar-fill ${claseBar}`} style={{ width: `${pct}%` }}></div></div>
+                    <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      {pct >= 100 ? '🎉 ¡Meta alcanzada!' : `Faltan $${(metaMensual - cobrado).toLocaleString('en-US', { maximumFractionDigits: 0 })} para la meta`}
+                    </div>
+                  </div>
+                );
+              })() : <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Ingresa una meta en el campo de arriba para ver tu progreso.</div>}
+            </div>
+
+            {/* Comparativa mes a mes */}
+            {Object.keys(historialMeses).length > 0 && (() => {
+              const meses = Object.keys(historialMeses).sort().slice(-4);
+              const maxMonto = Math.max(...meses.map(m => (historialMeses[m]?.clientes || []).filter(c => c.estado === 'Pagado').reduce((s, c) => s + (parseFloat(c.monto)||0), 0)), estadisticas.montoPagado || 1);
+              return (
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.2rem', marginBottom: '1rem' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '1rem' }}>📈 Comparativa de Cobros (últimos meses)</div>
+                  <div className="comparativa-bar">
+                    {meses.map(m => {
+                      const cobrado = (historialMeses[m]?.clientes || []).filter(c => c.estado === 'Pagado').reduce((s, c) => s + (parseFloat(c.monto)||0), 0);
+                      const pct = maxMonto > 0 ? (cobrado / maxMonto) * 100 : 0;
+                      return (
+                        <div key={m} className="comp-row">
+                          <div className="comp-label">{m.slice(5)}/{m.slice(2,4)}</div>
+                          <div className="comp-track">
+                            <div className="comp-fill" style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #635bff, #818cf8)' }}>${cobrado > 0 ? (cobrado/1000).toFixed(1)+'k' : '0'}</div>
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'var(--mono)', width: '60px', flexShrink: 0 }}>${cobrado.toLocaleString('en-US', { maximumFractionDigits: 0 })}</div>
+                        </div>
+                      );
+                    })}
+                    {/* Mes actual */}
+                    {(() => {
+                      const cobrado = estadisticas.montoPagado || 0;
+                      const pct = maxMonto > 0 ? Math.min((cobrado / maxMonto) * 100, 100) : 0;
+                      const mesActual = obtenerMesActual();
+                      return (
+                        <div className="comp-row">
+                          <div className="comp-label" style={{ color: 'var(--accent)', fontWeight: 800 }}>{mesActual.slice(5)}/{mesActual.slice(2,4)} ★</div>
+                          <div className="comp-track">
+                            <div className="comp-fill" style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #059669, #4ade80)' }}>${cobrado > 0 ? (cobrado/1000).toFixed(1)+'k' : '0'}</div>
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: '#059669', fontFamily: 'var(--mono)', width: '60px', flexShrink: 0, fontWeight: 700 }}>${cobrado.toLocaleString('en-US', { maximumFractionDigits: 0 })}</div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Feed de actividad reciente */}
+            {(() => {
+              const eventos = [];
+              clientes.forEach(c => {
+                (c.historial || []).forEach(h => eventos.push({ fecha: h.fecha, texto: h.accion, cliente: c.nombre, tipo: h.accion.toLowerCase().includes('pago') ? 'success' : h.accion.toLowerCase().includes('vencid') ? 'danger' : h.accion.toLowerCase().includes('suspendid') ? 'danger' : 'default' }));
+                (c.pagosRealizados || []).forEach(p => eventos.push({ fecha: p.fecha, texto: `Pago de $${parseFloat(p.monto).toLocaleString('en-US', { maximumFractionDigits: 0 })}`, cliente: c.nombre, tipo: 'success' }));
+              });
+              eventos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+              const recientes = eventos.slice(0, 12);
+              if (recientes.length === 0) return null;
+              return (
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.2rem', marginBottom: '1rem' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '0.75rem' }}>⚡ Actividad Reciente</div>
+                  <div className="timeline" style={{ maxHeight: '280px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+                    {recientes.map((ev, i) => (
+                      <div key={i} className="timeline-item">
+                        <div className={`timeline-dot ${ev.tipo}`}></div>
+                        <div className="timeline-body">
+                          <div className="timeline-title"><strong>{ev.cliente}</strong> — {ev.texto}</div>
+                          <div className="timeline-meta">{new Date(ev.fecha).toLocaleString('es-DO', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}</div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               );
@@ -1047,9 +1279,38 @@ export default function App() {
                 <button className="btn btn-secondary" onClick={() => { setVistaCards(false); setVistaKanban(false); }} style={{ background: !vistaCards && !vistaKanban ? 'var(--navy)' : '', color: !vistaCards && !vistaKanban ? 'white' : '' }} title="Tabla">📋</button>
                 <button className="btn btn-secondary" onClick={() => { setVistaCards(true); setVistaKanban(false); }} style={{ background: vistaCards ? 'var(--navy)' : '', color: vistaCards ? 'white' : '' }} title="Tarjetas">🃏</button>
                 <button className="btn btn-secondary" onClick={() => { setVistaKanban(true); setVistaCards(false); }} style={{ background: vistaKanban ? 'var(--navy)' : '', color: vistaKanban ? 'white' : '' }} title="Kanban">📌 Kanban</button>
+                <button className="btn btn-secondary" onClick={() => setModoCompacto(m => !m)} style={{ background: modoCompacto ? 'var(--navy)' : '', color: modoCompacto ? 'white' : '' }} title="Modo compacto">⊟</button>
+                <button className="btn btn-secondary" onClick={() => setShowBusquedaAvanzada(b => !b)} style={{ background: showBusquedaAvanzada ? 'var(--accent)' : '', color: showBusquedaAvanzada ? 'white' : '', position: 'relative' }} title="Filtros avanzados">
+                  🎛️{(filtroMontoMin || filtroMontoMax || filtroEstados.length > 0) && <span style={{ position: 'absolute', top: '-4px', right: '-4px', width: '8px', height: '8px', background: '#f97316', borderRadius: '50%' }}></span>}
+                </button>
               </div>
               <button className="btn btn-primary" onClick={() => !esModoPasado && abrirModal()} disabled={esModoPasado} style={{ opacity: esModoPasado ? 0.5 : 1 }}>+ Nuevo Cliente</button>
             </div>
+
+            {showBusquedaAvanzada && (
+              <div className="adv-search-panel">
+                <div className="panel-title">🎛️ Filtros Avanzados {(filtroMontoMin || filtroMontoMax || filtroEstados.length > 0) && <button onClick={() => { setFiltroMontoMin(''); setFiltroMontoMax(''); setFiltroEstados([]); }} style={{ marginLeft: '0.5rem', padding: '0.1rem 0.5rem', fontSize: '0.68rem', border: '1px solid var(--danger)', borderRadius: '5px', background: '#fef2f2', color: 'var(--danger)', cursor: 'pointer', fontWeight: 700 }}>✕ Limpiar</button>}</div>
+                <div className="adv-row">
+                  <div className="adv-field">
+                    <label>Monto mínimo</label>
+                    <input type="number" value={filtroMontoMin} onChange={e => { setFiltroMontoMin(e.target.value); setPaginaActual(1); }} placeholder="0" />
+                  </div>
+                  <div className="adv-field">
+                    <label>Monto máximo</label>
+                    <input type="number" value={filtroMontoMax} onChange={e => { setFiltroMontoMax(e.target.value); setPaginaActual(1); }} placeholder="Sin límite" />
+                  </div>
+                  <div className="adv-field" style={{ flex: 3 }}>
+                    <label>Estados (selección múltiple)</label>
+                    <div className="estado-checkboxes">
+                      {['Cotizado','Notificado','Pagado','Facturado','Vencido','No Generaron'].map(est => (
+                        <div key={est} className={`estado-check ${filtroEstados.includes(est) ? 'selected' : ''}`} onClick={() => { setFiltroEstados(prev => prev.includes(est) ? prev.filter(x => x !== est) : [...prev, est]); setPaginaActual(1); }}>{est}</div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                {clientesFiltrados.length > 0 && <div style={{ marginTop: '0.6rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Mostrando <strong style={{ color: 'var(--accent)' }}>{clientesFiltrados.length}</strong> clientes con los filtros aplicados</div>}
+              </div>
+            )}
 
             <div className="sort-controls">
               <strong style={{ color: 'var(--text)', alignSelf: 'center' }}>Ordenar por:</strong>
@@ -1140,7 +1401,7 @@ export default function App() {
                 {clientesFiltrados.length === 0 ? (
                   <div className="empty-state"><h3>No se encontraron clientes</h3><p>Intenta ajustar los filtros o agregar un nuevo cliente</p></div>
                 ) : (
-                  <table>
+                  <table className={modoCompacto ? 'compact-mode' : ''}>
                     <thead><tr><th>ID</th><th>Cliente</th><th>Contacto</th><th>Estado Actual</th><th>Mes/Año</th><th>Monto</th><th>Fecha Cotización</th><th>Proceso</th><th>Suspensión</th><th>Opciones</th></tr></thead>
                     <tbody>
                       {clientesPaginados.map(cliente => {
@@ -1148,7 +1409,22 @@ export default function App() {
                         return (
                           <tr key={cliente.id} className={estaSuspendido ? 'cliente-suspendido' : ''}>
                             <td><div className="id-with-led"><span className={`status-led ${estaSuspendido ? 'suspended' : esClienteActivo(cliente) ? 'active' : 'inactive'}`}></span><strong>{cliente.id}</strong></div></td>
-                            <td><span onClick={() => { setHistorialPagosCliente(cliente); setShowHistorialPagosModal(true); }} className="nombre-cliente" title="Ver historial de pagos">{cliente.nombre}</span></td>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                {(() => { const av = getAvatar(cliente.nombre); return <div className="avatar avatar-sm" style={{ background: av.color }}>{av.letra}</div>; })()}
+                                <div>
+                                  <span onClick={() => { setHistorialPagosCliente(cliente); setShowHistorialPagosModal(true); }} className="nombre-cliente" title="Ver historial de pagos">{cliente.nombre}</span>
+                                  {(tags[cliente.id] || []).length > 0 && (
+                                    <div className="tags-wrap">
+                                      {(tags[cliente.id] || []).map(tag => (
+                                        <span key={tag} className={`tag-chip ${TAG_CLASSES[tag] || 'default'}`} onClick={() => eliminarTag(cliente.id, tag)} title="Clic para quitar">{tag} <span className="tag-x">×</span></span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                                <button onClick={() => { setTagClienteId(cliente.id); setTagInput(''); setShowTagModal(true); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem', opacity: 0.4, padding: '0 0.2rem' }} title="Agregar etiqueta">🏷️</button>
+                              </div>
+                            </td>
                             <td>{cliente.contacto ? (
                               <span onClick={() => abrirWhatsappModal(cliente)} style={{ color: '#16a34a', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
                                 onMouseOver={e => e.currentTarget.style.textDecoration = 'underline'}
@@ -1566,6 +1842,113 @@ export default function App() {
           <div id="save-indicator" className="save-indicator">✅ Guardado automáticamente</div>
         </div>
       </div>
+
+      {/* Modal Tags */}
+      {showTagModal && tagClienteId && (
+        <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowTagModal(false); }}>
+          <div className="modal-content" style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h2>🏷️ Etiquetas — {clientes.find(c => c.id === tagClienteId)?.nombre}</h2>
+              <button className="close-btn" onClick={() => setShowTagModal(false)}>×</button>
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Etiquetas predefinidas</div>
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                {TAG_PREDEFINIDOS.map(tag => {
+                  const activa = (tags[tagClienteId] || []).includes(tag);
+                  return <button key={tag} onClick={() => activa ? eliminarTag(tagClienteId, tag) : agregarTag(tagClienteId, tag)} style={{ padding: '0.3rem 0.75rem', borderRadius: '20px', border: `1px solid ${activa ? 'var(--accent)' : 'var(--border2)'}`, background: activa ? 'var(--accent)' : 'var(--surface2)', color: activa ? 'white' : 'var(--text-muted)', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer' }}>{activa ? '✓ ' : '+ '}{tag}</button>;
+                })}
+              </div>
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Etiqueta personalizada</div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input type="text" value={tagInput} onChange={e => setTagInput(e.target.value)} placeholder="Escribir etiqueta..." onKeyDown={e => { if (e.key === 'Enter') { agregarTag(tagClienteId, tagInput); setTagInput(''); } }} style={{ flex: 1, padding: '0.5rem 0.75rem', border: '1px solid var(--border2)', borderRadius: '8px', background: 'var(--surface2)', color: 'var(--text)', fontSize: '0.85rem', fontFamily: 'Plus Jakarta Sans, sans-serif' }} />
+                <button onClick={() => { agregarTag(tagClienteId, tagInput); setTagInput(''); }} className="btn btn-primary">Agregar</button>
+              </div>
+            </div>
+            {(tags[tagClienteId] || []).length > 0 && (
+              <div>
+                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Etiquetas actuales</div>
+                <div className="tags-wrap">
+                  {(tags[tagClienteId] || []).map(tag => <span key={tag} className={`tag-chip ${TAG_CLASSES[tag] || 'default'}`} onClick={() => eliminarTag(tagClienteId, tag)}>{tag} <span className="tag-x">×</span></span>)}
+                </div>
+              </div>
+            )}
+            <div className="form-actions"><button className="btn btn-secondary" onClick={() => setShowTagModal(false)}>Cerrar</button></div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Configuración */}
+      {showConfigModal && (
+        <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowConfigModal(false); }}>
+          <div className="modal-content" style={{ maxWidth: '480px' }}>
+            <div className="modal-header">
+              <h2>⚙️ Configuración del Sistema</h2>
+              <button className="close-btn" onClick={() => setShowConfigModal(false)}>×</button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {/* Color de acento */}
+              <div>
+                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>🎨 Color Principal</div>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  {['#635bff','#0284c7','#059669','#dc2626','#f97316','#8b5cf6','#14b8a6','#e11d48','#0f172a'].map(c => (
+                    <div key={c} onClick={() => setColorAcento(c)} style={{ width: '32px', height: '32px', borderRadius: '50%', background: c, cursor: 'pointer', border: colorAcento === c ? '3px solid white' : '2px solid transparent', boxShadow: colorAcento === c ? `0 0 0 2px ${c}` : 'none', transition: 'all 0.15s' }}></div>
+                  ))}
+                  <input type="color" value={colorAcento} onChange={e => setColorAcento(e.target.value)} style={{ width: '32px', height: '32px', borderRadius: '50%', border: 'none', cursor: 'pointer', padding: 0 }} title="Color personalizado" />
+                </div>
+              </div>
+
+              {/* Recordatorios */}
+              <div>
+                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>🔔 Recordatorio de Créditos por Vencer</div>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Alertar cuando falten</span>
+                  <input type="number" value={recordatoriosDias} onChange={e => setRecordatoriosDias(parseInt(e.target.value) || 7)} min="1" max="30" style={{ width: '70px', padding: '0.4rem 0.6rem', border: '1px solid var(--border2)', borderRadius: '7px', background: 'var(--surface2)', color: 'var(--text)', fontSize: '0.85rem', fontFamily: 'var(--mono)', textAlign: 'center' }} />
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>días o menos</span>
+                </div>
+                <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Actualmente el sistema alerta créditos con {recordatoriosDias} días o menos.</div>
+              </div>
+
+              {/* Meta mensual */}
+              <div>
+                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>🎯 Meta de Cobros Mensual</div>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>$</span>
+                  <input type="number" value={metaMensual || ''} onChange={e => setMetaMensual(parseFloat(e.target.value) || 0)} placeholder="0" style={{ width: '150px', padding: '0.4rem 0.6rem', border: '1px solid var(--border2)', borderRadius: '7px', background: 'var(--surface2)', color: 'var(--text)', fontSize: '0.85rem', fontFamily: 'var(--mono)' }} />
+                </div>
+              </div>
+
+              {/* Modo compacto */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>⊟ Modo compacto</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Reduce el tamaño de filas en la tabla</div>
+                </div>
+                <div onClick={() => setModoCompacto(m => !m)} style={{ width: '44px', height: '24px', borderRadius: '12px', background: modoCompacto ? 'var(--accent)' : 'var(--border2)', cursor: 'pointer', position: 'relative', transition: 'background 0.2s' }}>
+                  <div style={{ position: 'absolute', top: '3px', left: modoCompacto ? '22px' : '3px', width: '18px', height: '18px', borderRadius: '50%', background: 'white', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}></div>
+                </div>
+              </div>
+
+              {/* Modo oscuro */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>{darkMode ? '☀️' : '🌙'} Modo oscuro</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Cambia el tema de la interfaz</div>
+                </div>
+                <div onClick={() => setDarkMode(m => !m)} style={{ width: '44px', height: '24px', borderRadius: '12px', background: darkMode ? 'var(--accent)' : 'var(--border2)', cursor: 'pointer', position: 'relative', transition: 'background 0.2s' }}>
+                  <div style={{ position: 'absolute', top: '3px', left: darkMode ? '22px' : '3px', width: '18px', height: '18px', borderRadius: '50%', background: 'white', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}></div>
+                </div>
+              </div>
+            </div>
+
+            <div className="form-actions">
+              <button className="btn btn-secondary" onClick={() => setShowConfigModal(false)}>Cerrar</button>
+              <button className="btn btn-primary" onClick={() => { setShowConfigModal(false); showToast('Configuración guardada', 'success'); }}>✅ Guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast Notifications */}
       <div className="toast-container">
