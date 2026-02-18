@@ -1095,6 +1095,7 @@ export default function App() {
             <button className={`tab-btn ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>🏠 Inicio</button>
             <button className={`tab-btn ${activeTab === 'cartera' ? 'active' : ''}`} onClick={() => setActiveTab('cartera')}>📊 Cartera</button>
             <button className={`tab-btn ${activeTab === 'credito' ? 'active' : ''}`} onClick={() => setActiveTab('credito')}>💳 Crédito</button>
+            <button className={`tab-btn ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => setActiveTab('documentos')}>📄 Documentos</button>
             <button className={`tab-btn ${activeTab === 'calendario' ? 'active' : ''}`} onClick={() => setActiveTab('calendario')}>📅 Calendario</button>
           </div>
 
@@ -1338,6 +1339,101 @@ export default function App() {
                   </div>
                 );
               })()}
+            </div>
+          </div>
+
+          {/* TAB DOCUMENTOS */}
+          <div className={`tab-content ${activeTab === 'documentos' ? 'active' : ''}`}>
+            {/* Header con buscador */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <div>
+                <h2 style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--text)' }}>📄 Documentos y Cotizaciones</h2>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Genera, sube y envía documentos a tus clientes por WhatsApp</p>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <span style={{ background: 'var(--surface2)', border: '1px solid var(--border)', padding: '0.4rem 0.85rem', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                  {Object.values(cotizaciones).reduce((s, d) => s + d.length, 0)} documentos en total
+                </span>
+              </div>
+            </div>
+
+            {/* Cómo funciona — si no hay documentos */}
+            {Object.values(cotizaciones).reduce((s, d) => s + d.length, 0) === 0 && (
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '2rem', marginBottom: '1.25rem', textAlign: 'center' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>📋</div>
+                <h3 style={{ fontWeight: 800, color: 'var(--text)', marginBottom: '0.5rem' }}>¿Cómo funciona?</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '1rem', maxWidth: '600px', margin: '1.25rem auto 0' }}>
+                  {[
+                    { paso: '1', icono: '✏️', titulo: 'Genera o sube', desc: 'Crea una cotización desde el sistema o sube tu PDF existente' },
+                    { paso: '2', icono: '💾', titulo: 'Se guarda', desc: 'El documento queda guardado asociado al cliente automáticamente' },
+                    { paso: '3', icono: '📤', titulo: 'Notifica', desc: 'El PDF se descarga y WhatsApp se abre con el mensaje listo' },
+                  ].map(p => (
+                    <div key={p.paso} style={{ background: 'var(--surface2)', borderRadius: '12px', padding: '1rem', border: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: '1.5rem', marginBottom: '0.4rem' }}>{p.icono}</div>
+                      <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.25rem' }}>{p.titulo}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{p.desc}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Lista de todos los clientes con sus documentos */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {clientes.map(cliente => {
+                const docs = cotizaciones[cliente.id] || [];
+                return (
+                  <div key={cliente.id} style={{ background: 'var(--surface)', border: `1px solid ${docs.length > 0 ? 'var(--accent)' : 'var(--border)'}`, borderRadius: '12px', padding: '1rem 1.25rem', transition: 'all 0.2s' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      {/* Info del cliente */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        {(() => { const av = getAvatar(cliente.nombre); return <div className="avatar" style={{ background: av.color }}>{av.letra}</div>; })()}
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text)' }}>{cliente.nombre}</div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                            ID: {cliente.id} · <span className={`badge badge-${cliente.estado.toLowerCase().replace(/ /g,'-')}`}>{cliente.estado}</span>
+                            {docs.length > 0 && <span style={{ marginLeft: '0.5rem', color: 'var(--accent)', fontWeight: 700 }}>· {docs.length} doc{docs.length !== 1 ? 's' : ''}</span>}
+                          </div>
+                        </div>
+                      </div>
+                      {/* Botones */}
+                      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                        <button className="btn btn-secondary" style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }} onClick={() => abrirGenCotModal(cliente)}>✏️ Generar Cotización</button>
+                        <label className="btn btn-secondary" style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', cursor: 'pointer' }}>
+                          📂 Subir PDF
+                          <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => { subirDocumento(cliente.id, e.target.files[0]); e.target.value = ''; }} />
+                        </label>
+                        {docs.length > 0 && cliente.contacto && (
+                          <button className="btn btn-success" style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }} onClick={() => abrirNotifDocModal(cliente)}>📤 Notificar por WhatsApp</button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Documentos del cliente */}
+                    {docs.length > 0 && (
+                      <div style={{ marginTop: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                        {docs.map(doc => (
+                          <div key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.85rem', background: 'var(--surface2)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                            <span style={{ fontSize: '1.1rem' }}>{doc.tipo === 'generado' ? '📋' : '📄'}</span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontWeight: 600, fontSize: '0.82rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.nombre}</div>
+                              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                {doc.tipo === 'generado' ? '✏️ Generado' : '📂 Subido'} · {new Date(doc.fecha).toLocaleDateString('es-DO', { day:'2-digit', month:'short', year:'numeric' })}
+                                {doc.monto && <span style={{ color: '#059669', fontWeight: 700, marginLeft: '0.4rem' }}>${parseFloat(doc.monto).toLocaleString('en-US',{maximumFractionDigits:2})}</span>}
+                              </div>
+                            </div>
+                            <button onClick={() => descargarDocumento(doc)} className="btn btn-secondary" style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem' }}>⬇️</button>
+                            <button onClick={() => eliminarDocumento(cliente.id, doc.id)} style={{ width: '28px', height: '28px', borderRadius: '6px', border: '1px solid #fca5a5', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {clientes.length === 0 && (
+                <div className="empty-state"><h3>No hay clientes</h3><p>Agrega clientes en la pestaña Cartera primero</p></div>
+              )}
             </div>
           </div>
 
