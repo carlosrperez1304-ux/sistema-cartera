@@ -19,18 +19,36 @@ export default function App() {
     setCurrentUser(user);
   }, []);
 
-  const VALID_USERS = { 'CPEREZ': { pass: 'admin123', rol: 'admin' }, 'admin': { pass: 'admin', rol: 'admin' }, 'viewer': { pass: 'viewer123', rol: 'viewer' } };
-  const ADMIN_EMAILS = ['carlosperez@gmail.com']; // agrega aquí los correos que son admin
-  const esAdmin = session ? ADMIN_EMAILS.includes(session.user.email) : (VALID_USERS[currentUser]?.rol === 'admin');
+  const ADMIN_EMAILS = ['carlosperez@gmail.com'];
+
+  const USUARIOS_DEFAULT = {
+    'CPEREZ':  { pass: 'admin123', rol: 'admin',  nombre: 'Carlos Pérez' },
+    'admin':   { pass: 'admin',    rol: 'admin',  nombre: 'Administrador' },
+    'viewer':  { pass: 'viewer123',rol: 'viewer', nombre: 'Solo Lectura' },
+  };
+
+  const [usuarios, setUsuarios] = useState(() => {
+    if (typeof window === 'undefined') return USUARIOS_DEFAULT;
+    const saved = localStorage.getItem('usuarios-v1');
+    return saved ? JSON.parse(saved) : USUARIOS_DEFAULT;
+  });
+
+  const [showUsuariosModal, setShowUsuariosModal] = useState(false);
+  const [usuarioForm, setUsuarioForm] = useState({ username: '', nombre: '', pass: '', rol: 'viewer' });
+  const [usuarioEditando, setUsuarioEditando] = useState(null);
+  const [showPassActual, setShowPassActual] = useState(false);
+
+  const esAdmin = session ? ADMIN_EMAILS.includes(session.user.email) : (usuarios[currentUser]?.rol === 'admin');
   const soloLectura = !esAdmin;
 
   const handleLogin = (e) => {
     e.preventDefault();
-    if (VALID_USERS[username] && VALID_USERS[username].pass === password) {
+    const u = Object.keys(usuarios).find(k => k.toLowerCase() === username.toLowerCase());
+    if (u && usuarios[u].pass === password) {
       setIsAuthenticated(true);
-      setCurrentUser(username);
+      setCurrentUser(u);
       localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('currentUser', username);
+      localStorage.setItem('currentUser', u);
       setLoginError('');
     } else {
       setLoginError('❌ Usuario o contraseña incorrectos');
@@ -223,6 +241,7 @@ export default function App() {
   useEffect(() => { if (Object.keys(tags).length > 0) localStorage.setItem('cliente-tags', JSON.stringify(tags)); }, [tags]);
   useEffect(() => { localStorage.setItem('recordatorio-dias', recordatoriosDias); }, [recordatoriosDias]);
   useEffect(() => { localStorage.setItem('modo-compacto', modoCompacto); }, [modoCompacto]);
+  useEffect(() => { localStorage.setItem('usuarios-v1', JSON.stringify(usuarios)); }, [usuarios]);
 
   const obtenerMesActual = () => {
     const hoy = new Date();
@@ -1049,6 +1068,29 @@ export default function App() {
     showToast(msg, guardados > 0 ? 'success' : 'error');
   };
 
+  // ─── GESTIÓN DE USUARIOS ─────────────────────────────────
+  const guardarUsuario = () => {
+    const { username: uname, nombre, pass, rol } = usuarioForm;
+    if (!uname.trim() || !pass.trim()) return;
+    const key = uname.trim().toUpperCase();
+    setUsuarios(prev => ({ ...prev, [key]: { pass: pass.trim(), rol, nombre: nombre.trim() || key } }));
+    setUsuarioForm({ username: '', nombre: '', pass: '', rol: 'viewer' });
+    setUsuarioEditando(null);
+    showToast(`Usuario ${key} ${usuarioEditando ? 'actualizado' : 'creado'}`, 'success');
+  };
+  const eliminarUsuario = (key) => {
+    if (key === currentUser) { showToast('No puedes eliminar tu propio usuario', 'error'); return; }
+    if (Object.keys(usuarios).filter(k => usuarios[k].rol === 'admin').length === 1 && usuarios[key]?.rol === 'admin') {
+      showToast('Debe existir al menos un administrador', 'error'); return;
+    }
+    setUsuarios(prev => { const n = { ...prev }; delete n[key]; return n; });
+    showToast(`Usuario ${key} eliminado`, 'info');
+  };
+  const editarUsuario = (key) => {
+    setUsuarioEditando(key);
+    setUsuarioForm({ username: key, nombre: usuarios[key].nombre || '', pass: usuarios[key].pass, rol: usuarios[key].rol });
+  };
+
   // ─── BITÁCORA DE GESTIONES ───────────────────────────────
   const TIPOS_GESTION = ['Llamada', 'WhatsApp', 'Visita', 'Email', 'Otro'];
   const RESULTADOS_GESTION = ['Contestó', 'No Contestó', 'Buzón de Voz', 'Promesa de Pago', 'Pago Recibido', 'Rechazó', 'Sin Respuesta'];
@@ -1304,6 +1346,7 @@ export default function App() {
           <button className="topbar-btn" onClick={() => setShowBusquedaGlobal(true)} title="Búsqueda global (F)">🔍</button>
           <button className="topbar-btn" onClick={() => setDarkMode(!darkMode)} title="Modo oscuro">{darkMode ? '☀️' : '🌙'}</button>
           <button className="topbar-btn" onClick={() => setShowConfigModal(true)} title="Configuración">⚙️</button>
+          {esAdmin && <button className="topbar-btn" onClick={() => setShowUsuariosModal(true)} title="Gestionar usuarios" style={{ background: 'rgba(99,91,255,0.15)', borderRadius: '8px' }}>👥 Usuarios</button>}
           <button className="topbar-btn" onClick={() => { if (session) signOut(); else handleLogout(); }} style={{ marginLeft: '0.5rem' }}>🚪 Cerrar Sesión</button>
         </div>
       </div>
@@ -2834,6 +2877,117 @@ export default function App() {
             <div className="form-actions">
               <button className="btn btn-secondary" onClick={() => setShowConfigModal(false)}>Cerrar</button>
               <button className="btn btn-primary" onClick={() => { setShowConfigModal(false); showToast('Configuración guardada', 'success'); }}>✅ Guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Gestión de Usuarios ───────────────────── */}
+      {showUsuariosModal && esAdmin && (
+        <div className="modal show" onClick={e => { if (e.target === e.currentTarget) { setShowUsuariosModal(false); setUsuarioEditando(null); setUsuarioForm({ username:'', nombre:'', pass:'', rol:'viewer' }); } }}>
+          <div className="modal-content" style={{ maxWidth: '620px' }}>
+            <div className="modal-header">
+              <h2>👥 Gestión de Usuarios</h2>
+              <button className="close-btn" onClick={() => { setShowUsuariosModal(false); setUsuarioEditando(null); setUsuarioForm({ username:'', nombre:'', pass:'', rol:'viewer' }); }}>×</button>
+            </div>
+
+            {/* Formulario crear/editar */}
+            <div style={{ background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:'12px', padding:'1rem', marginBottom:'1.25rem' }}>
+              <div style={{ fontSize:'0.78rem', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', marginBottom:'0.75rem' }}>
+                {usuarioEditando ? `✏️ Editando: ${usuarioEditando}` : '➕ Nuevo usuario'}
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.6rem', marginBottom:'0.6rem' }}>
+                <div className="form-group" style={{ margin:0 }}>
+                  <label>Usuario <span style={{ color:'var(--danger)', fontSize:'0.7rem' }}>*</span></label>
+                  <input
+                    type="text"
+                    value={usuarioForm.username}
+                    onChange={e => setUsuarioForm(p => ({ ...p, username: e.target.value.toUpperCase() }))}
+                    placeholder="Ej: JPEREZ"
+                    disabled={!!usuarioEditando}
+                    style={{ textTransform:'uppercase', opacity: usuarioEditando ? 0.6 : 1 }}
+                  />
+                </div>
+                <div className="form-group" style={{ margin:0 }}>
+                  <label>Nombre completo</label>
+                  <input type="text" value={usuarioForm.nombre} onChange={e => setUsuarioForm(p => ({ ...p, nombre: e.target.value }))} placeholder="Ej: Juan Pérez" />
+                </div>
+                <div className="form-group" style={{ margin:0 }}>
+                  <label>Contraseña <span style={{ color:'var(--danger)', fontSize:'0.7rem' }}>*</span></label>
+                  <div style={{ position:'relative' }}>
+                    <input
+                      type={showPassActual ? 'text' : 'password'}
+                      value={usuarioForm.pass}
+                      onChange={e => setUsuarioForm(p => ({ ...p, pass: e.target.value }))}
+                      placeholder="Mín. 4 caracteres"
+                      style={{ paddingRight:'2.5rem' }}
+                    />
+                    <button type="button" onClick={() => setShowPassActual(v => !v)} style={{ position:'absolute', right:'0.5rem', top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', fontSize:'0.9rem' }}>
+                      {showPassActual ? '🙈' : '👁️'}
+                    </button>
+                  </div>
+                </div>
+                <div className="form-group" style={{ margin:0 }}>
+                  <label>Rol</label>
+                  <select value={usuarioForm.rol} onChange={e => setUsuarioForm(p => ({ ...p, rol: e.target.value }))}>
+                    <option value="admin">🔑 Administrador — acceso total</option>
+                    <option value="viewer">👁️ Solo Lectura — no puede editar</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{ display:'flex', gap:'0.5rem', justifyContent:'flex-end' }}>
+                {usuarioEditando && (
+                  <button className="btn btn-secondary" onClick={() => { setUsuarioEditando(null); setUsuarioForm({ username:'', nombre:'', pass:'', rol:'viewer' }); }}>Cancelar</button>
+                )}
+                <button
+                  className="btn btn-primary"
+                  onClick={guardarUsuario}
+                  disabled={!usuarioForm.username.trim() || usuarioForm.pass.length < 4}
+                >
+                  {usuarioEditando ? '💾 Actualizar usuario' : '➕ Crear usuario'}
+                </button>
+              </div>
+            </div>
+
+            {/* Lista de usuarios */}
+            <div style={{ fontSize:'0.78rem', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', marginBottom:'0.5rem' }}>
+              Usuarios registrados ({Object.keys(usuarios).length})
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:'0.45rem', maxHeight:'280px', overflowY:'auto' }}>
+              {Object.entries(usuarios).map(([key, u]) => (
+                <div key={key} style={{ display:'grid', gridTemplateColumns:'auto 1fr auto', gap:'0.75rem', alignItems:'center', padding:'0.75rem 1rem', background:'var(--surface)', border:`2px solid ${key === currentUser ? 'var(--accent)' : 'var(--border)'}`, borderRadius:'10px' }}>
+                  {(() => { const av = getAvatar(u.nombre || key); return <div className="avatar avatar-sm" style={{ background: av.color }}>{av.letra}</div>; })()}
+                  <div>
+                    <div style={{ fontWeight:700, fontSize:'0.88rem', display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                      {key}
+                      {key === currentUser && <span style={{ background:'var(--accent)', color:'white', borderRadius:'20px', padding:'0.1rem 0.5rem', fontSize:'0.65rem', fontWeight:800 }}>TÚ</span>}
+                      <span style={{ background: u.rol==='admin' ? '#fef9c3' : '#f0f9ff', border:`1px solid ${u.rol==='admin' ? '#fde047' : '#bae6fd'}`, borderRadius:'20px', padding:'0.1rem 0.5rem', fontSize:'0.68rem', fontWeight:700, color: u.rol==='admin' ? '#713f12' : '#075985' }}>
+                        {u.rol === 'admin' ? '🔑 Admin' : '👁️ Viewer'}
+                      </span>
+                    </div>
+                    <div style={{ fontSize:'0.73rem', color:'var(--text-muted)' }}>{u.nombre || '—'}</div>
+                  </div>
+                  <div style={{ display:'flex', gap:'0.35rem' }}>
+                    <button onClick={() => editarUsuario(key)} style={{ padding:'0.25rem 0.6rem', border:'1px solid var(--border2)', borderRadius:'6px', background:'var(--surface2)', cursor:'pointer', fontSize:'0.78rem' }}>✏️</button>
+                    {key !== currentUser && (
+                      <button onClick={() => eliminarUsuario(key)} style={{ padding:'0.25rem 0.6rem', border:'1px solid #fca5a5', borderRadius:'6px', background:'#fee2e2', color:'#dc2626', cursor:'pointer', fontSize:'0.78rem' }}>🗑️</button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ marginTop:'1rem', background:'#f0f9ff', border:'1px solid #bae6fd', borderRadius:'9px', padding:'0.75rem 1rem', fontSize:'0.78rem', color:'#075985' }}>
+              <strong>💡 Roles:</strong>
+              <ul style={{ marginTop:'0.3rem', paddingLeft:'1.2rem', lineHeight:1.8 }}>
+                <li><strong>Administrador</strong> — puede crear, editar y eliminar clientes, créditos y documentos</li>
+                <li><strong>Solo Lectura</strong> — solo puede ver la información, sin modificar nada</li>
+              </ul>
+              <div style={{ marginTop:'0.5rem', color:'#dc2626', fontWeight:600 }}>⚠️ Los usuarios se guardan en este navegador. Cada computadora necesita su propio acceso.</div>
+            </div>
+
+            <div className="form-actions">
+              <button className="btn btn-secondary" onClick={() => { setShowUsuariosModal(false); setUsuarioEditando(null); setUsuarioForm({ username:'', nombre:'', pass:'', rol:'viewer' }); }}>Cerrar</button>
             </div>
           </div>
         </div>
