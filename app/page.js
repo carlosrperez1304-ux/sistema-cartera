@@ -766,14 +766,55 @@ export default function App() {
   // ─── DOCUMENTOS / COTIZACIONES ───────────────────────────
   const abrirDocsModal = (cliente) => { setDocsClienteId(cliente.id); setShowDocsModal(true); };
 
-  const subirDocumento = (clienteId, file) => {
+  // ── Extrae el monto "Total RD$" del contenido de un PDF (base64) ──
+  const extraerMontoPDF = async (base64) => {
+    try {
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+      const base64Data = base64.includes(',') ? base64.split(',')[1] : base64;
+      const binary = atob(base64Data);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+      let texto = '';
+      for (let p = 1; p <= pdf.numPages; p++) {
+        const page = await pdf.getPage(p);
+        const content = await page.getTextContent();
+        texto += content.items.map(it => it.str).join(' ') + ' ';
+      }
+      // Busca patrones: "Total RD$ 1,500.00" / "TOTAL RD$1500" / "Total RD $ 3,200"
+      const patrones = [
+        /total\s+rd\s*\$\s*([\d,\.]+)/i,
+        /total\s*rd\s*\$\s*([\d,\.]+)/i,
+        /total\s*:\s*rd\s*\$\s*([\d,\.]+)/i,
+        /total\s*([\d,\.]+)\s*rd\s*\$/i,
+      ];
+      for (const pat of patrones) {
+        const m = texto.match(pat);
+        if (m) {
+          const val = parseFloat(m[1].replace(/,/g, ''));
+          if (!isNaN(val) && val > 0) return val;
+        }
+      }
+      return null;
+    } catch { return null; }
+  };
+
+  const subirDocumento = async (clienteId, file) => {
     if (!file) return;
     if (file.size > 3 * 1024 * 1024) { showToast('El archivo debe ser menor a 3MB', 'error'); return; }
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      const nueva = { id: Date.now(), nombre: file.name, base64: ev.target.result, fecha: new Date().toISOString(), monto: null, tipo: 'subido' };
+    reader.onload = async (ev) => {
+      const base64 = ev.target.result;
+      const montoDetectado = await extraerMontoPDF(base64);
+      const nueva = { id: Date.now(), nombre: file.name, base64, fecha: new Date().toISOString(), monto: montoDetectado, tipo: 'subido' };
       setCotizaciones(prev => ({ ...prev, [clienteId]: [...(prev[clienteId] || []), nueva] }));
-      showToast('Documento guardado correctamente', 'success');
+      if (montoDetectado) {
+        setClientes(prev => prev.map(c => c.id === clienteId ? { ...c, monto: montoDetectado.toString() } : c));
+        showToast(`Documento guardado · Monto detectado: RD$${montoDetectado.toLocaleString('en-US')}`, 'success');
+      } else {
+        showToast('Documento guardado correctamente', 'success');
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -907,47 +948,64 @@ export default function App() {
     return null;
   };
 
-  const procesarArchivosMasivos = (files) => {
+  const procesarArchivosMasivos = async (files) => {
     if (!files || files.length === 0) return;
     const validos = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.pdf'));
     if (validos.length === 0) { showToast('Selecciona archivos PDF', 'error'); return; }
     if (validos.length > 50) { showToast('Máximo 50 archivos a la vez', 'error'); return; }
     setCargaMasivaProcesando(true);
-    const resultados = [];
-    let pendientes = validos.length;
-    validos.forEach(file => {
+
+    const leerArchivo = (file) => new Promise((resolve) => {
       if (file.size > 3 * 1024 * 1024) {
-        resultados.push({ nombre: file.name, base64: null, clienteDetectado: detectarClientePorArchivo(file.name), clienteAsignado: null, estado: 'error', error: 'Archivo mayor a 3MB' });
-        pendientes--;
-        if (pendientes === 0) { setArchivosEnProceso(resultados); setCargaMasivaProcesando(false); }
+        resolve({ id: Date.now() + Math.random(), nombre: file.name, base64: null, clienteDetectado: detectarClientePorArchivo(file.name), clienteAsignado: null, estado: 'error', error: 'Archivo mayor a 3MB', montoDetectado: null });
         return;
       }
       const reader = new FileReader();
-      reader.onload = (ev) => {
+      reader.onload = async (ev) => {
+        const base64 = ev.target.result;
         const deteccion = detectarClientePorArchivo(file.name);
-        resultados.push({ id: Date.now() + Math.random(), nombre: file.name, base64: ev.target.result, clienteDetectado: deteccion, clienteAsignado: deteccion ? deteccion.cliente : null, estado: deteccion ? (deteccion.confianza === 'alta' ? 'vinculado' : 'sugerido') : 'sin-vincular' });
-        pendientes--;
-        if (pendientes === 0) {
-          resultados.sort((a, b) => { const orden = { vinculado: 0, sugerido: 1, 'sin-vincular': 2, error: 3 }; return orden[a.estado] - orden[b.estado]; });
-          setArchivosEnProceso(resultados);
-          setCargaMasivaProcesando(false);
-        }
+        const montoDetectado = await extraerMontoPDF(base64);
+        resolve({
+          id: Date.now() + Math.random(),
+          nombre: file.name,
+          base64,
+          clienteDetectado: deteccion,
+          clienteAsignado: deteccion ? deteccion.cliente : null,
+          estado: deteccion ? (deteccion.confianza === 'alta' ? 'vinculado' : 'sugerido') : 'sin-vincular',
+          montoDetectado,
+        });
       };
       reader.readAsDataURL(file);
     });
+
+    const resultados = await Promise.all(validos.map(leerArchivo));
+    resultados.sort((a, b) => { const orden = { vinculado: 0, sugerido: 1, 'sin-vincular': 2, error: 3 }; return orden[a.estado] - orden[b.estado]; });
+    setArchivosEnProceso(resultados);
+    setCargaMasivaProcesando(false);
   };
 
   const confirmarCargaMasiva = () => {
-    let guardados = 0; let errores = 0;
+    let guardados = 0; let errores = 0; let montosActualizados = 0;
+    const clientesConMonto = {};
     archivosEnProceso.forEach(arch => {
       if (!arch.base64 || !arch.clienteAsignado) { errores++; return; }
-      const nueva = { id: Date.now() + Math.random(), nombre: arch.nombre, base64: arch.base64, fecha: new Date().toISOString(), monto: null, tipo: 'subido' };
+      const nueva = { id: Date.now() + Math.random(), nombre: arch.nombre, base64: arch.base64, fecha: new Date().toISOString(), monto: arch.montoDetectado || null, tipo: 'subido' };
       setCotizaciones(prev => ({ ...prev, [arch.clienteAsignado.id]: [...(prev[arch.clienteAsignado.id] || []), nueva] }));
+      if (arch.montoDetectado) clientesConMonto[arch.clienteAsignado.id] = arch.montoDetectado;
       guardados++;
     });
+    if (Object.keys(clientesConMonto).length > 0) {
+      setClientes(prev => prev.map(c => clientesConMonto[c.id] !== undefined ? { ...c, monto: clientesConMonto[c.id].toString() } : c));
+      montosActualizados = Object.keys(clientesConMonto).length;
+    }
     setShowCargaMasivaModal(false);
     setArchivosEnProceso([]);
-    showToast(`${guardados} documentos guardados${errores > 0 ? ` · ${errores} sin vincular omitidos` : ''}`, guardados > 0 ? 'success' : 'error');
+    const msg = [
+      `${guardados} documento${guardados !== 1 ? 's' : ''} guardado${guardados !== 1 ? 's' : ''}`,
+      montosActualizados > 0 ? `💰 ${montosActualizados} monto${montosActualizados !== 1 ? 's' : ''} actualizado${montosActualizados !== 1 ? 's' : ''}` : null,
+      errores > 0 ? `${errores} sin vincular omitidos` : null,
+    ].filter(Boolean).join(' · ');
+    showToast(msg, guardados > 0 ? 'success' : 'error');
   };
 
   // ─── AVATAR helper ───────────────────────────────────────
@@ -2475,6 +2533,7 @@ export default function App() {
                     <li>Si contiene el <strong>nombre completo</strong> del cliente (ej: <em>Juan_Perez_cotizacion.pdf</em>) → vinculación automática</li>
                     <li>Si coincide <strong>parcialmente</strong> → sugerido (puedes confirmar o cambiar)</li>
                     <li>Sin coincidencia → puedes asignarlo manualmente desde la lista</li>
+                    <li>Si el PDF contiene <strong>Total RD$</strong>, el monto se detecta automáticamente y se actualiza en el cliente</li>
                   </ul>
                 </div>
               </div>
@@ -2493,6 +2552,11 @@ export default function App() {
                       {b.icon} {b.label}: {b.count}
                     </span>
                   ))}
+                  {archivosEnProceso.filter(a => a.montoDetectado).length > 0 && (
+                    <span style={{ background: '#e0f2fe', border: '1px solid #bae6fd', padding: '0.3rem 0.85rem', borderRadius: '20px', fontSize: '0.77rem', fontWeight: 700, color: '#0369a1' }}>
+                      💰 Con monto: {archivosEnProceso.filter(a => a.montoDetectado).length}
+                    </span>
+                  )}
                   <span style={{ background: 'var(--surface2)', border: '1px solid var(--border)', padding: '0.3rem 0.85rem', borderRadius: '20px', fontSize: '0.77rem', fontWeight: 700, color: 'var(--text-muted)' }}>
                     Total: {archivosEnProceso.length}
                   </span>
@@ -2511,12 +2575,23 @@ export default function App() {
                         </div>
                         {arch.estado === 'error' ? (
                           <div style={{ fontSize: '0.72rem', color: '#dc2626', paddingLeft: '1.35rem' }}>{arch.error}</div>
-                        ) : arch.clienteDetectado ? (
-                          <div style={{ fontSize: '0.72rem', color: arch.estado === 'vinculado' ? '#059669' : '#d97706', paddingLeft: '1.35rem' }}>
-                            {arch.clienteDetectado.razon}
-                          </div>
                         ) : (
-                          <div style={{ fontSize: '0.72rem', color: '#6b7280', paddingLeft: '1.35rem' }}>No se detectó cliente automáticamente</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', paddingLeft: '1.35rem' }}>
+                            {arch.clienteDetectado ? (
+                              <span style={{ fontSize: '0.72rem', color: arch.estado === 'vinculado' ? '#059669' : '#d97706' }}>
+                                {arch.clienteDetectado.razon}
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: '0.72rem', color: '#6b7280' }}>No se detectó cliente automáticamente</span>
+                            )}
+                            {arch.montoDetectado ? (
+                              <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#0369a1', background: '#e0f2fe', border: '1px solid #bae6fd', borderRadius: '20px', padding: '0.1rem 0.5rem' }}>
+                                💰 RD${arch.montoDetectado.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>sin monto</span>
+                            )}
+                          </div>
                         )}
                       </div>
                       {arch.estado !== 'error' && (
