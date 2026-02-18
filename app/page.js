@@ -782,15 +782,20 @@ export default function App() {
         const content = await page.getTextContent();
         texto += content.items.map(it => it.str).join(' ') + ' ';
       }
-      // Busca patrones: "Total RD$ 1,500.00" / "TOTAL RD$1500" / "Total RD $ 3,200"
+      // Eliminar "Total Bruto" y sus variantes del texto antes de buscar
+      const textoFiltrado = texto
+        .replace(/total\s+bruto[^\d]*([\d,\.]+)/gi, '')
+        .replace(/subtotal[^\d]*([\d,\.]+)/gi, '');
+
+      // Busca solo el Total final: "Total RD$ 1,500.00" / "TOTAL RD$1500" / "Total RD $ 3,200"
       const patrones = [
-        /total\s+rd\s*\$\s*([\d,\.]+)/i,
-        /total\s*rd\s*\$\s*([\d,\.]+)/i,
-        /total\s*:\s*rd\s*\$\s*([\d,\.]+)/i,
-        /total\s*([\d,\.]+)\s*rd\s*\$/i,
+        /total(?!\s*bruto)(?!\s*neto)\s+rd\s*\$\s*([\d,\.]+)/i,
+        /total(?!\s*bruto)(?!\s*neto)\s*rd\s*\$\s*([\d,\.]+)/i,
+        /total(?!\s*bruto)(?!\s*neto)\s*:\s*rd\s*\$\s*([\d,\.]+)/i,
+        /total(?!\s*bruto)(?!\s*neto)\s*([\d,\.]+)\s*rd\s*\$/i,
       ];
       for (const pat of patrones) {
-        const m = texto.match(pat);
+        const m = textoFiltrado.match(pat);
         if (m) {
           const val = parseFloat(m[1].replace(/,/g, ''));
           if (!isNaN(val) && val > 0) return val;
