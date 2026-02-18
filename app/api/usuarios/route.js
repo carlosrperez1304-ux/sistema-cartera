@@ -19,7 +19,7 @@ export async function GET(req) {
     return Response.json({ error: auth.error }, { status: auth.status });
   }
 
-  const users = getUsers();
+  const users = await getUsers();
   const safe  = Object.fromEntries(
     Object.entries(users).map(([k, v]) => [k, { rol: v.rol, nombre: v.nombre || k }])
   );
@@ -57,7 +57,7 @@ export async function POST(req) {
 
   if (!username) return Response.json({ error: 'El nombre de usuario es requerido' }, { status: 400 });
 
-  const users = getUsers();
+  const users = await getUsers();
   const isNew = !users[username];
 
   if (isNew || pass) {
@@ -78,7 +78,7 @@ export async function POST(req) {
     auditLog('USER_UPDATE', username, ip, `rol=${rol} by=${auth.session.user.username}`);
   }
 
-  saveUsers(users);
+  await saveUsers(users);
   return Response.json({ ok: true, username });
 }
 
@@ -111,14 +111,14 @@ export async function DELETE(req) {
   if (!username) return Response.json({ error: 'Falta username' }, { status: 400 });
   if (username === currentUser) return Response.json({ error: 'No puedes eliminarte a ti mismo' }, { status: 400 });
 
-  const users  = getUsers();
+  const users  = await getUsers();
   const admins = Object.entries(users).filter(([, v]) => v.rol === 'admin');
   if (admins.length === 1 && users[username]?.rol === 'admin') {
     return Response.json({ error: 'Debe existir al menos un administrador' }, { status: 400 });
   }
 
   delete users[username];
-  saveUsers(users);
+  await saveUsers(users);
   auditLog('USER_DELETE', username, ip, `by=${currentUser}`);
 
   return Response.json({ ok: true });

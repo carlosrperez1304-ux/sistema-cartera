@@ -16,6 +16,6 @@ export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const lines = Math.min(parseInt(searchParams.get('lines') || '200', 10), 500);
 
-  const entries = readAuditLog(lines);
+  const entries = await readAuditLog(lines);
   return Response.json({ entries, total: entries.length });
 }
