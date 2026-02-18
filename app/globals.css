@@ -197,6 +197,10 @@ tbody tr:hover { background: #f0f4ff !important; }
 tbody tr:last-child td { border-bottom: none; }
 tr.cliente-suspendido { background: #fff0f0 !important; border-left: 3px solid var(--danger); }
 tr.cliente-suspendido:hover { background: #ffe4e4 !important; }
+tr.row-selected { background: #eff6ff !important; border-left: 3px solid #3b82f6; }
+tr.row-selected:hover { background: #dbeafe !important; }
+[data-theme='dark'] tr.row-selected { background: #1e3a5f !important; }
+[data-theme='dark'] tr.row-selected:hover { background: #1e40af33 !important; }
 
 /* ─── BADGES ─────────────────────────────────────────────── */
 .badge { display: inline-flex; align-items: center; padding: 0.25rem 0.65rem; border-radius: 20px; font-size: 0.7rem; font-weight: 700; white-space: nowrap; font-family: var(--mono); letter-spacing: 0.02em; }

@@ -150,6 +150,30 @@ export default function App() {
   const [archivosEnProceso, setArchivosEnProceso] = useState([]);
   const [cargaMasivaProcesando, setCargaMasivaProcesando] = useState(false);
 
+  // ── Bitácora de Gestiones ────────────────────────────────
+  const [gestiones, setGestiones] = useState({});
+  const [showGestionModal, setShowGestionModal] = useState(false);
+  const [gestionClienteId, setGestionClienteId] = useState(null);
+  const [gestionTipo, setGestionTipo] = useState('Llamada');
+  const [gestionResultado, setGestionResultado] = useState('Contestó');
+  const [gestionNota, setGestionNota] = useState('');
+  const [gestionProximaFecha, setGestionProximaFecha] = useState('');
+  const [showHistorialGestionModal, setShowHistorialGestionModal] = useState(false);
+  const [historialGestionCliente, setHistorialGestionCliente] = useState(null);
+
+  // ── Plantillas de WhatsApp ───────────────────────────────
+  const [plantillas, setPlantillas] = useState([]);
+  const [showPlantillasModal, setShowPlantillasModal] = useState(false);
+  const [plantillaEditando, setPlantillaEditando] = useState(null);
+  const [plantillaForm, setPlantillaForm] = useState({ nombre: '', texto: '' });
+
+  // ── WhatsApp Masivo ──────────────────────────────────────
+  const [clientesSeleccionados, setClientesSeleccionados] = useState([]);
+  const [showWaMasivoModal, setShowWaMasivoModal] = useState(false);
+  const [waMasivoMensaje, setWaMasivoMensaje] = useState('');
+  const [waMasivoIndex, setWaMasivoIndex] = useState(0);
+  const [waMasivoActivo, setWaMasivoActivo] = useState(false);
+
   // Cargar preferencias guardadas
   useEffect(() => {
     const savedMeta = localStorage.getItem('meta-mensual');
@@ -164,7 +188,21 @@ export default function App() {
     if (savedRecordatorio) setRecordatoriosDias(parseInt(savedRecordatorio) || 7);
     if (savedCompacto) setModoCompacto(savedCompacto === 'true');
     if (savedCots) setCotizaciones(JSON.parse(savedCots));
+    const savedGestiones = localStorage.getItem('gestiones-v1');
+    if (savedGestiones) setGestiones(JSON.parse(savedGestiones));
+    const savedPlantillas = localStorage.getItem('plantillas-v1');
+    if (savedPlantillas) setPlantillas(JSON.parse(savedPlantillas));
+    else setPlantillas([
+      { id: 1, nombre: 'Primer Aviso', texto: 'Estimado/a {nombre}, le recordamos que tiene una factura pendiente por RD${monto}. Por favor comuníquese con nosotros. Gracias.' },
+      { id: 2, nombre: 'Recordatorio', texto: 'Estimado/a {nombre}, su cuenta por RD${monto} sigue pendiente. Le agradecemos se ponga en contacto a la brevedad.' },
+      { id: 3, nombre: 'Aviso de Vencimiento', texto: '⚠️ Estimado/a {nombre}, su factura por RD${monto} está próxima a vencer. Realice el pago antes de la fecha límite.' },
+      { id: 4, nombre: 'Aviso Final', texto: '🔴 AVISO FINAL — Estimado/a {nombre}, su deuda de RD${monto} requiere atención inmediata. Contáctenos en los próximos 3 días.' },
+      { id: 5, nombre: 'Confirmación de Pago', texto: '✅ Estimado/a {nombre}, confirmamos recibo de su pago. Muchas gracias por su pronta respuesta.' },
+    ]);
   }, []);
+
+  useEffect(() => { if (Object.keys(gestiones).length >= 0) localStorage.setItem('gestiones-v1', JSON.stringify(gestiones)); }, [gestiones]);
+  useEffect(() => { if (plantillas.length > 0) localStorage.setItem('plantillas-v1', JSON.stringify(plantillas)); }, [plantillas]);
 
   useEffect(() => {
     if (Object.keys(cotizaciones).length >= 0) {
@@ -1011,6 +1049,120 @@ export default function App() {
     showToast(msg, guardados > 0 ? 'success' : 'error');
   };
 
+  // ─── BITÁCORA DE GESTIONES ───────────────────────────────
+  const TIPOS_GESTION = ['Llamada', 'WhatsApp', 'Visita', 'Email', 'Otro'];
+  const RESULTADOS_GESTION = ['Contestó', 'No Contestó', 'Buzón de Voz', 'Promesa de Pago', 'Pago Recibido', 'Rechazó', 'Sin Respuesta'];
+  const COLOR_RESULTADO = { 'Contestó':'#059669','No Contestó':'#dc2626','Buzón de Voz':'#6b7280','Promesa de Pago':'#d97706','Pago Recibido':'#16a34a','Rechazó':'#dc2626','Sin Respuesta':'#9ca3af' };
+
+  const abrirGestionModal = (cliente) => {
+    setGestionClienteId(cliente.id);
+    setGestionTipo('Llamada'); setGestionResultado('Contestó');
+    setGestionNota(''); setGestionProximaFecha('');
+    setShowGestionModal(true);
+  };
+  const guardarGestion = () => {
+    if (!gestionClienteId) return;
+    const nueva = { id: Date.now(), fecha: new Date().toISOString(), tipo: gestionTipo, resultado: gestionResultado, nota: gestionNota, proximaFecha: gestionProximaFecha, usuario: currentUser || 'CPEREZ' };
+    setGestiones(prev => ({ ...prev, [gestionClienteId]: [nueva, ...(prev[gestionClienteId] || [])] }));
+    setShowGestionModal(false);
+    showToast(`Gestión registrada: ${gestionResultado}`, 'success');
+  };
+  const ultimaGestion = (clienteId) => (gestiones[clienteId] || [])[0] || null;
+  const tieneProximoSeguimiento = (clienteId) => {
+    const g = ultimaGestion(clienteId);
+    if (!g || !g.proximaFecha) return false;
+    return new Date(g.proximaFecha) <= new Date(new Date().setHours(23,59,59,999));
+  };
+
+  // ─── PLANTILLAS WHATSAPP ──────────────────────────────────
+  const aplicarPlantilla = (texto, cliente) => texto
+    .replace(/{nombre}/g, cliente.nombre)
+    .replace(/{monto}/g, (parseFloat(cliente.monto)||0).toLocaleString('en-US'))
+    .replace(/{estado}/g, cliente.estado)
+    .replace(/{id}/g, cliente.id);
+
+  const guardarPlantilla = () => {
+    if (!plantillaForm.nombre.trim() || !plantillaForm.texto.trim()) return;
+    if (plantillaEditando) {
+      setPlantillas(prev => prev.map(p => p.id === plantillaEditando ? { ...p, ...plantillaForm } : p));
+    } else {
+      setPlantillas(prev => [...prev, { id: Date.now(), ...plantillaForm }]);
+    }
+    setPlantillaEditando(null); setPlantillaForm({ nombre: '', texto: '' });
+    showToast('Plantilla guardada', 'success');
+  };
+  const eliminarPlantilla = (id) => setPlantillas(prev => prev.filter(p => p.id !== id));
+
+  // ─── WHATSAPP MASIVO ──────────────────────────────────────
+  const toggleSeleccion = (id) => setClientesSeleccionados(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const toggleTodos = () => setClientesSeleccionados(prev => prev.length === clientesPaginados.length ? [] : clientesPaginados.map(c => c.id));
+
+  const iniciarWaMasivo = () => {
+    if (clientesSeleccionados.length === 0) { showToast('Selecciona al menos un cliente', 'error'); return; }
+    setWaMasivoMensaje(''); setWaMasivoIndex(0); setWaMasivoActivo(false);
+    setShowWaMasivoModal(true);
+  };
+  const enviarWaMasivo = () => {
+    const destinos = clientes.filter(c => clientesSeleccionados.includes(c.id) && c.contacto);
+    if (destinos.length === 0) { showToast('Los clientes seleccionados no tienen contacto', 'error'); return; }
+    setWaMasivoActivo(true); setWaMasivoIndex(0);
+    const enviarUno = (i) => {
+      if (i >= destinos.length) { showToast(`${destinos.length} WhatsApp abiertos`, 'success'); setWaMasivoActivo(false); setShowWaMasivoModal(false); setClientesSeleccionados([]); return; }
+      const c = destinos[i];
+      const msg = aplicarPlantilla(waMasivoMensaje, c);
+      const num = c.contacto.replace(/\D/g,'');
+      window.open(`https://wa.me/1${num}?text=${encodeURIComponent(msg)}`, '_blank');
+      setWaMasivoIndex(i + 1);
+      setTimeout(() => enviarUno(i + 1), 1500);
+    };
+    enviarUno(0);
+  };
+
+  // ─── ESTADO DE CUENTA PDF ─────────────────────────────────
+  const generarEstadoCuentaPDF = (cliente) => {
+    import('jspdf').then(({ default: jsPDF }) => {
+      import('jspdf-autotable').then(() => {
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const s = calcularSaldoCliente(cliente);
+        // Header
+        doc.setFillColor(15,28,63); doc.rect(0,0,210,40,'F');
+        doc.setTextColor(255,255,255); doc.setFontSize(20); doc.setFont(undefined,'bold');
+        doc.text('CartaMaster', 15, 16);
+        doc.setFontSize(10); doc.setFont(undefined,'normal');
+        doc.text('Estado de Cuenta', 15, 25);
+        doc.text(`Generado: ${new Date().toLocaleDateString('es-DO')}`, 15, 33);
+        // Cliente info
+        doc.setTextColor(15,28,63); doc.setFontSize(13); doc.setFont(undefined,'bold');
+        doc.text('Información del Cliente', 15, 55);
+        doc.autoTable({ startY: 60, body: [
+          ['Nombre', cliente.nombre], ['ID', cliente.id],
+          ['Estado', cliente.estado], ['Teléfono', cliente.contacto || 'N/A'],
+          ['Monto Total', `RD$${(s.monto).toLocaleString('en-US',{minimumFractionDigits:2})}`],
+          ['Total Pagado', `RD$${(s.pagado).toLocaleString('en-US',{minimumFractionDigits:2})}`],
+          ['Saldo Pendiente', `RD$${(s.pendiente).toLocaleString('en-US',{minimumFractionDigits:2})}`],
+        ], styles:{fontSize:9,cellPadding:3}, columnStyles:{0:{fontStyle:'bold',cellWidth:50}}, margin:{left:15,right:15} });
+        // Historial de pagos
+        let y = doc.lastAutoTable.finalY + 10;
+        doc.setFontSize(13); doc.setFont(undefined,'bold'); doc.text('Historial de Pagos', 15, y);
+        const pagos = (cliente.pagosRealizados || []).map(p => [
+          new Date(p.fecha).toLocaleDateString('es-DO'), `RD$${parseFloat(p.monto).toLocaleString('en-US',{minimumFractionDigits:2})}`, p.nota || '-'
+        ]);
+        doc.autoTable({ startY: y+5, head:[['Fecha','Monto','Nota']], body: pagos.length ? pagos : [['Sin pagos registrados','','']], styles:{fontSize:9}, headStyles:{fillColor:[99,91,255],textColor:255}, margin:{left:15,right:15} });
+        // Gestiones
+        const gest = (gestiones[cliente.id] || []).slice(0,10).map(g => [
+          new Date(g.fecha).toLocaleDateString('es-DO'), g.tipo, g.resultado, g.nota || '-'
+        ]);
+        if (gest.length > 0) {
+          y = doc.lastAutoTable.finalY + 10;
+          doc.setFontSize(13); doc.setFont(undefined,'bold'); doc.text('Bitácora de Gestiones', 15, y);
+          doc.autoTable({ startY: y+5, head:[['Fecha','Tipo','Resultado','Nota']], body: gest, styles:{fontSize:8}, headStyles:{fillColor:[15,28,63],textColor:255}, margin:{left:15,right:15} });
+        }
+        doc.save(`estado-cuenta-${cliente.nombre.replace(/\s/g,'-')}.pdf`);
+        showToast('Estado de cuenta generado', 'success');
+      });
+    });
+  };
+
   // ─── AVATAR helper ───────────────────────────────────────
   const AVATAR_COLORS = ['#635bff','#f97316','#059669','#0284c7','#dc2626','#8b5cf6','#14b8a6','#f59e0b','#e11d48','#0891b2'];
   const getAvatar = (nombre) => {
@@ -1163,8 +1315,10 @@ export default function App() {
             <div className="sidebar-label">Gestión</div>
             <div className={`sidebar-item ${activeTab === 'cartera' ? 'active' : ''}`} onClick={() => setActiveTab('cartera')}><span className="icon">📊</span> Cartera</div>
             <div className={`sidebar-item ${activeTab === 'credito' ? 'active' : ''}`} onClick={() => setActiveTab('credito')}><span className="icon">💳</span> Crédito</div>
+            <div className={`sidebar-item ${activeTab === 'agenda' ? 'active' : ''}`} onClick={() => setActiveTab('agenda')}><span className="icon">📅</span> Agenda del Día</div>
             <div className={`sidebar-item ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => setActiveTab('documentos')}><span className="icon">📄</span> Documentos</div>
             <div className="sidebar-item" style={{ color: '#0369a1', fontWeight: 700 }} onClick={() => { setArchivosEnProceso([]); setShowCargaMasivaModal(true); }}><span className="icon">📂</span> Carga Masiva PDF</div>
+            <div className="sidebar-item" style={{ color: '#7c3aed', fontWeight: 700 }} onClick={() => setShowPlantillasModal(true)}><span className="icon">💬</span> Plantillas WA</div>
           </div>
           <div className="sidebar-section">
             <div className="sidebar-label">Descarga</div>
@@ -1224,10 +1378,14 @@ export default function App() {
 
           <div className="tabs-nav">
             <button className={`tab-btn ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>🏠 Inicio</button>
+            <button className={`tab-btn ${activeTab === 'agenda' ? 'active' : ''}`} onClick={() => setActiveTab('agenda')} style={{ position:'relative' }}>
+              📅 Agenda
+              {(() => { const hoy = clientes.filter(c => tieneProximoSeguimiento(c.id)).length; return hoy > 0 ? <span style={{ position:'absolute', top:'-6px', right:'-6px', background:'#dc2626', color:'white', borderRadius:'50%', width:'18px', height:'18px', fontSize:'0.65rem', fontWeight:800, display:'flex', alignItems:'center', justifyContent:'center' }}>{hoy}</span> : null; })()}
+            </button>
             <button className={`tab-btn ${activeTab === 'cartera' ? 'active' : ''}`} onClick={() => setActiveTab('cartera')}>📊 Cartera</button>
             <button className={`tab-btn ${activeTab === 'credito' ? 'active' : ''}`} onClick={() => setActiveTab('credito')}>💳 Crédito</button>
             <button className={`tab-btn ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => setActiveTab('documentos')}>📄 Documentos</button>
-            <button className={`tab-btn ${activeTab === 'calendario' ? 'active' : ''}`} onClick={() => setActiveTab('calendario')}>📅 Calendario</button>
+            <button className={`tab-btn ${activeTab === 'calendario' ? 'active' : ''}`} onClick={() => setActiveTab('calendario')}>🗓️ Calendario</button>
           </div>
 
           {/* TAB DASHBOARD */}
@@ -1405,12 +1563,88 @@ export default function App() {
               );
             })()}
 
+            {/* ── PANEL DE ALERTAS INTELIGENTES ── */}
+            {(() => {
+              const hoy = new Date();
+              const sinContacto = clientes.filter(c => {
+                const ug = ultimaGestion(c.id);
+                if (!ug) return ['Cotizado','Notificado','Vencido'].includes(c.estado);
+                const dias = Math.floor((hoy - new Date(ug.fecha)) / 86400000);
+                return dias > recordatoriosDias && ['Cotizado','Notificado','Vencido'].includes(c.estado);
+              });
+              const promesaIncumplida = clientes.filter(c => {
+                const ug = ultimaGestion(c.id);
+                return ug && ug.resultado === 'Promesa de Pago' && ug.proximaFecha && new Date(ug.proximaFecha) < hoy && c.estado !== 'Pagado' && c.estado !== 'Facturado';
+              });
+              const seguimientoHoy = clientes.filter(c => tieneProximoSeguimiento(c.id));
+              if (sinContacto.length === 0 && promesaIncumplida.length === 0 && seguimientoHoy.length === 0) return null;
+              return (
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.2rem', marginBottom: '1rem' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '1rem' }}>🔔 Alertas Inteligentes</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {seguimientoHoy.length > 0 && (
+                      <div onClick={() => setActiveTab('agenda')} style={{ display:'flex', alignItems:'center', gap:'0.75rem', padding:'0.7rem 1rem', background:'#fef9c3', border:'1px solid #fde047', borderRadius:'10px', cursor:'pointer' }}>
+                        <span style={{ fontSize:'1.3rem' }}>📅</span>
+                        <div><div style={{ fontWeight:700, fontSize:'0.85rem', color:'#713f12' }}>{seguimientoHoy.length} cliente{seguimientoHoy.length>1?'s':''} con seguimiento pendiente HOY</div><div style={{ fontSize:'0.73rem', color:'#92400e' }}>{seguimientoHoy.slice(0,3).map(c=>c.nombre).join(', ')}{seguimientoHoy.length>3?` +${seguimientoHoy.length-3} más`:''}</div></div>
+                        <span style={{ marginLeft:'auto', fontSize:'0.75rem', color:'#92400e', fontWeight:700 }}>Ver →</span>
+                      </div>
+                    )}
+                    {promesaIncumplida.length > 0 && (
+                      <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', padding:'0.7rem 1rem', background:'#fef2f2', border:'1px solid #fca5a5', borderRadius:'10px' }}>
+                        <span style={{ fontSize:'1.3rem' }}>⚠️</span>
+                        <div><div style={{ fontWeight:700, fontSize:'0.85rem', color:'#991b1b' }}>{promesaIncumplida.length} promesa{promesaIncumplida.length>1?'s':''} de pago incumplida{promesaIncumplida.length>1?'s':''}</div><div style={{ fontSize:'0.73rem', color:'#b91c1c' }}>{promesaIncumplida.slice(0,3).map(c=>c.nombre).join(', ')}</div></div>
+                      </div>
+                    )}
+                    {sinContacto.length > 0 && (
+                      <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', padding:'0.7rem 1rem', background:'#f0f9ff', border:'1px solid #7dd3fc', borderRadius:'10px' }}>
+                        <span style={{ fontSize:'1.3rem' }}>📞</span>
+                        <div><div style={{ fontWeight:700, fontSize:'0.85rem', color:'#075985' }}>{sinContacto.length} cliente{sinContacto.length>1?'s':''} sin contacto en más de {recordatoriosDias} días</div><div style={{ fontSize:'0.73rem', color:'#0369a1' }}>{sinContacto.slice(0,3).map(c=>c.nombre).join(', ')}{sinContacto.length>3?` +${sinContacto.length-3} más`:''}</div></div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* ── PROYECCIÓN DE COBROS ── */}
+            {(() => {
+              const mCotizado = estadisticas.montoCotizado || 0;
+              const mNotificado = estadisticas.montoNotificado || 0;
+              const mPagado = estadisticas.montoPagado || 0;
+              const proyec30 = mPagado + mNotificado * 0.6 + mCotizado * 0.2;
+              const proyec60 = mPagado + mNotificado * 0.8 + mCotizado * 0.5;
+              const proyec90 = mPagado + mNotificado * 0.95 + mCotizado * 0.75;
+              const fmt = v => v >= 1000000 ? `$${(v/1000000).toFixed(2)}M` : v >= 1000 ? `$${(v/1000).toFixed(1)}K` : `$${Math.round(v).toLocaleString('en-US')}`;
+              const maxVal = Math.max(proyec90, 1);
+              return (
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.2rem', marginBottom: '1rem' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '1rem' }}>📈 Proyección de Cobros</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                    {[{ label: '30 días', val: proyec30, color: '#0284c7' }, { label: '60 días', val: proyec60, color: '#7c3aed' }, { label: '90 días', val: proyec90, color: '#059669' }].map(p => (
+                      <div key={p.label} style={{ background: 'var(--surface2)', borderRadius: '10px', padding: '0.85rem', textAlign: 'center' }}>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.3rem' }}>{p.label}</div>
+                        <div style={{ fontSize: '1.2rem', fontWeight: 800, color: p.color, fontFamily: 'var(--mono)' }}>{fmt(p.val)}</div>
+                        <div style={{ marginTop: '0.4rem', height: '6px', background: 'var(--border)', borderRadius: '3px' }}>
+                          <div style={{ height: '100%', width: `${(p.val / maxVal) * 100}%`, background: p.color, borderRadius: '3px', transition: 'width 0.6s ease' }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    Estimado basado en pipeline actual · Pagado actual: <strong>{fmt(mPagado)}</strong> · Notificado: <strong>{fmt(mNotificado)}</strong> · Cotizado: <strong>{fmt(mCotizado)}</strong>
+                  </div>
+                </div>
+              );
+            })()}
+
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.2rem' }}>
               <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '1rem' }}>⚡ Accesos rápidos</div>
               <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                 <button className="btn btn-primary" onClick={() => { setActiveTab('cartera'); abrirModal(); }}>+ Nuevo Cliente</button>
                 <button className="btn btn-success" onClick={() => setActiveTab('credito')}>+ Nuevo Crédito</button>
                 <button className="btn btn-primary" style={{ background: '#0369a1' }} onClick={() => { setArchivosEnProceso([]); setShowCargaMasivaModal(true); }}>📂 Carga Masiva PDF</button>
+                <button className="btn btn-primary" style={{ background: '#7c3aed' }} onClick={() => setShowPlantillasModal(true)}>💬 Plantillas WA</button>
+                <button className="btn btn-primary" style={{ background: '#059669' }} onClick={() => setActiveTab('agenda')}>📅 Agenda del Día</button>
                 <button className="btn btn-secondary" onClick={backupJSON}>💾 Backup</button>
                 <button className="btn btn-secondary" onClick={() => setShowImportModal(true)}>📥 Importar Excel</button>
                 <button className="btn btn-secondary" onClick={exportarPDF}>📄 Exportar PDF</button>
@@ -1472,6 +1706,82 @@ export default function App() {
                 );
               })()}
             </div>
+          </div>
+
+          {/* TAB AGENDA DEL DÍA */}
+          <div className={`tab-content ${activeTab === 'agenda' ? 'active' : ''}`}>
+            {(() => {
+              const hoy = new Date(); hoy.setHours(23,59,59,999);
+              const seguimientoHoy = clientes.filter(c => tieneProximoSeguimiento(c.id));
+              const vencidosSinGestion = clientes.filter(c => c.estado === 'Vencido' && !(gestiones[c.id]||[]).length);
+              const promesaIncumplida = clientes.filter(c => {
+                const ug = ultimaGestion(c.id);
+                return ug && ug.resultado === 'Promesa de Pago' && ug.proximaFecha && new Date(ug.proximaFecha) < hoy && c.estado !== 'Pagado' && c.estado !== 'Facturado';
+              });
+              const sinContactoReciente = clientes.filter(c => {
+                const ug = ultimaGestion(c.id);
+                if (!ug) return ['Cotizado','Notificado'].includes(c.estado);
+                return Math.floor((new Date() - new Date(ug.fecha)) / 86400000) > recordatoriosDias && ['Cotizado','Notificado'].includes(c.estado);
+              });
+              const secciones = [
+                { titulo: '📅 Seguimiento programado para hoy', color: '#713f12', bg: '#fef9c3', border: '#fde047', lista: seguimientoHoy },
+                { titulo: '⚠️ Promesas de pago incumplidas', color: '#991b1b', bg: '#fef2f2', border: '#fca5a5', lista: promesaIncumplida },
+                { titulo: '🔴 Vencidos sin ninguna gestión', color: '#7c2d12', bg: '#fff7ed', border: '#fed7aa', lista: vencidosSinGestion },
+                { titulo: `📞 Sin contacto en más de ${recordatoriosDias} días`, color: '#1e40af', bg: '#eff6ff', border: '#bfdbfe', lista: sinContactoReciente },
+              ];
+              return (
+                <div>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.25rem', flexWrap:'wrap', gap:'0.75rem' }}>
+                    <div>
+                      <h2 style={{ fontWeight:800, fontSize:'1.1rem', color:'var(--text)' }}>📅 Agenda del Día</h2>
+                      <p style={{ fontSize:'0.82rem', color:'var(--text-muted)', marginTop:'0.2rem' }}>{new Date().toLocaleDateString('es-DO',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
+                    </div>
+                    <div style={{ display:'flex', gap:'0.5rem' }}>
+                      <button className="btn btn-primary" style={{ background:'#7c3aed' }} onClick={() => setShowPlantillasModal(true)}>💬 Plantillas WA</button>
+                      {clientesSeleccionados.length > 0 && <button className="btn btn-primary" style={{ background:'#25d366' }} onClick={iniciarWaMasivo}>📱 WA Masivo ({clientesSeleccionados.length})</button>}
+                    </div>
+                  </div>
+                  {secciones.every(s => s.lista.length === 0) ? (
+                    <div style={{ textAlign:'center', padding:'3rem', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'14px' }}>
+                      <div style={{ fontSize:'3rem', marginBottom:'0.75rem' }}>🎉</div>
+                      <h3 style={{ fontWeight:800, color:'var(--text)' }}>¡Todo al día!</h3>
+                      <p style={{ color:'var(--text-muted)', marginTop:'0.5rem' }}>No hay clientes pendientes de gestión por hoy.</p>
+                    </div>
+                  ) : secciones.map(sec => sec.lista.length === 0 ? null : (
+                    <div key={sec.titulo} style={{ background:'var(--surface)', border:`1px solid var(--border)`, borderRadius:'14px', padding:'1.1rem 1.25rem', marginBottom:'1rem' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.85rem' }}>
+                        <span style={{ fontWeight:800, fontSize:'0.9rem', color:sec.color }}>{sec.titulo}</span>
+                        <span style={{ background:sec.bg, border:`1px solid ${sec.border}`, borderRadius:'20px', padding:'0.15rem 0.6rem', fontSize:'0.75rem', fontWeight:800, color:sec.color }}>{sec.lista.length}</span>
+                      </div>
+                      <div style={{ display:'flex', flexDirection:'column', gap:'0.45rem' }}>
+                        {sec.lista.map(c => {
+                          const ug = ultimaGestion(c.id);
+                          return (
+                            <div key={c.id} style={{ display:'grid', gridTemplateColumns:'auto 1fr auto', gap:'0.75rem', alignItems:'center', padding:'0.7rem 0.9rem', background:sec.bg, borderRadius:'10px', border:`1px solid ${sec.border}` }}>
+                              {(() => { const av = getAvatar(c.nombre); return <div className="avatar avatar-sm" style={{ background:av.color }}>{av.letra}</div>; })()}
+                              <div style={{ minWidth:0 }}>
+                                <div style={{ fontWeight:700, fontSize:'0.88rem', color:'var(--text)' }}>{c.nombre}</div>
+                                <div style={{ fontSize:'0.72rem', color:'var(--text-muted)', display:'flex', gap:'0.5rem', flexWrap:'wrap', marginTop:'0.15rem' }}>
+                                  <span className={`badge badge-${c.estado.toLowerCase().replace(/ /g,'-')}`}>{c.estado}</span>
+                                  {c.monto && <span style={{ fontWeight:700, color:'#059669' }}>RD${parseFloat(c.monto).toLocaleString('en-US')}</span>}
+                                  {ug && <span>Última gestión: {new Date(ug.fecha).toLocaleDateString('es-DO')} · {ug.resultado}</span>}
+                                  {ug?.proximaFecha && <span style={{ color:sec.color, fontWeight:700 }}>Seguimiento: {new Date(ug.proximaFecha).toLocaleDateString('es-DO')}</span>}
+                                </div>
+                              </div>
+                              <div style={{ display:'flex', gap:'0.35rem', flexShrink:0 }}>
+                                <button onClick={() => abrirGestionModal(c)} className="btn btn-secondary" style={{ fontSize:'0.75rem', padding:'0.3rem 0.65rem' }}>📞 Gestión</button>
+                                {c.contacto && <button onClick={() => abrirWhatsappModal(c)} style={{ padding:'0.3rem 0.65rem', border:'1px solid #86efac', background:'#f0fdf4', borderRadius:'7px', cursor:'pointer', fontSize:'0.8rem' }}>🟢</button>}
+                                <input type="checkbox" checked={clientesSeleccionados.includes(c.id)} onChange={() => toggleSeleccion(c.id)} style={{ cursor:'pointer', width:'16px', height:'16px' }} title="Seleccionar para WA masivo" />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
 
           {/* TAB DOCUMENTOS */}
@@ -1777,12 +2087,16 @@ export default function App() {
                   <div className="empty-state"><h3>No se encontraron clientes</h3><p>Intenta ajustar los filtros o agregar un nuevo cliente</p></div>
                 ) : (
                   <table className={modoCompacto ? 'compact-mode' : ''}>
-                    <thead><tr><th>ID</th><th>Cliente</th><th>Contacto</th><th>Estado Actual</th><th>Mes/Año</th><th>Monto</th><th>Fecha Cotización</th><th>Proceso</th><th>Suspensión</th><th>Opciones</th></tr></thead>
+                    <thead><tr>
+                      <th><input type="checkbox" onChange={toggleTodos} checked={clientesPaginados.length > 0 && clientesPaginados.every(c => clientesSeleccionados.includes(c.id))} style={{ cursor:'pointer' }} title="Seleccionar todos" /></th>
+                      <th>ID</th><th>Cliente</th><th>Contacto</th><th>Estado Actual</th><th>Mes/Año</th><th>Monto</th><th>Fecha Cotización</th><th>Proceso</th><th>Suspensión</th><th>Opciones</th>
+                    </tr></thead>
                     <tbody>
                       {clientesPaginados.map(cliente => {
                         const estaSuspendido = cliente.suspendido === true;
                         return (
-                          <tr key={cliente.id} className={estaSuspendido ? 'cliente-suspendido' : ''}>
+                          <tr key={cliente.id} className={`${estaSuspendido ? 'cliente-suspendido' : ''} ${clientesSeleccionados.includes(cliente.id) ? 'row-selected' : ''}`}>
+                            <td><input type="checkbox" checked={clientesSeleccionados.includes(cliente.id)} onChange={() => toggleSeleccion(cliente.id)} style={{ cursor:'pointer' }} /></td>
                             <td><div className="id-with-led"><span className={`status-led ${estaSuspendido ? 'suspended' : esClienteActivo(cliente) ? 'active' : 'inactive'}`}></span><strong>{cliente.id}</strong></div></td>
                             <td>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1843,6 +2157,8 @@ export default function App() {
                                 <button className="accion-btn edit" disabled={esModoPasado} title="Editar" onClick={() => !esModoPasado && abrirModal(cliente)}>✏️</button>
                                 <button className={`accion-btn nota ${cliente.nota ? 'has-note' : ''}`} title={cliente.nota ? 'Ver nota' : 'Agregar nota'} onClick={() => abrirNotaModal(cliente)}>💬</button>
                                 <button className={`accion-btn ${(cotizaciones[cliente.id]||[]).length > 0 ? 'has-note' : ''}`} title="Documentos / Cotizaciones" onClick={() => abrirDocsModal(cliente)} style={{ background: (cotizaciones[cliente.id]||[]).length > 0 ? '#ede9fe' : '', borderColor: (cotizaciones[cliente.id]||[]).length > 0 ? '#c4b5fd' : '', color: (cotizaciones[cliente.id]||[]).length > 0 ? '#7c3aed' : '' }}>📄{(cotizaciones[cliente.id]||[]).length > 0 && <span style={{ fontSize: '0.6rem', fontWeight: 800, marginLeft: '1px' }}>{(cotizaciones[cliente.id]||[]).length}</span>}</button>
+                                <button className={`accion-btn ${(gestiones[cliente.id]||[]).length > 0 ? 'has-note' : ''}`} title="Registrar gestión / Bitácora" onClick={() => abrirGestionModal(cliente)} style={{ background: (gestiones[cliente.id]||[]).length > 0 ? '#fef9c3' : '', borderColor: (gestiones[cliente.id]||[]).length > 0 ? '#fde047' : '', color: (gestiones[cliente.id]||[]).length > 0 ? '#713f12' : '' }}>📞{(gestiones[cliente.id]||[]).length > 0 && <span style={{ fontSize: '0.6rem', fontWeight: 800, marginLeft: '1px' }}>{(gestiones[cliente.id]||[]).length}</span>}</button>
+                                <button className="accion-btn" title="Estado de Cuenta PDF" onClick={() => generarEstadoCuentaPDF(cliente)} style={{ background: '#f0f9ff', border: '1px solid #7dd3fc', color: '#0369a1' }}>📋</button>
                                 <button className="accion-btn delete" disabled={esModoPasado} title="Eliminar" onClick={() => !esModoPasado && eliminarCliente(cliente.id)}>🗑️</button>
                               </div>
                             </td>
@@ -1861,6 +2177,24 @@ export default function App() {
                 </div>
               )}
             </div>
+
+            {/* ── BARRA WHATSAPP MASIVO ── */}
+            {clientesSeleccionados.length > 0 && (
+              <div style={{ position:'sticky', bottom:'1rem', left:0, right:0, zIndex:200, background:'#1e2d4a', borderRadius:'14px', padding:'0.85rem 1.25rem', display:'flex', alignItems:'center', gap:'1rem', boxShadow:'0 8px 30px rgba(0,0,0,0.25)', flexWrap:'wrap' }}>
+                <div style={{ color:'white', fontWeight:700, fontSize:'0.88rem' }}>
+                  ✅ {clientesSeleccionados.length} cliente{clientesSeleccionados.length>1?'s':''} seleccionado{clientesSeleccionados.length>1?'s':''}
+                </div>
+                <button onClick={iniciarWaMasivo} style={{ background:'#25d366', color:'white', border:'none', borderRadius:'9px', padding:'0.5rem 1.1rem', fontWeight:700, fontSize:'0.85rem', cursor:'pointer', display:'flex', alignItems:'center', gap:'0.4rem' }}>
+                  📱 WhatsApp Masivo
+                </button>
+                <button onClick={() => { const ids = clientesSeleccionados; ids.forEach(id => { const c = clientes.find(x=>x.id===id); if(c) abrirGestionModal(c); }); }} style={{ background:'#f59e0b', color:'white', border:'none', borderRadius:'9px', padding:'0.5rem 1.1rem', fontWeight:700, fontSize:'0.85rem', cursor:'pointer' }}>
+                  📞 Registrar Gestión
+                </button>
+                <button onClick={() => setClientesSeleccionados([])} style={{ marginLeft:'auto', background:'transparent', color:'#94a3b8', border:'1px solid #334155', borderRadius:'9px', padding:'0.45rem 0.9rem', fontSize:'0.82rem', cursor:'pointer' }}>
+                  Cancelar selección
+                </button>
+              </div>
+            )}
           </div>
 
           {/* TAB CRÉDITO */}
@@ -2501,6 +2835,168 @@ export default function App() {
               <button className="btn btn-secondary" onClick={() => setShowConfigModal(false)}>Cerrar</button>
               <button className="btn btn-primary" onClick={() => { setShowConfigModal(false); showToast('Configuración guardada', 'success'); }}>✅ Guardar</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Bitácora de Gestión ───────────────────── */}
+      {showGestionModal && gestionClienteId && (
+        <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowGestionModal(false); }}>
+          <div className="modal-content" style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h2>📞 Registrar Gestión — {clientes.find(c=>c.id===gestionClienteId)?.nombre}</h2>
+              <button className="close-btn" onClick={() => setShowGestionModal(false)}>×</button>
+            </div>
+
+            {/* Historial reciente */}
+            {(gestiones[gestionClienteId]||[]).length > 0 && (
+              <div style={{ marginBottom:'1rem', maxHeight:'150px', overflowY:'auto' }}>
+                <div style={{ fontSize:'0.72rem', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', marginBottom:'0.4rem' }}>Historial reciente</div>
+                {(gestiones[gestionClienteId]||[]).slice(0,5).map(g => (
+                  <div key={g.id} style={{ display:'flex', gap:'0.6rem', alignItems:'flex-start', padding:'0.45rem 0', borderBottom:'1px solid var(--border)' }}>
+                    <span style={{ fontSize:'0.8rem' }}>{g.tipo==='Llamada'?'📞':g.tipo==='WhatsApp'?'💬':g.tipo==='Visita'?'🚗':g.tipo==='Email'?'📧':'📌'}</span>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <span style={{ fontSize:'0.78rem', fontWeight:700, color: COLOR_RESULTADO[g.resultado]||'var(--text)' }}>{g.resultado}</span>
+                      <span style={{ fontSize:'0.73rem', color:'var(--text-muted)', marginLeft:'0.4rem' }}>{new Date(g.fecha).toLocaleDateString('es-DO')}</span>
+                      {g.nota && <div style={{ fontSize:'0.72rem', color:'var(--text-muted)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{g.nota}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem', marginBottom:'0.75rem' }}>
+              <div className="form-group" style={{ margin:0 }}>
+                <label>Tipo de gestión</label>
+                <select value={gestionTipo} onChange={e => setGestionTipo(e.target.value)}>
+                  {TIPOS_GESTION.map(t => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="form-group" style={{ margin:0 }}>
+                <label>Resultado</label>
+                <select value={gestionResultado} onChange={e => setGestionResultado(e.target.value)}>
+                  {RESULTADOS_GESTION.map(r => <option key={r}>{r}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="form-group">
+              <label>Nota (opcional)</label>
+              <textarea value={gestionNota} onChange={e => setGestionNota(e.target.value)} rows={2} placeholder="Ej: Dijo que paga el viernes, comunicarse el lunes..." />
+            </div>
+            <div className="form-group">
+              <label>📅 Próximo seguimiento (opcional)</label>
+              <input type="date" value={gestionProximaFecha} onChange={e => setGestionProximaFecha(e.target.value)} min={new Date().toISOString().split('T')[0]} />
+            </div>
+            <div className="form-actions">
+              <button className="btn btn-secondary" onClick={() => setShowGestionModal(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={guardarGestion}>✅ Guardar Gestión</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal WhatsApp Masivo ────────────────────────── */}
+      {showWaMasivoModal && (
+        <div className="modal show" onClick={e => { if (e.target === e.currentTarget && !waMasivoActivo) { setShowWaMasivoModal(false); } }}>
+          <div className="modal-content" style={{ maxWidth: '560px' }}>
+            <div className="modal-header">
+              <h2>📱 WhatsApp Masivo — {clientesSeleccionados.length} clientes</h2>
+              <button className="close-btn" onClick={() => !waMasivoActivo && setShowWaMasivoModal(false)}>×</button>
+            </div>
+
+            {/* Clientes destino */}
+            <div style={{ marginBottom:'1rem' }}>
+              <div style={{ fontSize:'0.72rem', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', marginBottom:'0.4rem' }}>Destinatarios</div>
+              <div style={{ display:'flex', flexWrap:'wrap', gap:'0.35rem', maxHeight:'80px', overflowY:'auto' }}>
+                {clientes.filter(c => clientesSeleccionados.includes(c.id)).map(c => (
+                  <span key={c.id} style={{ background: c.contacto ? '#f0fdf4' : '#fef2f2', border:`1px solid ${c.contacto ? '#86efac' : '#fca5a5'}`, borderRadius:'20px', padding:'0.15rem 0.6rem', fontSize:'0.75rem', fontWeight:600, color: c.contacto ? '#15803d' : '#dc2626' }}>
+                    {c.nombre}{!c.contacto ? ' ⚠️' : ''}
+                  </span>
+                ))}
+              </div>
+              {clientes.filter(c => clientesSeleccionados.includes(c.id) && !c.contacto).length > 0 && (
+                <div style={{ fontSize:'0.72rem', color:'#dc2626', marginTop:'0.3rem' }}>⚠️ Los clientes en rojo no tienen número y serán omitidos</div>
+              )}
+            </div>
+
+            {/* Plantillas rápidas */}
+            {plantillas.length > 0 && (
+              <div style={{ marginBottom:'0.75rem' }}>
+                <div style={{ fontSize:'0.72rem', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', marginBottom:'0.4rem' }}>Usar plantilla</div>
+                <div style={{ display:'flex', gap:'0.35rem', flexWrap:'wrap' }}>
+                  {plantillas.map(p => (
+                    <button key={p.id} onClick={() => setWaMasivoMensaje(p.texto)} style={{ padding:'0.25rem 0.65rem', borderRadius:'20px', border:'1px solid var(--border2)', background:'var(--surface2)', color:'var(--text)', fontSize:'0.75rem', cursor:'pointer', fontWeight:600 }}>{p.nombre}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="form-group">
+              <label>Mensaje <span style={{ fontWeight:400, color:'var(--text-muted)' }}>— usa {'{nombre}'}, {'{monto}'}, {'{estado}'}</span></label>
+              <textarea value={waMasivoMensaje} onChange={e => setWaMasivoMensaje(e.target.value)} rows={5} placeholder="Estimado/a {nombre}, le recordamos su cuenta pendiente por RD${monto}..." />
+            </div>
+
+            {waMasivoActivo && (
+              <div style={{ textAlign:'center', padding:'0.75rem', background:'#f0fdf4', border:'1px solid #86efac', borderRadius:'9px', marginBottom:'0.75rem', fontWeight:700, color:'#15803d' }}>
+                Enviando {waMasivoIndex} de {clientes.filter(c => clientesSeleccionados.includes(c.id) && c.contacto).length}...
+              </div>
+            )}
+
+            <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:'9px', padding:'0.65rem 0.9rem', marginBottom:'1rem', fontSize:'0.78rem', color:'#78350f' }}>
+              💡 Se abrirá WhatsApp Web para cada cliente con su mensaje personalizado. Los nombres y montos se reemplazarán automáticamente.
+            </div>
+            <div className="form-actions">
+              <button className="btn btn-secondary" onClick={() => !waMasivoActivo && setShowWaMasivoModal(false)} disabled={waMasivoActivo}>Cancelar</button>
+              <button className="btn btn-primary" style={{ background:'#25d366' }} onClick={enviarWaMasivo} disabled={!waMasivoMensaje.trim() || waMasivoActivo}>
+                🟢 Enviar a {clientes.filter(c => clientesSeleccionados.includes(c.id) && c.contacto).length} clientes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Plantillas WhatsApp ────────────────────── */}
+      {showPlantillasModal && (
+        <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowPlantillasModal(false); }}>
+          <div className="modal-content" style={{ maxWidth: '620px' }}>
+            <div className="modal-header">
+              <h2>💬 Plantillas de WhatsApp</h2>
+              <button className="close-btn" onClick={() => setShowPlantillasModal(false)}>×</button>
+            </div>
+
+            {/* Editor */}
+            <div style={{ background:'var(--surface2)', borderRadius:'12px', padding:'1rem', marginBottom:'1rem', border:'1px solid var(--border)' }}>
+              <div style={{ fontSize:'0.78rem', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', marginBottom:'0.5rem' }}>{plantillaEditando ? '✏️ Editando plantilla' : '➕ Nueva plantilla'}</div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 2fr', gap:'0.5rem', marginBottom:'0.5rem' }}>
+                <input type="text" value={plantillaForm.nombre} onChange={e => setPlantillaForm(p=>({...p,nombre:e.target.value}))} placeholder="Nombre de la plantilla" style={{ padding:'0.5rem 0.7rem', border:'1px solid var(--border2)', borderRadius:'7px', background:'var(--surface)', color:'var(--text)', fontSize:'0.83rem', fontFamily:'Plus Jakarta Sans, sans-serif' }} />
+                <input type="text" value={plantillaForm.texto} onChange={e => setPlantillaForm(p=>({...p,texto:e.target.value}))} placeholder="Texto… usa {nombre}, {monto}, {estado}" style={{ padding:'0.5rem 0.7rem', border:'1px solid var(--border2)', borderRadius:'7px', background:'var(--surface)', color:'var(--text)', fontSize:'0.83rem', fontFamily:'Plus Jakarta Sans, sans-serif' }} />
+              </div>
+              <div style={{ display:'flex', gap:'0.5rem', justifyContent:'flex-end' }}>
+                {plantillaEditando && <button className="btn btn-secondary" onClick={() => { setPlantillaEditando(null); setPlantillaForm({nombre:'',texto:''}); }}>Cancelar</button>}
+                <button className="btn btn-primary" onClick={guardarPlantilla} disabled={!plantillaForm.nombre.trim() || !plantillaForm.texto.trim()}>{plantillaEditando ? '💾 Actualizar' : '➕ Agregar'}</button>
+              </div>
+            </div>
+
+            {/* Lista de plantillas */}
+            <div style={{ display:'flex', flexDirection:'column', gap:'0.5rem', maxHeight:'340px', overflowY:'auto' }}>
+              {plantillas.map(p => (
+                <div key={p.id} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'10px', padding:'0.75rem 1rem' }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.3rem' }}>
+                    <span style={{ fontWeight:700, fontSize:'0.88rem' }}>{p.nombre}</span>
+                    <div style={{ display:'flex', gap:'0.35rem' }}>
+                      <button onClick={() => { setPlantillaEditando(p.id); setPlantillaForm({nombre:p.nombre,texto:p.texto}); }} style={{ padding:'0.2rem 0.55rem', border:'1px solid var(--border2)', borderRadius:'6px', background:'var(--surface2)', cursor:'pointer', fontSize:'0.75rem' }}>✏️</button>
+                      <button onClick={() => eliminarPlantilla(p.id)} style={{ padding:'0.2rem 0.55rem', border:'1px solid #fca5a5', borderRadius:'6px', background:'#fee2e2', color:'#dc2626', cursor:'pointer', fontSize:'0.75rem' }}>🗑️</button>
+                    </div>
+                  </div>
+                  <div style={{ fontSize:'0.78rem', color:'var(--text-muted)', lineHeight:1.5 }}>{p.texto}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ marginTop:'0.75rem', fontSize:'0.73rem', color:'var(--text-muted)' }}>
+              💡 Variables: <code>{'{nombre}'}</code> <code>{'{monto}'}</code> <code>{'{estado}'}</code> — se reemplazan automáticamente por los datos del cliente
+            </div>
+            <div className="form-actions"><button className="btn btn-secondary" onClick={() => setShowPlantillasModal(false)}>Cerrar</button></div>
           </div>
         </div>
       )}
