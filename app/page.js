@@ -19,39 +19,66 @@ export default function App() {
     setCurrentUser(user);
   }, []);
 
+  // Sincronizar estado con sesión NextAuth (login via Credentials o Google)
+  useEffect(() => {
+    if (session?.user) {
+      setIsAuthenticated(true);
+      const uname = session.user.username || session.user.email || '';
+      setCurrentUser(uname.toUpperCase());
+    }
+  }, [session]);
+
   const ADMIN_EMAILS = ['carlosperez@gmail.com'];
 
-  const USUARIOS_DEFAULT = {
-    'CPEREZ':  { pass: 'admin123', rol: 'admin',  nombre: 'Carlos Pérez' },
-    'admin':   { pass: 'admin',    rol: 'admin',  nombre: 'Administrador' },
-    'viewer':  { pass: 'viewer123',rol: 'viewer', nombre: 'Solo Lectura' },
-  };
-
-  const [usuarios, setUsuarios] = useState(() => {
-    if (typeof window === 'undefined') return USUARIOS_DEFAULT;
-    const saved = localStorage.getItem('usuarios-v1');
-    return saved ? JSON.parse(saved) : USUARIOS_DEFAULT;
-  });
-
+  // usuarios solo guarda info pública (rol, nombre) — sin contraseñas
+  const [usuarios, setUsuarios] = useState({});
   const [showUsuariosModal, setShowUsuariosModal] = useState(false);
   const [usuarioForm, setUsuarioForm] = useState({ username: '', nombre: '', pass: '', rol: 'viewer' });
   const [usuarioEditando, setUsuarioEditando] = useState(null);
   const [showPassActual, setShowPassActual] = useState(false);
 
-  const esAdmin = session ? ADMIN_EMAILS.includes(session.user.email) : (usuarios[currentUser]?.rol === 'admin');
+  // Audit log
+  const [showAuditModal, setShowAuditModal]   = useState(false);
+  const [auditEntries, setAuditEntries]       = useState([]);
+  const [auditLoading, setAuditLoading]       = useState(false);
+  const [auditFilter, setAuditFilter]         = useState('');
+
+  // Cargar lista pública de usuarios desde el servidor
+  const cargarUsuarios = () => {
+    fetch('/api/usuarios').then(r => r.json()).then(data => setUsuarios(data)).catch(() => {});
+  };
+
+  useEffect(() => {
+    if (isAuthenticated || session) cargarUsuarios();
+  }, [isAuthenticated, session]);
+
+  // Si hay sesión NextAuth: usar el rol del token JWT o el email de Google
+  // Si no: fallback a la lista local (para compatibilidad)
+  const esAdmin = session
+    ? (session.user?.rol === 'admin' || ADMIN_EMAILS.includes(session.user?.email))
+    : (usuarios[currentUser]?.rol === 'admin');
   const soloLectura = !esAdmin;
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    const u = Object.keys(usuarios).find(k => k.toLowerCase() === username.toLowerCase());
-    if (u && usuarios[u].pass === password) {
-      setIsAuthenticated(true);
-      setCurrentUser(u);
-      localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('currentUser', u);
-      setLoginError('');
-    } else {
-      setLoginError('❌ Usuario o contraseña incorrectos');
+    setLoginError('');
+    try {
+      const result = await signIn('credentials', {
+        redirect: false,
+        username: username.trim(),
+        password,
+      });
+      if (result?.ok) {
+        setIsAuthenticated(true);
+        setCurrentUser(username.trim().toUpperCase());
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('currentUser', username.trim().toUpperCase());
+        cargarUsuarios();
+      } else {
+        setLoginError('❌ ' + (result?.error || 'Usuario o contraseña incorrectos'));
+      }
+    } catch {
+      setLoginError('❌ Error de conexión con el servidor');
     }
   };
 
@@ -270,6 +297,30 @@ export default function App() {
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
   }, []);
+
+  // ── Auto-logout por inactividad (30 minutos) ──────────────
+  useEffect(() => {
+    if (!isAuthenticated && !session) return;
+    const TIMEOUT = 30 * 60 * 1000;
+    let timer = setTimeout(() => {
+      showToast('Sesión cerrada por inactividad', 'info');
+      setTimeout(() => {
+        if (session) signOut();
+        else { setIsAuthenticated(false); localStorage.removeItem('isLoggedIn'); localStorage.removeItem('currentUser'); }
+      }, 2000);
+    }, TIMEOUT);
+    const reset = () => { clearTimeout(timer); timer = setTimeout(() => {
+      showToast('Sesión cerrada por inactividad', 'info');
+      setTimeout(() => {
+        if (session) signOut();
+        else { setIsAuthenticated(false); localStorage.removeItem('isLoggedIn'); localStorage.removeItem('currentUser'); }
+      }, 2000);
+    }, TIMEOUT); };
+    window.addEventListener('mousemove', reset);
+    window.addEventListener('keydown', reset);
+    window.addEventListener('click', reset);
+    return () => { clearTimeout(timer); window.removeEventListener('mousemove', reset); window.removeEventListener('keydown', reset); window.removeEventListener('click', reset); };
+  }, [isAuthenticated, session]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -1069,26 +1120,61 @@ export default function App() {
   };
 
   // ─── GESTIÓN DE USUARIOS ─────────────────────────────────
-  const guardarUsuario = () => {
-    const { username: uname, nombre, pass, rol } = usuarioForm;
-    if (!uname.trim() || !pass.trim()) return;
-    const key = uname.trim().toUpperCase();
-    setUsuarios(prev => ({ ...prev, [key]: { pass: pass.trim(), rol, nombre: nombre.trim() || key } }));
-    setUsuarioForm({ username: '', nombre: '', pass: '', rol: 'viewer' });
-    setUsuarioEditando(null);
-    showToast(`Usuario ${key} ${usuarioEditando ? 'actualizado' : 'creado'}`, 'success');
+  const validarPassUI = (p) => {
+    if (!p) return null; // vacío es permitido al editar (no cambia pass)
+    if (p.length < 8) return 'Mínimo 8 caracteres';
+    if (!/[A-Z]/.test(p)) return 'Debe contener al menos 1 mayúscula';
+    if (!/[0-9]/.test(p)) return 'Debe contener al menos 1 número';
+    return null;
   };
-  const eliminarUsuario = (key) => {
-    if (key === currentUser) { showToast('No puedes eliminar tu propio usuario', 'error'); return; }
-    if (Object.keys(usuarios).filter(k => usuarios[k].rol === 'admin').length === 1 && usuarios[key]?.rol === 'admin') {
-      showToast('Debe existir al menos un administrador', 'error'); return;
+
+  const guardarUsuario = async () => {
+    const { username: uname, nombre, pass, rol } = usuarioForm;
+    const isNuevo = !usuarioEditando;
+    if (!uname.trim()) return;
+    if (isNuevo && !pass) { showToast('La contraseña es requerida', 'error'); return; }
+    const passErr = validarPassUI(pass);
+    if (passErr) { showToast(passErr, 'error'); return; }
+    const res = await fetch('/api/usuarios', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: uname, nombre, pass, rol }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      await cargarUsuarios();
+      setUsuarioForm({ username: '', nombre: '', pass: '', rol: 'viewer' });
+      setUsuarioEditando(null);
+      showToast(`Usuario ${data.username} ${usuarioEditando ? 'actualizado' : 'creado'}`, 'success');
+    } else {
+      showToast(data.error || 'Error al guardar usuario', 'error');
     }
-    setUsuarios(prev => { const n = { ...prev }; delete n[key]; return n; });
-    showToast(`Usuario ${key} eliminado`, 'info');
+  };
+  const eliminarUsuario = async (key) => {
+    const res = await fetch('/api/usuarios', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: key, currentUser }),
+    });
+    const data = await res.json();
+    if (res.ok) { await cargarUsuarios(); showToast(`Usuario ${key} eliminado`, 'info'); }
+    else showToast(data.error || 'Error al eliminar', 'error');
   };
   const editarUsuario = (key) => {
     setUsuarioEditando(key);
-    setUsuarioForm({ username: key, nombre: usuarios[key].nombre || '', pass: usuarios[key].pass, rol: usuarios[key].rol });
+    setUsuarioForm({ username: key, nombre: usuarios[key]?.nombre || '', pass: '', rol: usuarios[key]?.rol || 'viewer' });
+  };
+
+  const abrirAuditLog = async () => {
+    setShowAuditModal(true);
+    setAuditLoading(true);
+    setAuditFilter('');
+    try {
+      const res  = await fetch('/api/audit?lines=300');
+      const data = await res.json();
+      setAuditEntries(data.entries || []);
+    } catch { setAuditEntries([]); }
+    setAuditLoading(false);
   };
 
   // ─── BITÁCORA DE GESTIONES ───────────────────────────────
@@ -1347,6 +1433,7 @@ export default function App() {
           <button className="topbar-btn" onClick={() => setDarkMode(!darkMode)} title="Modo oscuro">{darkMode ? '☀️' : '🌙'}</button>
           <button className="topbar-btn" onClick={() => setShowConfigModal(true)} title="Configuración">⚙️</button>
           {esAdmin && <button className="topbar-btn" onClick={() => setShowUsuariosModal(true)} title="Gestionar usuarios" style={{ background: 'rgba(99,91,255,0.15)', borderRadius: '8px' }}>👥 Usuarios</button>}
+          {esAdmin && <button className="topbar-btn" onClick={() => abrirAuditLog()} title="Bitácora de seguridad" style={{ background: 'rgba(220,38,38,0.12)', borderRadius: '8px' }}>🔍 Auditoría</button>}
           <button className="topbar-btn" onClick={() => { if (session) signOut(); else handleLogout(); }} style={{ marginLeft: '0.5rem' }}>🚪 Cerrar Sesión</button>
         </div>
       </div>
@@ -2913,19 +3000,34 @@ export default function App() {
                   <input type="text" value={usuarioForm.nombre} onChange={e => setUsuarioForm(p => ({ ...p, nombre: e.target.value }))} placeholder="Ej: Juan Pérez" />
                 </div>
                 <div className="form-group" style={{ margin:0 }}>
-                  <label>Contraseña <span style={{ color:'var(--danger)', fontSize:'0.7rem' }}>*</span></label>
+                  <label>
+                    Contraseña {!usuarioEditando && <span style={{ color:'var(--danger)', fontSize:'0.7rem' }}>*</span>}
+                    {usuarioEditando && <span style={{ color:'var(--text-muted)', fontSize:'0.68rem' }}>(vacío = no cambiar)</span>}
+                  </label>
                   <div style={{ position:'relative' }}>
                     <input
                       type={showPassActual ? 'text' : 'password'}
                       value={usuarioForm.pass}
                       onChange={e => setUsuarioForm(p => ({ ...p, pass: e.target.value }))}
-                      placeholder="Mín. 4 caracteres"
+                      placeholder={usuarioEditando ? 'Dejar vacío para no cambiar' : 'Mín. 8 chars, 1 mayúscula, 1 número'}
                       style={{ paddingRight:'2.5rem' }}
                     />
                     <button type="button" onClick={() => setShowPassActual(v => !v)} style={{ position:'absolute', right:'0.5rem', top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', fontSize:'0.9rem' }}>
                       {showPassActual ? '🙈' : '👁️'}
                     </button>
                   </div>
+                  {/* Indicadores de requisitos en tiempo real */}
+                  {usuarioForm.pass && (() => {
+                    const p = usuarioForm.pass;
+                    const ok = (cond) => ({ color: cond ? '#16a34a' : '#dc2626', fontSize:'0.68rem' });
+                    return (
+                      <div style={{ marginTop:'0.3rem', display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
+                        <span style={ok(p.length >= 8)}>{'●'} 8+ caracteres</span>
+                        <span style={ok(/[A-Z]/.test(p))}>{'●'} Mayúscula</span>
+                        <span style={ok(/[0-9]/.test(p))}>{'●'} Número</span>
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div className="form-group" style={{ margin:0 }}>
                   <label>Rol</label>
@@ -2942,7 +3044,11 @@ export default function App() {
                 <button
                   className="btn btn-primary"
                   onClick={guardarUsuario}
-                  disabled={!usuarioForm.username.trim() || usuarioForm.pass.length < 4}
+                  disabled={
+                    !usuarioForm.username.trim() ||
+                    (!usuarioEditando && !usuarioForm.pass) ||
+                    !!validarPassUI(usuarioForm.pass)
+                  }
                 >
                   {usuarioEditando ? '💾 Actualizar usuario' : '➕ Crear usuario'}
                 </button>
@@ -2983,11 +3089,77 @@ export default function App() {
                 <li><strong>Administrador</strong> — puede crear, editar y eliminar clientes, créditos y documentos</li>
                 <li><strong>Solo Lectura</strong> — solo puede ver la información, sin modificar nada</li>
               </ul>
-              <div style={{ marginTop:'0.5rem', color:'#dc2626', fontWeight:600 }}>⚠️ Los usuarios se guardan en este navegador. Cada computadora necesita su propio acceso.</div>
+              <div style={{ marginTop:'0.5rem', color:'#059669', fontWeight:600 }}>✅ Los usuarios se guardan en el servidor — cualquier computadora puede acceder con sus credenciales.</div>
             </div>
 
             <div className="form-actions">
               <button className="btn btn-secondary" onClick={() => { setShowUsuariosModal(false); setUsuarioEditando(null); setUsuarioForm({ username:'', nombre:'', pass:'', rol:'viewer' }); }}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Auditoría de Seguridad ─────────────────── */}
+      {showAuditModal && esAdmin && (
+        <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowAuditModal(false); }}>
+          <div className="modal-content" style={{ maxWidth: '820px' }}>
+            <div className="modal-header">
+              <h2>🔍 Bitácora de Seguridad</h2>
+              <button className="close-btn" onClick={() => setShowAuditModal(false)}>×</button>
+            </div>
+
+            {/* Filtro */}
+            <div style={{ display:'flex', gap:'0.6rem', marginBottom:'1rem', alignItems:'center' }}>
+              <input
+                type="text"
+                value={auditFilter}
+                onChange={e => setAuditFilter(e.target.value)}
+                placeholder="Filtrar por usuario, IP, acción..."
+                style={{ flex:1, padding:'0.5rem 0.8rem', border:'1px solid var(--border)', borderRadius:'8px', background:'var(--surface2)', color:'var(--text)', fontSize:'0.82rem' }}
+              />
+              <button onClick={abrirAuditLog} className="btn btn-secondary" style={{ whiteSpace:'nowrap' }}>🔄 Actualizar</button>
+              <span style={{ fontSize:'0.75rem', color:'var(--text-muted)', whiteSpace:'nowrap' }}>
+                {auditLoading ? 'Cargando...' : `${auditEntries.length} registros`}
+              </span>
+            </div>
+
+            {/* Leyenda */}
+            <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap', marginBottom:'0.75rem', fontSize:'0.68rem' }}>
+              {[['🟢','Login OK','#dcfce7','#15803d'],['🔴','Login Fail','#fee2e2','#dc2626'],['➕','Creado','#eff6ff','#1d4ed8'],['✏️','Actualizado','#fef9c3','#92400e'],['🗑️','Eliminado','#fce7f3','#be185d'],['🚫','Acceso Denegado','#fef2f2','#991b1b'],['⛔','CSRF','#fef2f2','#7f1d1d'],['⏱️','Rate Limit','#fff7ed','#c2410c']].map(([ico,lbl,bg,col]) => (
+                <span key={lbl} style={{ background:bg, color:col, padding:'0.15rem 0.45rem', borderRadius:'6px', fontWeight:600 }}>{ico} {lbl}</span>
+              ))}
+            </div>
+
+            {/* Lista de eventos */}
+            <div style={{ maxHeight:'420px', overflowY:'auto', fontFamily:'monospace', fontSize:'0.73rem', background:'#0f172a', borderRadius:'10px', padding:'0.75rem', color:'#e2e8f0' }}>
+              {auditLoading && <div style={{ textAlign:'center', color:'#94a3b8', padding:'2rem' }}>Cargando registros...</div>}
+              {!auditLoading && auditEntries.length === 0 && (
+                <div style={{ textAlign:'center', color:'#64748b', padding:'2rem' }}>No hay registros de auditoría todavía.</div>
+              )}
+              {!auditLoading && auditEntries
+                .filter(l => !auditFilter || l.toLowerCase().includes(auditFilter.toLowerCase()))
+                .map((line, i) => {
+                  const isOk   = line.includes('LOGIN_OK');
+                  const isFail = line.includes('LOGIN_FAIL') || line.includes('ACCESS_DENY') || line.includes('CSRF') || line.includes('RATE_BLOCK');
+                  const isCreate = line.includes('USER_CREATE');
+                  const isDel    = line.includes('USER_DELETE');
+                  const color = isOk ? '#86efac' : isFail ? '#fca5a5' : isCreate ? '#93c5fd' : isDel ? '#f9a8d4' : '#e2e8f0';
+                  return (
+                    <div key={i} style={{ color, marginBottom:'0.25rem', borderBottom:'1px solid #1e293b', paddingBottom:'0.2rem', lineHeight:1.5, wordBreak:'break-all' }}>
+                      {line}
+                    </div>
+                  );
+                })
+              }
+            </div>
+
+            <div style={{ marginTop:'0.75rem', background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:'9px', padding:'0.65rem 1rem', fontSize:'0.75rem', color:'#166534' }}>
+              <strong>🔒 Información:</strong> Estos registros son de solo lectura. Cada acción queda registrada con fecha, hora, usuario e IP.
+              El archivo <code>data/audit.log</code> se guarda en el servidor y no puede ser alterado desde el sistema.
+            </div>
+
+            <div className="form-actions" style={{ marginTop:'0.75rem' }}>
+              <button className="btn btn-secondary" onClick={() => setShowAuditModal(false)}>Cerrar</button>
             </div>
           </div>
         </div>
