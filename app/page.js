@@ -146,6 +146,9 @@ export default function App() {
   const [notifDocCliente, setNotifDocCliente] = useState(null);
   const [notifDocSeleccionado, setNotifDocSeleccionado] = useState(null);
   const [notifDocMensaje, setNotifDocMensaje] = useState('');
+  const [showCargaMasivaModal, setShowCargaMasivaModal] = useState(false);
+  const [archivosEnProceso, setArchivosEnProceso] = useState([]);
+  const [cargaMasivaProcesando, setCargaMasivaProcesando] = useState(false);
 
   // Cargar preferencias guardadas
   useEffect(() => {
@@ -882,6 +885,71 @@ export default function App() {
     });
   };
 
+  // ─── CARGA MASIVA ─────────────────────────────────────────
+  const detectarClientePorArchivo = (nombreArchivo) => {
+    const nombre = nombreArchivo.toLowerCase().replace(/\.(pdf)$/i, '').replace(/[-_]/g, ' ');
+    // 1. Buscar por ID numérico en el nombre
+    const numeros = nombreArchivo.match(/\d+/g) || [];
+    for (const num of numeros) {
+      const id = parseInt(num);
+      const cliente = clientes.find(c => c.id === id);
+      if (cliente) return { cliente, confianza: 'alta', razon: `ID ${id} encontrado en el nombre` };
+    }
+    // 2. Buscar por nombre del cliente (coincidencia completa)
+    const match = clientes.find(c => nombre.includes(c.nombre.toLowerCase().replace(/[-_]/g, ' ')));
+    if (match) return { cliente: match, confianza: 'alta', razon: `Nombre "${match.nombre}" en el archivo` };
+    // 3. Buscar por primera palabra del nombre del cliente
+    const matchParcial = clientes.find(c => {
+      const palabras = c.nombre.toLowerCase().split(' ');
+      return palabras.some(p => p.length > 3 && nombre.includes(p));
+    });
+    if (matchParcial) return { cliente: matchParcial, confianza: 'media', razon: `Coincidencia parcial con "${matchParcial.nombre}"` };
+    return null;
+  };
+
+  const procesarArchivosMasivos = (files) => {
+    if (!files || files.length === 0) return;
+    const validos = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.pdf'));
+    if (validos.length === 0) { showToast('Selecciona archivos PDF', 'error'); return; }
+    if (validos.length > 50) { showToast('Máximo 50 archivos a la vez', 'error'); return; }
+    setCargaMasivaProcesando(true);
+    const resultados = [];
+    let pendientes = validos.length;
+    validos.forEach(file => {
+      if (file.size > 3 * 1024 * 1024) {
+        resultados.push({ nombre: file.name, base64: null, clienteDetectado: detectarClientePorArchivo(file.name), clienteAsignado: null, estado: 'error', error: 'Archivo mayor a 3MB' });
+        pendientes--;
+        if (pendientes === 0) { setArchivosEnProceso(resultados); setCargaMasivaProcesando(false); }
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const deteccion = detectarClientePorArchivo(file.name);
+        resultados.push({ id: Date.now() + Math.random(), nombre: file.name, base64: ev.target.result, clienteDetectado: deteccion, clienteAsignado: deteccion ? deteccion.cliente : null, estado: deteccion ? (deteccion.confianza === 'alta' ? 'vinculado' : 'sugerido') : 'sin-vincular' });
+        pendientes--;
+        if (pendientes === 0) {
+          resultados.sort((a, b) => { const orden = { vinculado: 0, sugerido: 1, 'sin-vincular': 2, error: 3 }; return orden[a.estado] - orden[b.estado]; });
+          setArchivosEnProceso(resultados);
+          setCargaMasivaProcesando(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const confirmarCargaMasiva = () => {
+    let guardados = 0; let errores = 0;
+    archivosEnProceso.forEach(arch => {
+      if (!arch.base64 || !arch.clienteAsignado) { errores++; return; }
+      const nueva = { id: Date.now() + Math.random(), nombre: arch.nombre, base64: arch.base64, fecha: new Date().toISOString(), monto: null, tipo: 'subido' };
+      setCotizaciones(prev => ({ ...prev, [arch.clienteAsignado.id]: [...(prev[arch.clienteAsignado.id] || []), nueva] }));
+      guardados++;
+    });
+    setShowCargaMasivaModal(false);
+    setArchivosEnProceso([]);
+    showToast(`${guardados} documentos guardados${errores > 0 ? ` · ${errores} sin vincular omitidos` : ''}`, guardados > 0 ? 'success' : 'error');
+  };
+
   // ─── AVATAR helper ───────────────────────────────────────
   const AVATAR_COLORS = ['#635bff','#f97316','#059669','#0284c7','#dc2626','#8b5cf6','#14b8a6','#f59e0b','#e11d48','#0891b2'];
   const getAvatar = (nombre) => {
@@ -1350,7 +1418,10 @@ export default function App() {
                 <h2 style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--text)' }}>📄 Documentos y Cotizaciones</h2>
                 <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Genera, sube y envía documentos a tus clientes por WhatsApp</p>
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <button className="btn btn-primary" style={{ fontSize: '0.78rem', padding: '0.4rem 0.9rem' }} onClick={() => { setArchivosEnProceso([]); setShowCargaMasivaModal(true); }}>
+                  📂 Carga Masiva
+                </button>
                 <span style={{ background: 'var(--surface2)', border: '1px solid var(--border)', padding: '0.4rem 0.85rem', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
                   {Object.values(cotizaciones).reduce((s, d) => s + d.length, 0)} documentos en total
                 </span>
@@ -2365,6 +2436,126 @@ export default function App() {
             <div className="form-actions">
               <button className="btn btn-secondary" onClick={() => setShowConfigModal(false)}>Cerrar</button>
               <button className="btn btn-primary" onClick={() => { setShowConfigModal(false); showToast('Configuración guardada', 'success'); }}>✅ Guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Carga Masiva ────────────────────────────── */}
+      {showCargaMasivaModal && (
+        <div className="modal show" onClick={e => { if (e.target === e.currentTarget) { setShowCargaMasivaModal(false); setArchivosEnProceso([]); } }}>
+          <div className="modal-content" style={{ maxWidth: '780px' }}>
+            <div className="modal-header">
+              <h2>📂 Carga Masiva de Documentos</h2>
+              <button className="close-btn" onClick={() => { setShowCargaMasivaModal(false); setArchivosEnProceso([]); }}>×</button>
+            </div>
+
+            {archivosEnProceso.length === 0 ? (
+              /* ── Zona de carga ── */
+              <div>
+                <label
+                  style={{ display: 'block', border: '2px dashed var(--border2)', borderRadius: '14px', padding: '2.5rem', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s', background: 'var(--surface2)' }}
+                  onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'var(--accent-glow)'; }}
+                  onDragLeave={e => { e.currentTarget.style.borderColor = 'var(--border2)'; e.currentTarget.style.background = 'var(--surface2)'; }}
+                  onDrop={e => { e.preventDefault(); e.currentTarget.style.borderColor = 'var(--border2)'; e.currentTarget.style.background = 'var(--surface2)'; procesarArchivosMasivos(e.dataTransfer.files); }}
+                >
+                  <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📁</div>
+                  <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text)', marginBottom: '0.35rem' }}>Arrastra los PDFs aquí o haz clic para seleccionar</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>Hasta 50 archivos · Máx. 3MB por archivo · Solo .pdf</div>
+                  <input type="file" accept=".pdf" multiple style={{ display: 'none' }} onChange={e => { procesarArchivosMasivos(e.target.files); e.target.value = ''; }} />
+                  <span className="btn btn-primary" style={{ pointerEvents: 'none', fontSize: '0.85rem' }}>Seleccionar archivos</span>
+                </label>
+                {cargaMasivaProcesando && (
+                  <div style={{ textAlign: 'center', marginTop: '1.25rem', color: 'var(--text-muted)', fontSize: '0.88rem' }}>⏳ Procesando archivos, un momento...</div>
+                )}
+                <div style={{ marginTop: '1.25rem', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '10px', padding: '0.85rem 1.1rem', fontSize: '0.8rem', color: '#15803d' }}>
+                  <strong>💡 ¿Cómo funciona la detección automática?</strong>
+                  <ul style={{ marginTop: '0.4rem', paddingLeft: '1.2rem', lineHeight: 1.8 }}>
+                    <li>Si el nombre del archivo contiene el <strong>ID numérico</strong> del cliente (ej: <em>cotizacion_42.pdf</em>) → vinculación automática</li>
+                    <li>Si contiene el <strong>nombre completo</strong> del cliente (ej: <em>Juan_Perez_cotizacion.pdf</em>) → vinculación automática</li>
+                    <li>Si coincide <strong>parcialmente</strong> → sugerido (puedes confirmar o cambiar)</li>
+                    <li>Sin coincidencia → puedes asignarlo manualmente desde la lista</li>
+                  </ul>
+                </div>
+              </div>
+            ) : (
+              /* ── Resultados ── */
+              <div>
+                {/* Resumen badges */}
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                  {[
+                    { label: 'Vinculados', count: archivosEnProceso.filter(a => a.estado === 'vinculado').length, color: '#059669', bg: '#f0fdf4', border: '#86efac', icon: '✅' },
+                    { label: 'Sugeridos', count: archivosEnProceso.filter(a => a.estado === 'sugerido').length, color: '#d97706', bg: '#fffbeb', border: '#fde68a', icon: '⚠️' },
+                    { label: 'Sin vincular', count: archivosEnProceso.filter(a => a.estado === 'sin-vincular').length, color: '#6b7280', bg: 'var(--surface2)', border: 'var(--border)', icon: '❓' },
+                    { label: 'Errores', count: archivosEnProceso.filter(a => a.estado === 'error').length, color: '#dc2626', bg: '#fef2f2', border: '#fca5a5', icon: '❌' },
+                  ].filter(b => b.count > 0).map(b => (
+                    <span key={b.label} style={{ background: b.bg, border: `1px solid ${b.border}`, padding: '0.3rem 0.85rem', borderRadius: '20px', fontSize: '0.77rem', fontWeight: 700, color: b.color }}>
+                      {b.icon} {b.label}: {b.count}
+                    </span>
+                  ))}
+                  <span style={{ background: 'var(--surface2)', border: '1px solid var(--border)', padding: '0.3rem 0.85rem', borderRadius: '20px', fontSize: '0.77rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                    Total: {archivosEnProceso.length}
+                  </span>
+                </div>
+
+                {/* Tabla de archivos */}
+                <div style={{ maxHeight: '360px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.4rem', paddingRight: '0.2rem' }}>
+                  {archivosEnProceso.map((arch, idx) => (
+                    <div key={arch.id || idx} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.75rem', alignItems: 'center', padding: '0.65rem 0.9rem', background: arch.estado === 'vinculado' ? '#f0fdf4' : arch.estado === 'sugerido' ? '#fffbeb' : arch.estado === 'error' ? '#fef2f2' : 'var(--surface2)', borderRadius: '9px', border: `1px solid ${arch.estado === 'vinculado' ? '#86efac' : arch.estado === 'sugerido' ? '#fde68a' : arch.estado === 'error' ? '#fca5a5' : 'var(--border)'}` }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.2rem' }}>
+                          <span style={{ fontSize: '0.9rem', flexShrink: 0 }}>
+                            {arch.estado === 'vinculado' ? '✅' : arch.estado === 'sugerido' ? '⚠️' : arch.estado === 'error' ? '❌' : '❓'}
+                          </span>
+                          <span style={{ fontWeight: 600, fontSize: '0.82rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text)' }}>{arch.nombre}</span>
+                        </div>
+                        {arch.estado === 'error' ? (
+                          <div style={{ fontSize: '0.72rem', color: '#dc2626', paddingLeft: '1.35rem' }}>{arch.error}</div>
+                        ) : arch.clienteDetectado ? (
+                          <div style={{ fontSize: '0.72rem', color: arch.estado === 'vinculado' ? '#059669' : '#d97706', paddingLeft: '1.35rem' }}>
+                            {arch.clienteDetectado.razon}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '0.72rem', color: '#6b7280', paddingLeft: '1.35rem' }}>No se detectó cliente automáticamente</div>
+                        )}
+                      </div>
+                      {arch.estado !== 'error' && (
+                        <select
+                          value={arch.clienteAsignado?.id || ''}
+                          onChange={e => {
+                            const c = clientes.find(cl => cl.id === parseInt(e.target.value));
+                            setArchivosEnProceso(prev => prev.map((a, i) => i === idx ? { ...a, clienteAsignado: c || null, estado: c ? 'vinculado' : 'sin-vincular' } : a));
+                          }}
+                          style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border2)', borderRadius: '7px', background: 'var(--surface)', color: 'var(--text)', fontSize: '0.78rem', minWidth: '170px', maxWidth: '200px', fontFamily: 'Plus Jakarta Sans, sans-serif' }}
+                        >
+                          <option value="">— Sin vincular —</option>
+                          {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                        </select>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ marginTop: '0.6rem', fontSize: '0.73rem', color: 'var(--text-muted)' }}>
+                  💡 Usa el menú desplegable para asignar o corregir manualmente el cliente de cada archivo
+                </div>
+              </div>
+            )}
+
+            <div className="form-actions" style={{ marginTop: '1.25rem' }}>
+              <button className="btn btn-secondary" onClick={() => { setShowCargaMasivaModal(false); setArchivosEnProceso([]); }}>Cancelar</button>
+              {archivosEnProceso.length > 0 && (
+                <button className="btn btn-secondary" onClick={() => setArchivosEnProceso([])}>🔄 Seleccionar otros archivos</button>
+              )}
+              {archivosEnProceso.length > 0 && (
+                <button
+                  className="btn btn-primary"
+                  onClick={confirmarCargaMasiva}
+                  disabled={archivosEnProceso.every(a => !a.clienteAsignado || !a.base64)}
+                >
+                  💾 Guardar {archivosEnProceso.filter(a => a.clienteAsignado && a.base64).length} documento{archivosEnProceso.filter(a => a.clienteAsignado && a.base64).length !== 1 ? 's' : ''}
+                </button>
+              )}
             </div>
           </div>
         </div>
