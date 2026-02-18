@@ -782,25 +782,23 @@ export default function App() {
         const content = await page.getTextContent();
         texto += content.items.map(it => it.str).join(' ') + ' ';
       }
-      // Eliminar "Total Bruto" y sus variantes del texto antes de buscar
-      const textoFiltrado = texto
-        .replace(/total\s+bruto[^\d]*([\d,\.]+)/gi, '')
-        .replace(/subtotal[^\d]*([\d,\.]+)/gi, '');
 
-      // Busca solo el Total final: "Total RD$ 1,500.00" / "TOTAL RD$1500" / "Total RD $ 3,200"
-      const patrones = [
-        /total(?!\s*bruto)(?!\s*neto)\s+rd\s*\$\s*([\d,\.]+)/i,
-        /total(?!\s*bruto)(?!\s*neto)\s*rd\s*\$\s*([\d,\.]+)/i,
-        /total(?!\s*bruto)(?!\s*neto)\s*:\s*rd\s*\$\s*([\d,\.]+)/i,
-        /total(?!\s*bruto)(?!\s*neto)\s*([\d,\.]+)\s*rd\s*\$/i,
-      ];
-      for (const pat of patrones) {
-        const m = textoFiltrado.match(pat);
-        if (m) {
-          const val = parseFloat(m[1].replace(/,/g, ''));
-          if (!isNaN(val) && val > 0) return val;
-        }
-      }
+      // Helper: extrae el primer número que aparece después de una etiqueta
+      const extraer = (patron) => {
+        const m = texto.match(patron);
+        if (!m) return 0;
+        const val = parseFloat(m[1].replace(/,/g, ''));
+        return isNaN(val) ? 0 : val;
+      };
+
+      // Detectar los tres componentes del documento
+      const totalBruto = extraer(/total\s*bruto[^0-9]*([\d,\.]+)/i);
+      const subtotal   = extraer(/sub\s*total[^0-9]*([\d,\.]+)/i);
+      const itbis      = extraer(/itbis[^0-9]*([\d,\.]+)/i);
+
+      const suma = totalBruto + subtotal + itbis;
+      if (suma > 0) return suma;
+
       return null;
     } catch { return null; }
   };
@@ -1165,6 +1163,8 @@ export default function App() {
             <div className="sidebar-label">Gestión</div>
             <div className={`sidebar-item ${activeTab === 'cartera' ? 'active' : ''}`} onClick={() => setActiveTab('cartera')}><span className="icon">📊</span> Cartera</div>
             <div className={`sidebar-item ${activeTab === 'credito' ? 'active' : ''}`} onClick={() => setActiveTab('credito')}><span className="icon">💳</span> Crédito</div>
+            <div className={`sidebar-item ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => setActiveTab('documentos')}><span className="icon">📄</span> Documentos</div>
+            <div className="sidebar-item" style={{ color: '#0369a1', fontWeight: 700 }} onClick={() => { setArchivosEnProceso([]); setShowCargaMasivaModal(true); }}><span className="icon">📂</span> Carga Masiva PDF</div>
           </div>
           <div className="sidebar-section">
             <div className="sidebar-label">Descarga</div>
@@ -1410,6 +1410,7 @@ export default function App() {
               <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                 <button className="btn btn-primary" onClick={() => { setActiveTab('cartera'); abrirModal(); }}>+ Nuevo Cliente</button>
                 <button className="btn btn-success" onClick={() => setActiveTab('credito')}>+ Nuevo Crédito</button>
+                <button className="btn btn-primary" style={{ background: '#0369a1' }} onClick={() => { setArchivosEnProceso([]); setShowCargaMasivaModal(true); }}>📂 Carga Masiva PDF</button>
                 <button className="btn btn-secondary" onClick={backupJSON}>💾 Backup</button>
                 <button className="btn btn-secondary" onClick={() => setShowImportModal(true)}>📥 Importar Excel</button>
                 <button className="btn btn-secondary" onClick={exportarPDF}>📄 Exportar PDF</button>
