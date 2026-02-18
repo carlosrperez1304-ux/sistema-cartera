@@ -133,6 +133,20 @@ export default function App() {
   const [filtroEstados, setFiltroEstados] = useState([]);
   const [recordatoriosDias, setRecordatoriosDias] = useState(7);
 
+  // ── Documentos / Cotizaciones ────────────────────────────
+  const [cotizaciones, setCotizaciones] = useState({});          // { clienteId: [{id, nombre, base64, fecha, monto}] }
+  const [showDocsModal, setShowDocsModal] = useState(false);
+  const [docsClienteId, setDocsClienteId] = useState(null);
+  const [showGenCotModal, setShowGenCotModal] = useState(false);
+  const [genCotCliente, setGenCotCliente] = useState(null);
+  const [cotItems, setCotItems] = useState([{ descripcion: '', cantidad: 1, precio: '' }]);
+  const [cotNota, setCotNota] = useState('');
+  const [cotValidez, setCotValidez] = useState(30);
+  const [showNotifDocModal, setShowNotifDocModal] = useState(false);
+  const [notifDocCliente, setNotifDocCliente] = useState(null);
+  const [notifDocSeleccionado, setNotifDocSeleccionado] = useState(null);
+  const [notifDocMensaje, setNotifDocMensaje] = useState('');
+
   // Cargar preferencias guardadas
   useEffect(() => {
     const savedMeta = localStorage.getItem('meta-mensual');
@@ -140,12 +154,20 @@ export default function App() {
     const savedTags = localStorage.getItem('cliente-tags');
     const savedRecordatorio = localStorage.getItem('recordatorio-dias');
     const savedCompacto = localStorage.getItem('modo-compacto');
+    const savedCots = localStorage.getItem('cotizaciones-v1');
     if (savedMeta) setMetaMensual(parseFloat(savedMeta) || 0);
     if (savedColor) setColorAcento(savedColor);
     if (savedTags) setTags(JSON.parse(savedTags));
     if (savedRecordatorio) setRecordatoriosDias(parseInt(savedRecordatorio) || 7);
     if (savedCompacto) setModoCompacto(savedCompacto === 'true');
+    if (savedCots) setCotizaciones(JSON.parse(savedCots));
   }, []);
+
+  useEffect(() => {
+    if (Object.keys(cotizaciones).length >= 0) {
+      try { localStorage.setItem('cotizaciones-v1', JSON.stringify(cotizaciones)); } catch { showToast('Almacenamiento lleno. Elimina documentos antiguos.', 'error'); }
+    }
+  }, [cotizaciones]);
 
   // Aplicar color de acento como variable CSS
   useEffect(() => {
@@ -736,6 +758,128 @@ export default function App() {
     XLSX.writeFile(wb, `Reporte_${mesNombre.replace(/ /g, '_')}.xlsx`);
     setShowDescargaMesModal(false);
     showToast(`Mes ${mesNombre} guardado correctamente`, 'success');
+  };
+
+  // ─── DOCUMENTOS / COTIZACIONES ───────────────────────────
+  const abrirDocsModal = (cliente) => { setDocsClienteId(cliente.id); setShowDocsModal(true); };
+
+  const subirDocumento = (clienteId, file) => {
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) { showToast('El archivo debe ser menor a 3MB', 'error'); return; }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const nueva = { id: Date.now(), nombre: file.name, base64: ev.target.result, fecha: new Date().toISOString(), monto: null, tipo: 'subido' };
+      setCotizaciones(prev => ({ ...prev, [clienteId]: [...(prev[clienteId] || []), nueva] }));
+      showToast('Documento guardado correctamente', 'success');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const eliminarDocumento = (clienteId, docId) => {
+    setCotizaciones(prev => ({ ...prev, [clienteId]: (prev[clienteId] || []).filter(d => d.id !== docId) }));
+    showToast('Documento eliminado', 'info');
+  };
+
+  const descargarDocumento = (doc) => {
+    const a = document.createElement('a');
+    a.href = doc.base64;
+    a.download = doc.nombre;
+    a.click();
+  };
+
+  const abrirNotifDocModal = (cliente) => {
+    const docs = cotizaciones[cliente.id] || [];
+    if (docs.length === 0) { showToast('Este cliente no tiene documentos guardados', 'info'); return; }
+    setNotifDocCliente(cliente);
+    setNotifDocSeleccionado(docs[docs.length - 1]);
+    setNotifDocMensaje(`Hola ${cliente.nombre}, le enviamos su cotización correspondiente.\n\nEstado de su cuenta: *${cliente.estado}*\nMonto: *$${(parseFloat(cliente.monto)||0).toLocaleString('en-US')}*\n\nAdjunto encontrará el documento. Quedamos atentos a cualquier consulta.\n\n— CartaMaster`);
+    setShowNotifDocModal(true);
+  };
+
+  const enviarNotifConDocumento = () => {
+    if (!notifDocCliente || !notifDocSeleccionado) return;
+    descargarDocumento(notifDocSeleccionado);
+    setTimeout(() => {
+      const num = (notifDocCliente.contacto || '').replace(/\D/g, '');
+      window.open(`https://wa.me/1${num}?text=${encodeURIComponent(notifDocMensaje)}`, '_blank');
+      setShowNotifDocModal(false);
+      showToast('WhatsApp abierto. Adjunta el PDF descargado al mensaje.', 'success');
+    }, 800);
+  };
+
+  const abrirGenCotModal = (cliente) => {
+    setGenCotCliente(cliente);
+    setCotItems([{ descripcion: `Servicio — ${cliente.nombre}`, cantidad: 1, precio: parseFloat(cliente.monto) || '' }]);
+    setCotNota('Precios sujetos a cambio sin previo aviso.');
+    setCotValidez(30);
+    setShowGenCotModal(true);
+  };
+
+  const agregarItemCot = () => setCotItems(prev => [...prev, { descripcion: '', cantidad: 1, precio: '' }]);
+  const actualizarItemCot = (i, campo, val) => setCotItems(prev => prev.map((it, idx) => idx === i ? { ...it, [campo]: val } : it));
+  const eliminarItemCot = (i) => setCotItems(prev => prev.filter((_, idx) => idx !== i));
+
+  const generarCotizacionPDF = () => {
+    if (!genCotCliente) return;
+    import('jspdf').then(({ default: jsPDF }) => {
+      import('jspdf-autotable').then(() => {
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const fecha = new Date();
+        const numCot = `COT-${genCotCliente.id}-${fecha.getFullYear()}${String(fecha.getMonth()+1).padStart(2,'0')}${String(fecha.getDate()).padStart(2,'0')}`;
+        // Cabecera
+        doc.setFillColor(15,28,63); doc.rect(0,0,210,42,'F');
+        doc.setTextColor(255,255,255); doc.setFontSize(22); doc.setFont(undefined,'bold');
+        doc.text('CartaMaster', 15, 17);
+        doc.setFontSize(10); doc.setFont(undefined,'normal');
+        doc.text('Cotización de Servicios', 15, 26);
+        doc.text(`Nº ${numCot}`, 15, 34);
+        doc.text(`Fecha: ${fecha.toLocaleDateString('es-DO')}`, 135, 26);
+        doc.text(`Válida por: ${cotValidez} días`, 135, 34);
+        // Datos cliente
+        doc.setTextColor(15,28,63); doc.setFontSize(11); doc.setFont(undefined,'bold');
+        doc.text('Cotizado para:', 15, 56);
+        doc.setFont(undefined,'normal'); doc.setFontSize(10);
+        doc.text(`Cliente: ${genCotCliente.nombre}`, 15, 65);
+        doc.text(`ID: ${genCotCliente.id}`, 15, 72);
+        if (genCotCliente.contacto) doc.text(`Contacto: ${genCotCliente.contacto}`, 15, 79);
+        // Tabla de items
+        const subtotal = cotItems.reduce((s, it) => s + (parseFloat(it.precio)||0) * (parseFloat(it.cantidad)||1), 0);
+        const itax = subtotal * 0.18;
+        const total = subtotal + itax;
+        doc.autoTable({
+          startY: 90,
+          head: [['#', 'Descripción', 'Cant.', 'Precio Unit.', 'Total']],
+          body: cotItems.map((it, i) => {
+            const p = parseFloat(it.precio) || 0;
+            const q = parseFloat(it.cantidad) || 1;
+            return [i+1, it.descripcion, q, `$${p.toLocaleString('en-US',{minimumFractionDigits:2})}`, `$${(p*q).toLocaleString('en-US',{minimumFractionDigits:2})}`];
+          }),
+          styles: { fontSize: 9, cellPadding: 3 },
+          headStyles: { fillColor: [99,91,255], textColor: 255, fontStyle: 'bold' },
+          alternateRowStyles: { fillColor: [248,250,252] },
+          columnStyles: { 0:{cellWidth:10}, 2:{halign:'center'}, 3:{halign:'right'}, 4:{halign:'right',fontStyle:'bold'} },
+          margin: { left: 15, right: 15 },
+        });
+        let y = doc.lastAutoTable.finalY + 5;
+        // Totales
+        const totales = [['Subtotal', `$${subtotal.toLocaleString('en-US',{minimumFractionDigits:2})}`], ['ITBIS (18%)', `$${itax.toLocaleString('en-US',{minimumFractionDigits:2})}`], ['TOTAL', `$${total.toLocaleString('en-US',{minimumFractionDigits:2})}`]];
+        doc.autoTable({ startY: y, body: totales, styles: { fontSize: 9 }, columnStyles: { 0:{halign:'right',fontStyle:'bold',fillColor:[248,250,252]}, 1:{halign:'right',cellWidth:40} }, tableWidth: 100, margin: { left: 95 }, didParseCell: (d) => { if (d.row.index === 2) { d.cell.styles.fillColor = [15,28,63]; d.cell.styles.textColor = [255,255,255]; d.cell.styles.fontStyle = 'bold'; } } });
+        // Nota
+        if (cotNota) { y = doc.lastAutoTable.finalY + 8; doc.setFontSize(9); doc.setTextColor(100,116,139); doc.setFont(undefined,'italic'); doc.text(`Nota: ${cotNota}`, 15, y, { maxWidth: 180 }); }
+        // Footer
+        doc.setTextColor(148,163,184); doc.setFontSize(8); doc.setFont(undefined,'normal');
+        doc.text('Este documento es una cotización y no constituye una factura.', 15, 282);
+        doc.text(`Válida hasta: ${new Date(fecha.getTime() + cotValidez*86400000).toLocaleDateString('es-DO')}`, 15, 287);
+        // Guardar en sistema Y descargar
+        const pdfNombre = `cotizacion-${genCotCliente.nombre.replace(/ /g,'-')}-${numCot}.pdf`;
+        const base64 = doc.output('datauristring');
+        const nueva = { id: Date.now(), nombre: pdfNombre, base64, fecha: new Date().toISOString(), monto: total, tipo: 'generado', numCot };
+        setCotizaciones(prev => ({ ...prev, [genCotCliente.id]: [...(prev[genCotCliente.id] || []), nueva] }));
+        doc.save(pdfNombre);
+        setShowGenCotModal(false);
+        showToast(`Cotización ${numCot} generada y guardada`, 'success');
+      });
+    });
   };
 
   // ─── AVATAR helper ───────────────────────────────────────
@@ -1467,6 +1611,7 @@ export default function App() {
                                 {cliente.contacto && <button onClick={() => abrirWhatsappModal(cliente)} className="accion-btn" title="WhatsApp" style={{ background: '#f0fdf4', border: '1px solid #86efac', color: '#16a34a' }}>🟢</button>}
                                 <button className="accion-btn edit" disabled={esModoPasado} title="Editar" onClick={() => !esModoPasado && abrirModal(cliente)}>✏️</button>
                                 <button className={`accion-btn nota ${cliente.nota ? 'has-note' : ''}`} title={cliente.nota ? 'Ver nota' : 'Agregar nota'} onClick={() => abrirNotaModal(cliente)}>💬</button>
+                                <button className={`accion-btn ${(cotizaciones[cliente.id]||[]).length > 0 ? 'has-note' : ''}`} title="Documentos / Cotizaciones" onClick={() => abrirDocsModal(cliente)} style={{ background: (cotizaciones[cliente.id]||[]).length > 0 ? '#ede9fe' : '', borderColor: (cotizaciones[cliente.id]||[]).length > 0 ? '#c4b5fd' : '', color: (cotizaciones[cliente.id]||[]).length > 0 ? '#7c3aed' : '' }}>📄{(cotizaciones[cliente.id]||[]).length > 0 && <span style={{ fontSize: '0.6rem', fontWeight: 800, marginLeft: '1px' }}>{(cotizaciones[cliente.id]||[]).length}</span>}</button>
                                 <button className="accion-btn delete" disabled={esModoPasado} title="Eliminar" onClick={() => !esModoPasado && eliminarCliente(cliente.id)}>🗑️</button>
                               </div>
                             </td>
@@ -1842,6 +1987,185 @@ export default function App() {
           <div id="save-indicator" className="save-indicator">✅ Guardado automáticamente</div>
         </div>
       </div>
+
+      {/* ── Modal Documentos del Cliente ────────────────── */}
+      {showDocsModal && docsClienteId && (() => {
+        const cliente = clientes.find(c => c.id === docsClienteId);
+        if (!cliente) return null;
+        const docs = cotizaciones[docsClienteId] || [];
+        return (
+          <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowDocsModal(false); }}>
+            <div className="modal-content" style={{ maxWidth: '560px' }}>
+              <div className="modal-header">
+                <h2>📄 Documentos — {cliente.nombre}</h2>
+                <button className="close-btn" onClick={() => setShowDocsModal(false)}>×</button>
+              </div>
+
+              {/* Acciones principales */}
+              <div style={{ display: 'flex', gap: '0.65rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+                <button className="btn btn-primary" onClick={() => { setShowDocsModal(false); abrirGenCotModal(cliente); }}>✏️ Generar Cotización</button>
+                <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
+                  📂 Subir PDF
+                  <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => { subirDocumento(docsClienteId, e.target.files[0]); e.target.value = ''; }} />
+                </label>
+                {docs.length > 0 && (
+                  <button className="btn btn-success" onClick={() => { setShowDocsModal(false); abrirNotifDocModal(cliente); }}>
+                    📤 Notificar con Documento
+                  </button>
+                )}
+              </div>
+
+              {/* Lista de documentos */}
+              {docs.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)', border: '2px dashed var(--border)', borderRadius: '12px' }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📭</div>
+                  <p style={{ fontWeight: 600 }}>Sin documentos aún</p>
+                  <p style={{ fontSize: '0.82rem', marginTop: '0.25rem' }}>Genera una cotización o sube un PDF existente</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxHeight: '340px', overflowY: 'auto' }}>
+                  {docs.map(doc => (
+                    <div key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1rem', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '10px' }}>
+                      <div style={{ fontSize: '1.8rem', flexShrink: 0 }}>{doc.tipo === 'generado' ? '📋' : '📄'}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.nombre}</div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
+                          {doc.tipo === 'generado' ? '✏️ Generado' : '📂 Subido'} · {new Date(doc.fecha).toLocaleDateString('es-DO')}
+                          {doc.monto && <span style={{ marginLeft: '0.5rem', color: '#059669', fontWeight: 700 }}>${parseFloat(doc.monto).toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.3rem', flexShrink: 0 }}>
+                        <button onClick={() => descargarDocumento(doc)} className="btn btn-secondary" style={{ padding: '0.3rem 0.65rem', fontSize: '0.78rem' }}>⬇️ Descargar</button>
+                        <button onClick={() => eliminarDocumento(docsClienteId, doc.id)} style={{ width: '30px', height: '30px', borderRadius: '7px', border: '1px solid #fca5a5', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', fontSize: '0.82rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑️</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ marginTop: '1rem', fontSize: '0.73rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                💾 Documentos guardados localmente · Máx. recomendado: 3MB por archivo
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── Modal Generar Cotización ─────────────────────── */}
+      {showGenCotModal && genCotCliente && (
+        <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowGenCotModal(false); }}>
+          <div className="modal-content" style={{ maxWidth: '600px' }}>
+            <div className="modal-header">
+              <h2>✏️ Generar Cotización — {genCotCliente.nombre}</h2>
+              <button className="close-btn" onClick={() => setShowGenCotModal(false)}>×</button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label>Válida por (días)</label>
+                <input type="number" value={cotValidez} onChange={e => setCotValidez(parseInt(e.target.value)||30)} min="1" max="365" />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '0.1rem' }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  Vence: <strong>{new Date(Date.now() + cotValidez*86400000).toLocaleDateString('es-DO')}</strong>
+                </div>
+              </div>
+            </div>
+
+            {/* Items */}
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <label style={{ fontSize: '0.73rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Líneas de servicio</label>
+                <button type="button" onClick={agregarItemCot} className="btn btn-secondary" style={{ padding: '0.25rem 0.65rem', fontSize: '0.75rem' }}>+ Agregar línea</button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '240px', overflowY: 'auto' }}>
+                {cotItems.map((it, i) => (
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 70px 100px 30px', gap: '0.4rem', alignItems: 'center' }}>
+                    <input type="text" value={it.descripcion} onChange={e => actualizarItemCot(i,'descripcion',e.target.value)} placeholder="Descripción del servicio..." style={{ padding: '0.45rem 0.7rem', border: '1px solid var(--border2)', borderRadius: '7px', fontSize: '0.82rem', background: 'var(--surface2)', color: 'var(--text)', fontFamily: 'Plus Jakarta Sans, sans-serif' }} />
+                    <input type="number" value={it.cantidad} onChange={e => actualizarItemCot(i,'cantidad',e.target.value)} min="1" placeholder="Cant." style={{ padding: '0.45rem 0.5rem', border: '1px solid var(--border2)', borderRadius: '7px', fontSize: '0.82rem', background: 'var(--surface2)', color: 'var(--text)', textAlign: 'center', fontFamily: 'var(--mono)' }} />
+                    <input type="number" value={it.precio} onChange={e => actualizarItemCot(i,'precio',e.target.value)} placeholder="Precio" style={{ padding: '0.45rem 0.5rem', border: '1px solid var(--border2)', borderRadius: '7px', fontSize: '0.82rem', background: 'var(--surface2)', color: 'var(--text)', textAlign: 'right', fontFamily: 'var(--mono)' }} />
+                    {cotItems.length > 1 && <button type="button" onClick={() => eliminarItemCot(i)} style={{ width: '28px', height: '28px', borderRadius: '6px', border: '1px solid #fca5a5', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', fontSize: '0.8rem' }}>×</button>}
+                  </div>
+                ))}
+              </div>
+              {/* Subtotales */}
+              {(() => {
+                const sub = cotItems.reduce((s,it) => s + (parseFloat(it.precio)||0)*(parseFloat(it.cantidad)||1), 0);
+                const tax = sub * 0.18;
+                return (
+                  <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: 'var(--surface2)', borderRadius: '9px', display: 'flex', justifyContent: 'flex-end', gap: '1.5rem', fontSize: '0.83rem' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Subtotal: <strong>${sub.toLocaleString('en-US',{minimumFractionDigits:2})}</strong></span>
+                    <span style={{ color: 'var(--text-muted)' }}>ITBIS 18%: <strong>${tax.toLocaleString('en-US',{minimumFractionDigits:2})}</strong></span>
+                    <span style={{ color: 'var(--navy)', fontWeight: 800, fontSize: '0.95rem', fontFamily: 'var(--mono)' }}>Total: ${(sub+tax).toLocaleString('en-US',{minimumFractionDigits:2})}</span>
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div className="form-group">
+              <label>Nota / Condiciones</label>
+              <textarea value={cotNota} onChange={e => setCotNota(e.target.value)} rows={2} placeholder="Ej: Precios sujetos a cambio. Tiempo de entrega: 5 días hábiles." />
+            </div>
+
+            <div className="form-actions">
+              <button className="btn btn-secondary" onClick={() => setShowGenCotModal(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={generarCotizacionPDF}>📄 Generar y Descargar PDF</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Notificar con Documento ───────────────── */}
+      {showNotifDocModal && notifDocCliente && (
+        <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowNotifDocModal(false); }}>
+          <div className="modal-content" style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h2>📤 Notificar con Documento — {notifDocCliente.nombre}</h2>
+              <button className="close-btn" onClick={() => setShowNotifDocModal(false)}>×</button>
+            </div>
+
+            {/* Selector de documento */}
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Seleccionar documento</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '160px', overflowY: 'auto' }}>
+                {(cotizaciones[notifDocCliente.id] || []).map(doc => (
+                  <div key={doc.id} onClick={() => setNotifDocSeleccionado(doc)} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.65rem 0.85rem', borderRadius: '9px', border: `2px solid ${notifDocSeleccionado?.id === doc.id ? 'var(--accent)' : 'var(--border)'}`, background: notifDocSeleccionado?.id === doc.id ? 'var(--accent-glow)' : 'var(--surface2)', cursor: 'pointer', transition: 'all 0.15s' }}>
+                    <span style={{ fontSize: '1.3rem' }}>{doc.tipo === 'generado' ? '📋' : '📄'}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.83rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.nombre}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(doc.fecha).toLocaleDateString('es-DO')}{doc.monto && ` · $${parseFloat(doc.monto).toLocaleString('en-US',{maximumFractionDigits:2})}`}</div>
+                    </div>
+                    {notifDocSeleccionado?.id === doc.id && <span style={{ color: 'var(--accent)', fontWeight: 800, fontSize: '1rem' }}>✓</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Mensaje */}
+            <div className="form-group">
+              <label>Mensaje de WhatsApp</label>
+              <textarea value={notifDocMensaje} onChange={e => setNotifDocMensaje(e.target.value)} rows={6} />
+            </div>
+
+            {/* Instrucción visual */}
+            <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '9px', padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.8rem', color: '#78350f' }}>
+              <strong>📋 ¿Cómo funciona?</strong>
+              <ol style={{ marginTop: '0.35rem', paddingLeft: '1.2rem', lineHeight: 1.7 }}>
+                <li>El PDF se <strong>descargará automáticamente</strong> a tu computadora</li>
+                <li>Se abrirá <strong>WhatsApp Web</strong> con el mensaje listo</li>
+                <li>Solo <strong>adjunta el PDF descargado</strong> al chat y envía</li>
+              </ol>
+            </div>
+
+            <div className="form-actions">
+              <button className="btn btn-secondary" onClick={() => setShowNotifDocModal(false)}>Cancelar</button>
+              <button className="btn btn-success" onClick={enviarNotifConDocumento} disabled={!notifDocSeleccionado || !notifDocCliente?.contacto}>
+                🟢 Descargar PDF y abrir WhatsApp
+              </button>
+            </div>
+            {!notifDocCliente?.contacto && <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--danger)', marginTop: '0.5rem' }}>⚠️ Este cliente no tiene número de contacto registrado</div>}
+          </div>
+        </div>
+      )}
 
       {/* Modal Tags */}
       {showTagModal && tagClienteId && (
