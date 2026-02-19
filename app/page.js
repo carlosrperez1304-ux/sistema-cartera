@@ -51,7 +51,9 @@ export default function App() {
 
   // Sesión expirada — detectar cuando pasa de authenticated → unauthenticated
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [nuevaVersion, setNuevaVersion] = useState(false);
   const prevSessionStatus = useRef(null);
+  const versionRef = useRef(null);
   useEffect(() => {
     if (prevSessionStatus.current === 'authenticated' && sessionStatus === 'unauthenticated') {
       setSessionExpired(true);
@@ -152,6 +154,36 @@ export default function App() {
       clearInterval(intervalo);
       document.removeEventListener('visibilitychange', alVolver);
     };
+  }, [session?.user?.username]);
+
+  // Detectar nueva versión desplegada — cerrar sesión y recargar automáticamente
+  useEffect(() => {
+    if (!session?.user) return;
+
+    const checkVersion = async () => {
+      try {
+        const res = await fetch('/api/version');
+        if (!res.ok) return;
+        const { version } = await res.json();
+        if (version === 'dev') return; // En desarrollo local no verificar
+        if (versionRef.current === null) {
+          versionRef.current = version; // Primera carga: guardar versión actual
+          return;
+        }
+        if (version !== versionRef.current) {
+          setNuevaVersion(true);
+          // Cerrar sesión y recargar después de 3 segundos
+          setTimeout(async () => {
+            await signOut({ redirect: false });
+            window.location.href = '/';
+          }, 3000);
+        }
+      } catch { /* offline — ignorar */ }
+    };
+
+    checkVersion();
+    const interval = setInterval(checkVersion, 60 * 1000); // verificar cada minuto
+    return () => clearInterval(interval);
   }, [session?.user?.username]);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -3726,6 +3758,22 @@ export default function App() {
           <span>Más</span>
         </button>
       </div>
+
+      {/* Modal de nueva versión — actualización automática */}
+      {nuevaVersion && (
+        <div className="modal-overlay" style={{ zIndex: 9999, backdropFilter: 'blur(6px)' }}>
+          <div className="modal-content" style={{ maxWidth: '380px', textAlign: 'center', padding: '2.5rem 2rem' }}>
+            <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>🚀</div>
+            <h2 style={{ marginBottom: '0.6rem', fontSize: '1.3rem' }}>Nueva versión disponible</h2>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1.75rem', fontSize: '0.88rem', lineHeight: 1.5 }}>
+              El sistema se actualizó con mejoras y arreglos. Cerrando sesión y recargando en 3 segundos...
+            </p>
+            <div style={{ width: '100%', height: '6px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
+              <div style={{ height: '100%', background: 'var(--primary)', animation: 'progressBar 3s linear forwards', borderRadius: '3px' }} />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de sesión expirada */}
       {sessionExpired && (
