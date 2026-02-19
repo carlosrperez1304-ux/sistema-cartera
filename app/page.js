@@ -619,14 +619,14 @@ export default function App() {
 
   // ── Helpers: actualizar estado local + persistir en API ─────────────────
   const actualizarCliente = async (clienteActualizado) => {
-    const idNum = Number(clienteActualizado.id);
-    if (!clienteActualizado.id || isNaN(idNum) || idNum <= 0) {
-      showToast('Este cliente aún no está en la base de datos. Guárdalo primero con el formulario.', 'error');
+    const idNum = parseInt(clienteActualizado.id);
+    if (!idNum || isNaN(idNum)) {
+      showToast('Este cliente aún no está en la base de datos. Guárdalo primero.', 'error');
       return;
     }
     setClientes(prev => prev.map(c => c.id === clienteActualizado.id ? clienteActualizado : c));
     try {
-      const r = await fetch(`/api/clientes/${clienteActualizado.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(clienteActualizado) });
+      const r = await fetch(`/api/clientes/${idNum}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(clienteActualizado) });
       if (!r.ok) { const d = await r.json().catch(() => ({})); showToast('Error al guardar cliente: ' + (d.error || r.status), 'error'); }
     } catch { showToast('Sin conexión — cambio no guardado en servidor', 'error'); }
   };
