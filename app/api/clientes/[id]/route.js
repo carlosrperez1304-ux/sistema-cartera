@@ -1,5 +1,5 @@
 import { db } from '../../../../lib/supabase.js';
-import { requireAuth, checkCsrf, getIP, auditLog } from '../../../../lib/security.js';
+import { requireAuth, checkCsrf, getIP, auditLog, sanitize } from '../../../../lib/security.js';
 
 // PUT — actualizar cliente
 export async function PUT(req, { params }) {
@@ -13,7 +13,7 @@ export async function PUT(req, { params }) {
   const body = await req.json();
 
   const row = {
-    nombre:             body.nombre,
+    nombre:             sanitize(body.nombre, 128),
     contacto:           body.contacto           || null,
     estado:             body.estado             || 'Cotizado',
     fecha_cotizacion:   body.fechaCotizacion     || null,
@@ -23,9 +23,9 @@ export async function PUT(req, { params }) {
     fecha_suspension:   body.fechaSuspension     || null,
     mes:                body.mes                || null,
     anio:               body.año                || null,
-    monto:              body.monto ? parseFloat(body.monto) : null,
-    comentario:         body.comentario         || null,
-    nota:               body.nota               || null,
+    monto:              (body.monto !== null && body.monto !== undefined && body.monto !== '') ? parseFloat(body.monto) : null,
+    comentario:         body.comentario ? sanitize(body.comentario, 500) : null,
+    nota:               body.nota ? sanitize(body.nota, 500) : null,
     suspendido:         body.suspendido         || false,
     tags:               body.tags               || [],
     historial:          body.historial          || [],

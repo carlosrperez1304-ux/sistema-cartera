@@ -57,11 +57,11 @@ export async function POST(req) {
     return Response.json({ error: 'El monto debe ser un número mayor a 0.' }, { status: 400 });
   }
 
-  const { data, error } = await db().from('creditos').insert({
-    id:               parseInt(creditoData.id),
+  const parsedId = parseInt(creditoData.id);
+  const insertRow = {
     numero_orden:     creditoData.numeroOrden     || null,
     cliente:          creditoData.cliente,
-    monto:            creditoData.monto ? parseFloat(creditoData.monto) : null,
+    monto:            (creditoData.monto !== null && creditoData.monto !== undefined && creditoData.monto !== '') ? parseFloat(creditoData.monto) : null,
     fecha_inicio:     creditoData.fechaInicio     || null,
     plazo_meses:      creditoData.plazoMeses ? parseInt(creditoData.plazoMeses) : null,
     fecha_vencimiento:creditoData.fechaVencimiento|| null,
@@ -70,15 +70,17 @@ export async function POST(req) {
     comentario:       creditoData.comentario ? sanitize(creditoData.comentario, 500) : null,
     historial:        creditoData.historial       || [],
     updated_at:       new Date().toISOString(),
-  }).select().single();
+  };
+  if (!isNaN(parsedId) && parsedId > 0) insertRow.id = parsedId;
+
+  const { data, error } = await db().from('creditos').insert(insertRow).select().single();
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
-  // Insertar abonos si los hay
+  // Insertar abonos si los hay (sin id — auto-generado)
   if (abonos && abonos.length > 0) {
     await db().from('abonos').insert(
       abonos.map(a => ({
-        id: a.id || Date.now() + Math.random(),
         credito_id: data.id,
         monto: parseFloat(a.monto),
         fecha: a.fecha || new Date().toISOString(),

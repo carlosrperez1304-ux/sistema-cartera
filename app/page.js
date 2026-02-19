@@ -1,11 +1,14 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { signIn, signOut, useSession } from 'next-auth/react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 export default function App() {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession({
+    refetchInterval: 5 * 60,   // Verificar sesión cada 5 min
+    refetchOnWindowFocus: true,
+  });
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [username, setUsername] = useState('');
@@ -43,6 +46,19 @@ export default function App() {
   const [auditLoading, setAuditLoading]       = useState(false);
   const [auditFilter, setAuditFilter]         = useState('');
 
+  // Mobile menu
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+
+  // Sesión expirada — detectar cuando pasa de authenticated → unauthenticated
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const prevSessionStatus = useRef(null);
+  useEffect(() => {
+    if (prevSessionStatus.current === 'authenticated' && sessionStatus === 'unauthenticated') {
+      setSessionExpired(true);
+    }
+    prevSessionStatus.current = sessionStatus;
+  }, [sessionStatus]);
+
   // Cargar lista pública de usuarios desde el servidor
   const cargarUsuarios = () => {
     fetch('/api/usuarios').then(r => r.json()).then(data => setUsuarios(data)).catch(() => {});
@@ -57,7 +73,10 @@ export default function App() {
   const esAdmin = session
     ? (session.user?.rol === 'admin' || ADMIN_EMAILS.includes(session.user?.email))
     : (usuarios[currentUser]?.rol === 'admin');
-  const soloLectura = !esAdmin;
+  const esEditor = session
+    ? session.user?.rol === 'editor'
+    : (usuarios[currentUser]?.rol === 'editor');
+  const soloLectura = !esAdmin && !esEditor;
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -106,13 +125,34 @@ export default function App() {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    setClientes(cargarDatos());
-    const savedCreditos = localStorage.getItem('creditos-v1');
-    setCreditos(savedCreditos ? JSON.parse(savedCreditos) : []);
     const savedHistorial = localStorage.getItem('historial-meses-v1');
     setHistorialMeses(savedHistorial ? JSON.parse(savedHistorial) : {});
     setHydrated(true);
   }, []);
+
+  // Cargar clientes y créditos desde la API — auto-refresh para sincronizar entre dispositivos
+  useEffect(() => {
+    if (!session?.user) return;
+    const cargar = async () => {
+      try {
+        const [resC, resCr] = await Promise.all([fetch('/api/clientes'), fetch('/api/creditos')]);
+        const apiClientes = resC.ok ? await resC.json() : null;
+        const apiCreditos = resCr.ok ? await resCr.json() : null;
+        if (apiClientes && Array.isArray(apiClientes)) setClientes(apiClientes);
+        if (apiCreditos && Array.isArray(apiCreditos)) setCreditos(apiCreditos);
+      } catch { /* offline o error de red — mantener datos en pantalla */ }
+    };
+    cargar();
+    // Refrescar cada 45 s para ver cambios de otros dispositivos
+    const intervalo = setInterval(cargar, 45 * 1000);
+    // Refrescar al volver al tab / abrir la app
+    const alVolver = () => { if (document.visibilityState === 'visible') cargar(); };
+    document.addEventListener('visibilitychange', alVolver);
+    return () => {
+      clearInterval(intervalo);
+      document.removeEventListener('visibilitychange', alVolver);
+    };
+  }, [session?.user?.username]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('todos');
@@ -167,6 +207,8 @@ export default function App() {
   const [modoCompacto, setModoCompacto] = useState(false);
   const [metaMensual, setMetaMensual] = useState(0);
   const [showConfigModal, setShowConfigModal] = useState(false);
+  const [showSettingsPanel, setShowSettingsPanel] = useState(false);
+  const [settingsSection, setSettingsSection] = useState('config');
   const [colorAcento, setColorAcento] = useState('#635bff');
   const [tags, setTags] = useState({});
   const [showTagModal, setShowTagModal] = useState(false);
@@ -374,18 +416,13 @@ export default function App() {
 
   useEffect(() => {
     if (!hydrated) return;
-    localStorage.setItem('cartera-clientes-v2', JSON.stringify(clientes));
+    // Indicador visual de guardado (los datos ya se persisten en la API)
     const indicator = document.getElementById('save-indicator');
     if (indicator && clientes.length > 0) {
       indicator.style.opacity = '1';
       setTimeout(() => { indicator.style.opacity = '0'; }, 2000);
     }
   }, [clientes, hydrated]);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    localStorage.setItem('creditos-v1', JSON.stringify(creditos));
-  }, [creditos, hydrated]);
 
   const datosActuales = mesVisualizando === obtenerMesActual()
     ? { clientes, creditos }
@@ -549,27 +586,62 @@ export default function App() {
 
   const cerrarModal = () => { setShowModal(false); setEditingCliente(null); };
 
-  const guardarCliente = (e) => {
+  // ── Helpers: actualizar estado local + persistir en API ─────────────────
+  const actualizarCliente = async (clienteActualizado) => {
+    setClientes(prev => prev.map(c => c.id === clienteActualizado.id ? clienteActualizado : c));
+    try {
+      const r = await fetch(`/api/clientes/${clienteActualizado.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(clienteActualizado) });
+      if (!r.ok) { const d = await r.json().catch(() => ({})); showToast('Error al guardar cliente: ' + (d.error || r.status), 'error'); }
+    } catch { showToast('Sin conexión — cambio no guardado en servidor', 'error'); }
+  };
+
+  const actualizarCredito = async (creditoActualizado) => {
+    setCreditos(prev => prev.map(c => c.id === creditoActualizado.id ? creditoActualizado : c));
+    try {
+      const r = await fetch(`/api/creditos/${creditoActualizado.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(creditoActualizado) });
+      if (!r.ok) { const d = await r.json().catch(() => ({})); showToast('Error al guardar crédito: ' + (d.error || r.status), 'error'); }
+    } catch { showToast('Sin conexión — cambio no guardado en servidor', 'error'); }
+  };
+
+  const guardarCliente = async (e) => {
     e.preventDefault();
-    const idDuplicado = clientes.find(c => c.id === parseInt(formData.id) && (!editingCliente || c.id !== editingCliente.id));
-    if (idDuplicado) { alert(`El ID ${formData.id} ya existe.`); return; }
     const nuevoHistorial = [...(formData.historial || [])];
-    nuevoHistorial.push({ fecha: new Date().toISOString(), accion: editingCliente ? `Actualizado - Estado: ${formData.estado}` : `Creado - Estado: ${formData.estado}`, usuario: 'CPEREZ' });
-    const clienteConHistorial = { ...formData, id: parseInt(formData.id), historial: nuevoHistorial };
-    if (editingCliente) setClientes(clientes.map(c => c.id === editingCliente.id ? clienteConHistorial : c));
-    else setClientes([...clientes, clienteConHistorial]);
+    nuevoHistorial.push({ fecha: new Date().toISOString(), accion: editingCliente ? `Actualizado - Estado: ${formData.estado}` : `Creado - Estado: ${formData.estado}`, usuario: currentUser || 'SISTEMA' });
+    const clienteConHistorial = { ...formData, historial: nuevoHistorial };
+    if (editingCliente) {
+      await actualizarCliente({ ...clienteConHistorial, id: editingCliente.id });
+    } else {
+      try {
+        const r = await fetch('/api/clientes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(clienteConHistorial) });
+        const data = await r.json();
+        if (r.ok) setClientes(prev => [...prev, data]);
+        else showToast('Error al guardar: ' + data.error, 'error');
+      } catch { showToast('Error de conexión', 'error'); }
+    }
     cerrarModal();
   };
 
-  const eliminarCliente = (id) => { if (confirm('¿Eliminar este cliente?')) setClientes(clientes.filter(c => c.id !== id)); };
+  const eliminarCliente = async (id) => {
+    if (!confirm('¿Eliminar este cliente?')) return;
+    setClientes(prev => prev.filter(c => c.id !== id));
+    try {
+      const r = await fetch(`/api/clientes/${id}`, { method: 'DELETE' });
+      if (!r.ok) { const d = await r.json().catch(() => ({})); showToast('Error al eliminar: ' + (d.error || r.status), 'error'); }
+    } catch { showToast('Sin conexión — cliente no eliminado del servidor', 'error'); }
+  };
 
   const abrirNotaModal = (cliente) => { setNotaClienteId(cliente.id); setNotaTexto(cliente.nota || ''); setShowNotaModal(true); };
-  const guardarNota = () => { setClientes(clientes.map(c => c.id === notaClienteId ? { ...c, nota: notaTexto } : c)); setShowNotaModal(false); };
+  const guardarNota = () => {
+    const updated = clientes.find(c => c.id === notaClienteId);
+    if (updated) actualizarCliente({ ...updated, nota: notaTexto });
+    setShowNotaModal(false);
+  };
 
   const iniciarEdicionMonto = (cliente) => { setEditingMontoId(cliente.id); setTempMonto(cliente.monto || ''); };
   const guardarMontoInline = (clienteId) => {
     if (tempMonto === '' || isNaN(parseFloat(tempMonto))) { showToast('Monto inválido', 'error'); return; }
-    setClientes(clientes.map(c => c.id === clienteId ? { ...c, monto: tempMonto, historial: [...(c.historial || []), { fecha: new Date().toISOString(), accion: `Monto actualizado a $${tempMonto}`, usuario: 'CPEREZ' }] } : c));
+    const updated = clientes.find(c => c.id === clienteId);
+    if (updated) actualizarCliente({ ...updated, monto: tempMonto, historial: [...(updated.historial || []), { fecha: new Date().toISOString(), accion: `Monto actualizado a $${tempMonto}`, usuario: currentUser || 'SISTEMA' }] });
     setEditingMontoId(null); setTempMonto('');
   };
   const cancelarEdicionMonto = () => { setEditingMontoId(null); setTempMonto(''); };
@@ -577,7 +649,8 @@ export default function App() {
   const iniciarEdicionCreditoMonto = (credito) => { setEditingCreditoMontoId(credito.id); setTempCreditoMonto(credito.monto || ''); };
   const guardarCreditoMontoInline = (creditoId) => {
     if (tempCreditoMonto === '' || isNaN(parseFloat(tempCreditoMonto))) { showToast('Monto inválido', 'error'); return; }
-    setCreditos(creditos.map(c => c.id === creditoId ? { ...c, monto: tempCreditoMonto, historial: [...(c.historial || []), { fecha: new Date().toISOString(), accion: `Monto actualizado a $${tempCreditoMonto}`, usuario: 'CPEREZ' }] } : c));
+    const updated = creditos.find(c => c.id === creditoId);
+    if (updated) actualizarCredito({ ...updated, monto: tempCreditoMonto, historial: [...(updated.historial || []), { fecha: new Date().toISOString(), accion: `Monto actualizado a $${tempCreditoMonto}`, usuario: currentUser || 'SISTEMA' }] });
     setEditingCreditoMontoId(null); setTempCreditoMonto('');
   };
   const cancelarEdicionCreditoMonto = () => { setEditingCreditoMontoId(null); setTempCreditoMonto(''); };
@@ -594,9 +667,11 @@ export default function App() {
     const totalPagado = pagosActualizados.reduce((s, p) => s + (parseFloat(p.monto) || 0), 0);
     const montoTotal = parseFloat(pagoClienteTarget.monto) || 0;
     const pagadoCompleto = totalPagado >= montoTotal - 0.001;
-    const clienteActualizado = { ...pagoClienteTarget, pagosRealizados: pagosActualizados, estado: pagadoCompleto ? 'Pagado' : pagoClienteTarget.estado, fechaPago: pagadoCompleto ? new Date().toISOString().split('T')[0] : pagoClienteTarget.fechaPago, historial: [...(pagoClienteTarget.historial || []), { fecha: new Date().toISOString(), accion: `Pago registrado: ${montoPagado.toLocaleString()} / Total: ${totalPagado.toLocaleString()} de ${montoTotal.toLocaleString()}`, usuario: 'CPEREZ' }] };
-    setClientes(clientes.map(c => c.id === pagoClienteTarget.id ? clienteActualizado : c));
+    const clienteActualizado = { ...pagoClienteTarget, pagosRealizados: pagosActualizados, estado: pagadoCompleto ? 'Pagado' : pagoClienteTarget.estado, fechaPago: pagadoCompleto ? new Date().toISOString().split('T')[0] : pagoClienteTarget.fechaPago, historial: [...(pagoClienteTarget.historial || []), { fecha: new Date().toISOString(), accion: `Pago registrado: ${montoPagado.toLocaleString()} / Total: ${totalPagado.toLocaleString()} de ${montoTotal.toLocaleString()}`, usuario: currentUser || 'SISTEMA' }] };
+    setClientes(prev => prev.map(c => c.id === pagoClienteTarget.id ? clienteActualizado : c));
     setShowPagoModal(false); setPagoClienteTarget(null); setPagoMonto('');
+    fetch(`/api/clientes/${clienteActualizado.id}/pagos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(nuevoPago) }).catch(() => null);
+    fetch(`/api/clientes/${clienteActualizado.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(clienteActualizado) }).catch(() => null);
   };
 
   const abrirPagoCreditoModal = (credito) => { setPagoCreditoTarget(credito); setPagoCreditoMonto(''); setShowPagoCreditoModal(true); };
@@ -611,9 +686,10 @@ export default function App() {
     const totalAbonado = abonosActualizados.reduce((s, a) => s + (parseFloat(a.monto) || 0), 0);
     const montoTotal = parseFloat(pagoCreditoTarget.monto) || 0;
     const pagadoCompleto = totalAbonado >= montoTotal - 0.001;
-    const creditoActualizado = { ...pagoCreditoTarget, abonos: abonosActualizados, estado: pagadoCompleto ? 'Pagado' : pagoCreditoTarget.estado, fechaPagoC: pagadoCompleto ? new Date().toISOString().split('T')[0] : pagoCreditoTarget.fechaPagoC, historial: [...(pagoCreditoTarget.historial || []), { fecha: new Date().toISOString(), accion: `Pago: ${montoPagado.toLocaleString()} / Total abonado: ${totalAbonado.toLocaleString()} de ${montoTotal.toLocaleString()}`, usuario: 'CPEREZ' }] };
-    setCreditos(creditos.map(c => c.id === pagoCreditoTarget.id ? creditoActualizado : c));
+    const creditoActualizado = { ...pagoCreditoTarget, abonos: abonosActualizados, estado: pagadoCompleto ? 'Pagado' : pagoCreditoTarget.estado, fechaPagoC: pagadoCompleto ? new Date().toISOString().split('T')[0] : pagoCreditoTarget.fechaPagoC, historial: [...(pagoCreditoTarget.historial || []), { fecha: new Date().toISOString(), accion: `Pago: ${montoPagado.toLocaleString()} / Total abonado: ${totalAbonado.toLocaleString()} de ${montoTotal.toLocaleString()}`, usuario: currentUser || 'SISTEMA' }] };
+    setCreditos(prev => prev.map(c => c.id === pagoCreditoTarget.id ? creditoActualizado : c));
     setShowPagoCreditoModal(false); setPagoCreditoTarget(null); setPagoCreditoMonto('');
+    actualizarCredito(creditoActualizado);
   };
 
   const cambiarOrdenamiento = (campo) => {
@@ -671,15 +747,30 @@ export default function App() {
 
   const eliminarAbono = (abonoId) => { if (confirm('¿Eliminar este abono?')) setCreditoFormData({ ...creditoFormData, abonos: creditoFormData.abonos.filter(a => a.id !== abonoId) }); };
 
-  const guardarCredito = (e) => {
+  const guardarCredito = async (e) => {
     e.preventDefault();
     const entrada = { ...creditoFormData, abonos: creditoFormData.abonos || [], historial: [...(creditoFormData.historial || []), { fecha: new Date().toISOString(), accion: editingCredito ? `Actualizado: ${creditoFormData.estado}` : `Creado: ${creditoFormData.estado}` }] };
-    if (editingCredito) setCreditos(creditos.map(c => c.id === editingCredito.id ? entrada : c));
-    else setCreditos([...creditos, entrada]);
+    if (editingCredito) {
+      await actualizarCredito({ ...entrada, id: editingCredito.id });
+    } else {
+      try {
+        const r = await fetch('/api/creditos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(entrada) });
+        const data = await r.json();
+        if (r.ok) setCreditos(prev => [...prev, data]);
+        else showToast('Error al guardar crédito: ' + data.error, 'error');
+      } catch { showToast('Error de conexión', 'error'); }
+    }
     cerrarCreditoModal();
   };
 
-  const eliminarCredito = (id) => { if (confirm('¿Eliminar este crédito?')) setCreditos(creditos.filter(c => c.id !== id)); };
+  const eliminarCredito = async (id) => {
+    if (!confirm('¿Eliminar este crédito?')) return;
+    setCreditos(prev => prev.filter(c => c.id !== id));
+    try {
+      const r = await fetch(`/api/creditos/${id}`, { method: 'DELETE' });
+      if (!r.ok) { const d = await r.json().catch(() => ({})); showToast('Error al eliminar: ' + (d.error || r.status), 'error'); }
+    } catch { showToast('Sin conexión — crédito no eliminado del servidor', 'error'); }
+  };
 
   const obtenerNombreMes = (mesKey) => {
     const [año, mes] = mesKey.split('-');
@@ -702,9 +793,39 @@ export default function App() {
 
   const exportarTodosExcel = () => { if (!clientes.length) { showToast('No hay clientes', 'info'); return; } exportarAExcel(clientes, 'todos-los-clientes'); };
 
+  const playSound = (type) => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      if (type === 'error') {
+        // Sonido descendente suave — "pop" de error
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(480, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(260, ctx.currentTime + 0.12);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.18);
+      } else if (type === 'success') {
+        // Sonido ascendente suave — confirmación
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(440, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.15);
+      }
+    } catch { /* silencioso si el navegador bloquea */ }
+  };
+
   const showToast = (msg, type = 'success') => {
     const id = Date.now();
     setToasts(t => [...t, { id, msg, type }]);
+    if (type === 'error' || type === 'success') playSound(type);
     setTimeout(() => setToasts(t => t.map(x => x.id === id ? { ...x, removing: true } : x)), 3200);
     setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3500);
   };
@@ -1420,64 +1541,90 @@ export default function App() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      {/* TOPBAR */}
+      {/* TOPBAR — ESPN style */}
       <div className="topbar">
         <div className="topbar-left">
-          <div className="topbar-logo"><div className="dot">💼</div>CartaMaster</div>
-          <div className="topbar-user">Bienvenido, <span>{session ? session.user.name : currentUser}</span> {soloLectura && <span style={{ background: '#fef9c3', color: '#854d0e', fontSize: '0.7rem', padding: '0.15rem 0.45rem', borderRadius: '4px', fontWeight: 700, marginLeft: '0.3rem' }}>Solo lectura</span>}</div>
+          <button className="hamburger-btn" onClick={() => setShowMobileMenu(v => !v)} title="Menú">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              {showMobileMenu
+                ? <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>
+                : <><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></>
+              }
+            </svg>
+          </button>
+          <div className="topbar-logo">
+            <div className="dot">CM</div>
+            <span className="logo-text">CartaMaster</span>
+          </div>
+          <nav className="topbar-center-nav">
+            <button className={`topbar-nav-link ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>Inicio</button>
+            <button className={`topbar-nav-link ${activeTab === 'cartera' ? 'active' : ''}`} onClick={() => setActiveTab('cartera')}>Cartera</button>
+            <button className={`topbar-nav-link ${activeTab === 'credito' ? 'active' : ''}`} onClick={() => setActiveTab('credito')}>Crédito</button>
+            <button className={`topbar-nav-link ${activeTab === 'agenda' ? 'active' : ''}`} onClick={() => setActiveTab('agenda')}>Agenda</button>
+            <button className={`topbar-nav-link ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => setActiveTab('documentos')}>Documentos</button>
+            <button className={`topbar-nav-link ${activeTab === 'calendario' ? 'active' : ''}`} onClick={() => setActiveTab('calendario')}>Calendario</button>
+          </nav>
         </div>
-        <div className="topbar-nav">
-          <button className={`topbar-btn ${activeTab === 'cartera' ? 'active' : ''}`} onClick={() => setActiveTab('cartera')}>📊 Cartera</button>
-          <button className={`topbar-btn ${activeTab === 'credito' ? 'active' : ''}`} onClick={() => setActiveTab('credito')}>💳 Crédito</button>
-          <button className="topbar-btn" onClick={() => setShowBusquedaGlobal(true)} title="Búsqueda global (F)">🔍</button>
-          <button className="topbar-btn" onClick={() => setDarkMode(!darkMode)} title="Modo oscuro">{darkMode ? '☀️' : '🌙'}</button>
-          <button className="topbar-btn" onClick={() => setShowConfigModal(true)} title="Configuración">⚙️</button>
-          {esAdmin && <button className="topbar-btn" onClick={() => setShowUsuariosModal(true)} title="Gestionar usuarios" style={{ background: 'rgba(99,91,255,0.15)', borderRadius: '8px' }}>👥 Usuarios</button>}
-          {esAdmin && <button className="topbar-btn" onClick={() => abrirAuditLog()} title="Bitácora de seguridad" style={{ background: 'rgba(220,38,38,0.12)', borderRadius: '8px' }}>🔍 Auditoría</button>}
-          <button className="topbar-btn" onClick={() => { if (session) signOut(); else handleLogout(); }} style={{ marginLeft: '0.5rem' }}>🚪 Cerrar Sesión</button>
+        <div className="topbar-right">
+          {soloLectura && <span style={{ background: 'rgba(254,249,195,0.15)', color: '#fbbf24', fontSize: '0.67rem', padding: '0.2rem 0.55rem', borderRadius: '5px', fontWeight: 700, marginRight: '0.25rem', border: '1px solid rgba(251,191,36,0.25)' }}>Solo lectura</span>}
+          <button className="topbar-icon-btn" onClick={() => setShowBusquedaGlobal(true)} title="Buscar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </button>
+          <button className="topbar-icon-btn" onClick={() => setDarkMode(!darkMode)} title="Modo oscuro">
+            {darkMode
+              ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+              : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            }
+          </button>
+          {esAdmin && (
+            <button className="topbar-icon-btn" onClick={abrirAuditLog} title="Auditoría">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </button>
+          )}
         </div>
       </div>
 
+      {showMobileMenu && <div className="mobile-overlay" onClick={() => setShowMobileMenu(false)} />}
       <div className="main-layout">
         {/* SIDEBAR */}
-        <div className="sidebar">
+        <div className={`sidebar${showMobileMenu ? ' mobile-open' : ''}`}>
           <div className="sidebar-section">
             <div className="sidebar-label">Gestión</div>
-            <div className={`sidebar-item ${activeTab === 'cartera' ? 'active' : ''}`} onClick={() => setActiveTab('cartera')}><span className="icon">📊</span> Cartera</div>
-            <div className={`sidebar-item ${activeTab === 'credito' ? 'active' : ''}`} onClick={() => setActiveTab('credito')}><span className="icon">💳</span> Crédito</div>
-            <div className={`sidebar-item ${activeTab === 'agenda' ? 'active' : ''}`} onClick={() => setActiveTab('agenda')}><span className="icon">📅</span> Agenda del Día</div>
-            <div className={`sidebar-item ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => setActiveTab('documentos')}><span className="icon">📄</span> Documentos</div>
-            <div className="sidebar-item" style={{ color: '#0369a1', fontWeight: 700 }} onClick={() => { setArchivosEnProceso([]); setShowCargaMasivaModal(true); }}><span className="icon">📂</span> Carga Masiva PDF</div>
-            <div className="sidebar-item" style={{ color: '#7c3aed', fontWeight: 700 }} onClick={() => setShowPlantillasModal(true)}><span className="icon">💬</span> Plantillas WA</div>
+            <div className={`sidebar-item ${activeTab === 'cartera' ? 'active' : ''}`} onClick={() => setActiveTab('cartera')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="12" width="4" height="8" rx="1"/><rect x="10" y="8" width="4" height="12" rx="1"/><rect x="17" y="4" width="4" height="16" rx="1"/></svg></span> Cartera</div>
+            <div className={`sidebar-item ${activeTab === 'credito' ? 'active' : ''}`} onClick={() => setActiveTab('credito')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></span> Crédito</div>
+            <div className={`sidebar-item ${activeTab === 'agenda' ? 'active' : ''}`} onClick={() => setActiveTab('agenda')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> Agenda del Día</div>
+            <div className={`sidebar-item ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => setActiveTab('documentos')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span> Documentos</div>
+            <div className="sidebar-item" onClick={() => { setArchivosEnProceso([]); setShowCargaMasivaModal(true); }}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span> Carga Masiva PDF</div>
+            <div className="sidebar-item" onClick={() => setShowPlantillasModal(true)}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span> Plantillas WA</div>
           </div>
           <div className="sidebar-section">
-            <div className="sidebar-label">Descarga</div>
-            <div className="sidebar-item" onClick={exportarTodosExcel}><span className="icon">📊</span> Excel - Todos</div>
-            <div className="sidebar-item" onClick={exportarNoGeneraron}><span className="icon">📊</span> No Generaron</div>
-            <div className="sidebar-item" onClick={exportarFacturados}><span className="icon">📊</span> Facturados</div>
-            <div className="sidebar-item" onClick={exportarPDF}><span className="icon">📄</span> PDF - Cartera</div>
-            <div className="sidebar-item" onClick={generarResumenPDF}><span className="icon">📑</span> Resumen PDF</div>
-            <div className="sidebar-item" onClick={backupJSON}><span className="icon">💾</span> Backup JSON</div>
-            <div className="sidebar-item" onClick={() => setShowImportModal(true)}><span className="icon">📥</span> Importar Excel</div>
+            <div className="sidebar-label">Exportar</div>
+            <div className="sidebar-item" onClick={exportarTodosExcel}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> Excel — Todos</div>
+            <div className="sidebar-item" onClick={exportarNoGeneraron}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> No Generaron</div>
+            <div className="sidebar-item" onClick={exportarFacturados}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> Facturados</div>
+            <div className="sidebar-item" onClick={exportarPDF}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span> PDF — Cartera</div>
+            <div className="sidebar-item" onClick={generarResumenPDF}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span> Resumen PDF</div>
+            <div className="sidebar-item" onClick={backupJSON}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> Backup JSON</div>
+            <div className="sidebar-item" onClick={() => setShowImportModal(true)}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span> Importar Excel</div>
           </div>
           <div className="sidebar-section">
-            <div className="sidebar-label">Mes</div>
-            <div style={{ padding: '0 0.75rem' }}>
-              <select value={mesVisualizando} onChange={(e) => setMesVisualizando(e.target.value)} style={{ width: '100%', padding: '0.5rem 0.7rem', background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#1e2d4a', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', marginBottom: '0.5rem' }}>
+            <div className="sidebar-label">Período</div>
+            <div style={{ padding: '0 0.65rem' }}>
+              <select value={mesVisualizando} onChange={(e) => setMesVisualizando(e.target.value)} style={{ width: '100%', padding: '0.45rem 0.6rem', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '7px', color: 'rgba(255,255,255,0.75)', fontSize: '0.78rem', fontWeight: 500, cursor: 'pointer', marginBottom: '0.45rem' }}>
                 {obtenerMesesDisponibles().map(mes => <option key={mes} value={mes}>{obtenerNombreMes(mes)}{mes === obtenerMesActual() ? ' (Actual)' : ''}</option>)}
               </select>
               {!esModoPasado ? (
-                <button onClick={() => setShowDescargaMesModal(true)} style={{ width: '100%', padding: '0.5rem', background: '#f97316', color: 'white', border: 'none', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}>💾 Guardar Mes</button>
+                <button onClick={() => setShowDescargaMesModal(true)} style={{ width: '100%', padding: '0.45rem', background: 'rgba(249,115,22,0.15)', color: '#fb923c', border: '1px solid rgba(249,115,22,0.25)', borderRadius: '7px', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer' }}>Guardar Mes</button>
               ) : (
-                <div style={{ padding: '0.4rem 0.7rem', background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: '7px', fontSize: '0.75rem', fontWeight: 600, color: '#f97316', textAlign: 'center' }}>🔒 Solo Lectura</div>
+                <div style={{ padding: '0.35rem 0.6rem', background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.18)', borderRadius: '6px', fontSize: '0.73rem', fontWeight: 600, color: 'rgba(249,115,22,0.7)', textAlign: 'center' }}>Solo Lectura</div>
               )}
             </div>
           </div>
           <div className="sidebar-section">
             <div className="sidebar-label">Sistema</div>
-            <div className="sidebar-item" onClick={exportarDatos}><span className="icon">💾</span> Exportar JSON</div>
+            <div className="sidebar-item" onClick={exportarDatos}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span> Exportar JSON</div>
             <label className="sidebar-item" style={{ cursor: 'pointer' }}>
-              <span className="icon">📂</span> Importar JSON
+              <span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span> Importar JSON
               <input type="file" accept=".json" style={{ display: 'none' }} onChange={(e) => {
                 const file = e.target.files[0]; if (!file) return;
                 const reader = new FileReader();
@@ -1486,61 +1633,85 @@ export default function App() {
               }} />
             </label>
           </div>
+
+          {/* ── User footer — Claude style ── */}
+          <div className="sidebar-user-footer">
+            <div className="sidebar-user-avatar">
+              {(currentUser || session?.user?.name || 'U').charAt(0).toUpperCase()}
+            </div>
+            <div className="sidebar-user-info">
+              <div className="sidebar-user-name">{currentUser || session?.user?.name || 'Usuario'}</div>
+              <div className="sidebar-user-role">{esAdmin ? 'Administrador' : esEditor ? 'Editor' : 'Viewer'}</div>
+            </div>
+            <div className="sidebar-user-actions">
+              <button className="sidebar-icon-btn" onClick={() => { setSettingsSection('config'); setShowSettingsPanel(true); }} title="Configuración">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+              </button>
+              <button className="sidebar-icon-btn" onClick={() => { if (session) signOut(); else handleLogout(); }} title="Cerrar sesión">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                  <polyline points="16 17 21 12 16 7"/>
+                  <line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* CONTENT */}
         <div className="content-area">
           <div className="page-header">
             <div>
-              <h1>📊 Gestión de Cartera</h1>
+              <h1>Gestión de Cartera</h1>
               <p>Panel de control · CPEREZ · {new Date().toLocaleDateString('es-DO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
               <div className="estado-flow">
-                <span className="flow-step">📋 Cotizado</span><span className="flow-arrow">→</span>
-                <span className="flow-step">📧 Notificado</span><span className="flow-arrow">→</span>
-                <span className="flow-step">💰 Pagado</span><span className="flow-arrow">→</span>
-                <span className="flow-step">✅ Facturado</span><span className="flow-arrow">·</span>
-                <span className="flow-step">🚫 No Generaron</span>
+                <span className="flow-step">Cotizado</span><span className="flow-arrow">→</span>
+                <span className="flow-step">Notificado</span><span className="flow-arrow">→</span>
+                <span className="flow-step">Pagado</span><span className="flow-arrow">→</span>
+                <span className="flow-step">Facturado</span><span className="flow-arrow">·</span>
+                <span className="flow-step">No Generaron</span>
               </div>
-              {esDespuesDel15 && estadisticas.vencido > 0 && <div className="alert-banner" style={{ marginTop: '0.75rem' }}>⚠️ ALERTA: {estadisticas.vencido} cliente(s) vencidos sin pago antes del día 15</div>}
+              {esDespuesDel15 && estadisticas.vencido > 0 && <div className="alert-banner" style={{ marginTop: '0.75rem' }}>Alerta: {estadisticas.vencido} cliente(s) vencidos sin pago antes del día 15</div>}
             </div>
-            <div className="fecha-corte">🗓️ Corte: Día 15 de cada mes</div>
+            <div className="fecha-corte">Corte: Día 15 de cada mes</div>
           </div>
 
           <div className="tabs-nav">
-            <button className={`tab-btn ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>🏠 Inicio</button>
+            <button className={`tab-btn ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>Inicio</button>
             <button className={`tab-btn ${activeTab === 'agenda' ? 'active' : ''}`} onClick={() => setActiveTab('agenda')} style={{ position:'relative' }}>
-              📅 Agenda
-              {(() => { const hoy = clientes.filter(c => tieneProximoSeguimiento(c.id)).length; return hoy > 0 ? <span style={{ position:'absolute', top:'-6px', right:'-6px', background:'#dc2626', color:'white', borderRadius:'50%', width:'18px', height:'18px', fontSize:'0.65rem', fontWeight:800, display:'flex', alignItems:'center', justifyContent:'center' }}>{hoy}</span> : null; })()}
+              Agenda
+              {(() => { const hoy = clientes.filter(c => tieneProximoSeguimiento(c.id)).length; return hoy > 0 ? <span style={{ position:'absolute', top:'6px', right:'2px', background:'#dc2626', color:'white', borderRadius:'50%', width:'16px', height:'16px', fontSize:'0.6rem', fontWeight:800, display:'flex', alignItems:'center', justifyContent:'center' }}>{hoy}</span> : null; })()}
             </button>
-            <button className={`tab-btn ${activeTab === 'cartera' ? 'active' : ''}`} onClick={() => setActiveTab('cartera')}>📊 Cartera</button>
-            <button className={`tab-btn ${activeTab === 'credito' ? 'active' : ''}`} onClick={() => setActiveTab('credito')}>💳 Crédito</button>
-            <button className={`tab-btn ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => setActiveTab('documentos')}>📄 Documentos</button>
-            <button className={`tab-btn ${activeTab === 'calendario' ? 'active' : ''}`} onClick={() => setActiveTab('calendario')}>🗓️ Calendario</button>
+            <button className={`tab-btn ${activeTab === 'cartera' ? 'active' : ''}`} onClick={() => setActiveTab('cartera')}>Cartera</button>
+            <button className={`tab-btn ${activeTab === 'credito' ? 'active' : ''}`} onClick={() => setActiveTab('credito')}>Crédito</button>
+            <button className={`tab-btn ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => setActiveTab('documentos')}>Documentos</button>
+            <button className={`tab-btn ${activeTab === 'calendario' ? 'active' : ''}`} onClick={() => setActiveTab('calendario')}>Calendario</button>
           </div>
 
           {/* TAB DASHBOARD */}
           <div className={`tab-content ${activeTab === 'dashboard' ? 'active' : ''}`}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
               {[
-                { label: 'Total Clientes', value: clientes.length, icon: '👥', color: '#0284c7', bg: '#f0f9ff' },
-                { label: 'Cobrado este mes', value: `$${(estadisticas.montoPagado||0).toLocaleString('en-US', { maximumFractionDigits: 0 })}`, icon: '💰', color: '#059669', bg: '#ecfdf5' },
-                { label: 'Clientes Vencidos', value: estadisticas.vencido, icon: '⚠️', color: '#dc2626', bg: '#fef2f2' },
-                { label: 'Créditos Activos', value: creditoStats.activo + creditoStats.porVencer, icon: '💳', color: '#7c3aed', bg: '#f5f3ff' },
-                { label: 'Por Cobrar', value: `$${(estadisticas.montoCotizado + estadisticas.montoNotificado||0).toLocaleString('en-US', { maximumFractionDigits: 0 })}`, icon: '📋', color: '#ea580c', bg: '#fff7ed' },
-                { label: 'Créditos Vencidos', value: creditoStats.vencido, icon: '🚨', color: '#dc2626', bg: '#fef2f2' },
+                { label: 'Total Clientes', value: clientes.length, color: '#0284c7' },
+                { label: 'Cobrado este mes', value: `$${(estadisticas.montoPagado||0).toLocaleString('en-US', { maximumFractionDigits: 0 })}`, color: '#059669' },
+                { label: 'Clientes Vencidos', value: estadisticas.vencido, color: '#dc2626' },
+                { label: 'Créditos Activos', value: creditoStats.activo + creditoStats.porVencer, color: '#7c3aed' },
+                { label: 'Por Cobrar', value: `$${(estadisticas.montoCotizado + estadisticas.montoNotificado||0).toLocaleString('en-US', { maximumFractionDigits: 0 })}`, color: '#ea580c' },
+                { label: 'Créditos Vencidos', value: creditoStats.vencido, color: '#dc2626' },
               ].map((s, i) => (
-                <div key={i} style={{ background: s.bg, border: `1px solid ${s.color}33`, borderRadius: '14px', padding: '1.3rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <div style={{ fontSize: '2rem' }}>{s.icon}</div>
-                  <div>
-                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: s.color, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.label}</div>
-                    <div style={{ fontSize: '1.6rem', fontWeight: 800, color: s.color, fontFamily: 'var(--mono)' }}>{s.value}</div>
-                  </div>
+                <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.25rem 1.4rem', position: 'relative', overflow: 'hidden', boxShadow: '0 1px 2px rgba(20,22,37,0.04)' }}>
+                  <div style={{ width: '3px', position: 'absolute', left: 0, top: '18%', bottom: '18%', background: s.color, borderRadius: '0 2px 2px 0' }}></div>
+                  <div style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.45rem' }}>{s.label}</div>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text)', fontFamily: 'var(--mono)', lineHeight: 1, letterSpacing: '-0.03em' }}>{s.value}</div>
                 </div>
               ))}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.2rem' }}>
-                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '1rem' }}>⚠️ Créditos por Vencer (7 días)</div>
+                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '1rem' }}>Créditos por Vencer — 7 días</div>
                 {creditosAlerta.length === 0 ? <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>No hay créditos próximos a vencer.</p> :
                   creditosAlerta.map(c => <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.6rem 0', borderBottom: '1px solid var(--border)' }}>
                     <div><strong>{c.cliente}</strong><div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Orden: {c.numeroOrden}</div></div>
@@ -1548,7 +1719,7 @@ export default function App() {
                   </div>)}
               </div>
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.2rem' }}>
-                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '1rem' }}>🕒 Últimos clientes agregados</div>
+                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '1rem' }}>Últimos clientes agregados</div>
                 {[...clientes].reverse().slice(0, 5).map(c => <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid var(--border)' }}>
                   <span style={{ fontWeight: 600, fontSize: '0.88rem' }}>{c.nombre}</span>
                   <span className={`badge badge-${c.estado.toLowerCase().replace(/ /g,'-')}`}>{c.estado}</span>
@@ -2016,13 +2187,13 @@ export default function App() {
           <div className={`tab-content ${activeTab === 'cartera' ? 'active' : ''}`}>
             <div className="dashboard">
               {[
-                { key: 'cotizado', label: '📋 Cotizado', val: estadisticas.cotizado, pct: estadisticas.cotizadoPct, monto: estadisticas.montoCotizado, color: '#ea580c' },
-                { key: 'notificado', label: '📧 Notificado', val: estadisticas.notificado, pct: estadisticas.notificadoPct, monto: estadisticas.montoNotificado, color: '#0284c7' },
-                { key: 'pagado', label: '💰 Pagado', val: estadisticas.pagado, pct: estadisticas.pagadoPct, monto: estadisticas.montoPagado, color: '#059669' },
-                { key: 'facturado', label: '✅ Facturado', val: estadisticas.facturado, pct: estadisticas.facturadoPct, monto: estadisticas.montoFacturado, color: '#16a34a' },
-                { key: 'vencido', label: '❌ Vencido', val: estadisticas.vencido, pct: estadisticas.vencidoPct, monto: estadisticas.montoVencido, color: '#dc2626' },
-                { key: 'no-generaron', label: '🚫 No Generaron', val: estadisticas.noGeneraron, pct: estadisticas.noGeneraronPct, monto: null, color: '#64748b' },
-                { key: 'suspendido', label: '⏸️ Suspendidos', val: estadisticas.suspendido, pct: estadisticas.suspendidoPct, monto: estadisticas.montoSuspendido, color: '#dc2626' },
+                { key: 'cotizado', label: 'Cotizado', val: estadisticas.cotizado, pct: estadisticas.cotizadoPct, monto: estadisticas.montoCotizado, color: '#ea580c' },
+                { key: 'notificado', label: 'Notificado', val: estadisticas.notificado, pct: estadisticas.notificadoPct, monto: estadisticas.montoNotificado, color: '#0284c7' },
+                { key: 'pagado', label: 'Pagado', val: estadisticas.pagado, pct: estadisticas.pagadoPct, monto: estadisticas.montoPagado, color: '#059669' },
+                { key: 'facturado', label: 'Facturado', val: estadisticas.facturado, pct: estadisticas.facturadoPct, monto: estadisticas.montoFacturado, color: '#16a34a' },
+                { key: 'vencido', label: 'Vencido', val: estadisticas.vencido, pct: estadisticas.vencidoPct, monto: estadisticas.montoVencido, color: '#dc2626' },
+                { key: 'no-generaron', label: 'No Generaron', val: estadisticas.noGeneraron, pct: estadisticas.noGeneraronPct, monto: null, color: '#64748b' },
+                { key: 'suspendido', label: 'Suspendidos', val: estadisticas.suspendido, pct: estadisticas.suspendidoPct, monto: estadisticas.montoSuspendido, color: '#dc2626' },
               ].map(s => (
                 <div key={s.key} className={`stat-card ${s.key}`}>
                   <div className="stat-label">{s.label}</div>
@@ -2268,15 +2439,15 @@ export default function App() {
                             <td>{cliente.fechaCotizacion ? new Date(cliente.fechaCotizacion).toLocaleDateString('es-DO') : '-'}</td>
                             <td>
                               <div className="proceso-icons">
-                                <button className={`proceso-icon cotizado ${cliente.fechaCotizacion ? 'done' : ''}`} disabled={esModoPasado} title={cliente.fechaCotizacion ? 'Cotizado' : 'Marcar Cotizado'} onClick={() => { if (esModoPasado) return; const a = { ...cliente }; if (!a.fechaCotizacion) { a.fechaCotizacion = new Date().toISOString().split('T')[0]; if (!a.estado || a.estado === 'No Generaron') a.estado = 'Cotizado'; } else { a.fechaCotizacion = ''; a.fechaNotificacion = ''; a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'No Generaron'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaCotizacion ? 'Marco Cotizado' : 'Desmarco Cotizado', usuario: 'CPEREZ' }]; setClientes(clientes.map(c => c.id === cliente.id ? a : c)); }}>📋</button>
-                                <button className={`proceso-icon notificado ${cliente.fechaNotificacion ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaCotizacion} style={{ opacity: !cliente.fechaCotizacion ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaCotizacion) return; const a = { ...cliente }; if (!a.fechaNotificacion) { a.fechaNotificacion = new Date().toISOString().split('T')[0]; a.estado = 'Notificado'; } else { a.fechaNotificacion = ''; a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'Cotizado'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaNotificacion ? 'Marco Notificado' : 'Desmarco Notificado', usuario: 'CPEREZ' }]; setClientes(clientes.map(c => c.id === cliente.id ? a : c)); }}>📧</button>
-                                <button className={`proceso-icon pagado ${cliente.fechaPago ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaNotificacion} style={{ opacity: !cliente.fechaNotificacion ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaNotificacion) return; const a = { ...cliente }; if (!a.fechaPago) { if (a.monto && parseFloat(a.monto) > 0) { abrirPagoModal(a); return; } a.fechaPago = new Date().toISOString().split('T')[0]; a.estado = 'Pagado'; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: 'Marco Pagado', usuario: 'CPEREZ' }]; setClientes(clientes.map(c => c.id === cliente.id ? a : c)); return; } a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'Notificado'; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: 'Desmarco Pagado', usuario: 'CPEREZ' }]; setClientes(clientes.map(c => c.id === cliente.id ? a : c)); }}>💰</button>
-                                <button className={`proceso-icon facturado ${cliente.fechaFacturacion ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaPago} style={{ opacity: !cliente.fechaPago ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaPago) return; const a = { ...cliente }; if (!a.fechaFacturacion) { a.fechaFacturacion = new Date().toISOString().split('T')[0]; a.estado = 'Facturado'; } else { a.fechaFacturacion = ''; a.estado = 'Pagado'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaFacturacion ? 'Marco Facturado' : 'Desmarco Facturado', usuario: 'CPEREZ' }]; setClientes(clientes.map(c => c.id === cliente.id ? a : c)); }}>💲</button>
+                                <button className={`proceso-icon cotizado ${cliente.fechaCotizacion ? 'done' : ''}`} disabled={esModoPasado} title={cliente.fechaCotizacion ? 'Cotizado' : 'Marcar Cotizado'} onClick={() => { if (esModoPasado) return; const a = { ...cliente }; if (!a.fechaCotizacion) { a.fechaCotizacion = new Date().toISOString().split('T')[0]; if (!a.estado || a.estado === 'No Generaron') a.estado = 'Cotizado'; } else { a.fechaCotizacion = ''; a.fechaNotificacion = ''; a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'No Generaron'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaCotizacion ? 'Marco Cotizado' : 'Desmarco Cotizado', usuario: 'CPEREZ' }]; actualizarCliente(a); }}>📋</button>
+                                <button className={`proceso-icon notificado ${cliente.fechaNotificacion ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaCotizacion} style={{ opacity: !cliente.fechaCotizacion ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaCotizacion) return; const a = { ...cliente }; if (!a.fechaNotificacion) { a.fechaNotificacion = new Date().toISOString().split('T')[0]; a.estado = 'Notificado'; } else { a.fechaNotificacion = ''; a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'Cotizado'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaNotificacion ? 'Marco Notificado' : 'Desmarco Notificado', usuario: 'CPEREZ' }]; actualizarCliente(a); }}>📧</button>
+                                <button className={`proceso-icon pagado ${cliente.fechaPago ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaNotificacion} style={{ opacity: !cliente.fechaNotificacion ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaNotificacion) return; const a = { ...cliente }; if (!a.fechaPago) { if (a.monto && parseFloat(a.monto) > 0) { abrirPagoModal(a); return; } a.fechaPago = new Date().toISOString().split('T')[0]; a.estado = 'Pagado'; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: 'Marco Pagado', usuario: 'CPEREZ' }]; actualizarCliente(a); return; } a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'Notificado'; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: 'Desmarco Pagado', usuario: 'CPEREZ' }]; actualizarCliente(a); }}>💰</button>
+                                <button className={`proceso-icon facturado ${cliente.fechaFacturacion ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaPago} style={{ opacity: !cliente.fechaPago ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaPago) return; const a = { ...cliente }; if (!a.fechaFacturacion) { a.fechaFacturacion = new Date().toISOString().split('T')[0]; a.estado = 'Facturado'; } else { a.fechaFacturacion = ''; a.estado = 'Pagado'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaFacturacion ? 'Marco Facturado' : 'Desmarco Facturado', usuario: 'CPEREZ' }]; actualizarCliente(a); }}>💲</button>
                               </div>
                             </td>
                             <td style={{ textAlign: 'center' }}>
                               {(cliente.estado === 'Pagado' || cliente.estado === 'Facturado') ? <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>—</span> : (
-                                <button disabled={esModoPasado} onClick={() => { if (esModoPasado) return; const a = { ...cliente }; a.suspendido = !a.suspendido; a.fechaSuspension = a.suspendido ? new Date().toISOString().split('T')[0] : ''; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.suspendido ? 'Cliente SUSPENDIDO' : 'Suspensión removida', usuario: 'CPEREZ' }]; setClientes(clientes.map(c => c.id === cliente.id ? a : c)); }} style={{ padding: '0.3rem 0.65rem', borderRadius: '7px', border: cliente.suspendido ? '1px solid #dc2626' : '1px solid #cbd5e1', background: cliente.suspendido ? '#ef4444' : 'white', color: cliente.suspendido ? 'white' : '#64748b', fontWeight: 700, fontSize: '0.75rem', cursor: esModoPasado ? 'not-allowed' : 'pointer', opacity: esModoPasado ? 0.4 : 1 }}>
+                                <button disabled={esModoPasado} onClick={() => { if (esModoPasado) return; const a = { ...cliente }; a.suspendido = !a.suspendido; a.fechaSuspension = a.suspendido ? new Date().toISOString().split('T')[0] : ''; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.suspendido ? 'Cliente SUSPENDIDO' : 'Suspensión removida', usuario: 'CPEREZ' }]; actualizarCliente(a); }} style={{ padding: '0.3rem 0.65rem', borderRadius: '7px', border: cliente.suspendido ? '1px solid #dc2626' : '1px solid #cbd5e1', background: cliente.suspendido ? '#ef4444' : 'white', color: cliente.suspendido ? 'white' : '#64748b', fontWeight: 700, fontSize: '0.75rem', cursor: esModoPasado ? 'not-allowed' : 'pointer', opacity: esModoPasado ? 0.4 : 1 }}>
                                   {cliente.suspendido ? '🔴 Activo' : '⏸️ Suspender'}
                                 </button>
                               )}
@@ -2370,10 +2541,10 @@ export default function App() {
                           <td>{(() => { const s = calcularSaldosCredito(credito.monto, credito.abonos || []); const pct = s.total > 0 ? Math.min((s.abonado / s.total) * 100, 100) : 0; return <div style={{ minWidth: '110px' }}><div style={{ fontWeight: 700, color: s.pendiente > 0 ? '#f59e0b' : '#059669', marginBottom: '0.25rem' }}>${s.pendiente.toFixed(2)}</div>{s.total > 0 && <div className="progress-bar-wrap"><div className="progress-bar-fill" style={{ width: `${pct}%`, background: pct >= 100 ? '#059669' : '#635bff' }}></div></div>}{s.abonado > 0 && <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{pct.toFixed(0)}% pagado</div>}</div>; })()}</td>
                           <td>
                             <div className="proceso-icons">
-                              <button className={`proceso-icon cotizado ${credito.fechaCotizacion ? 'done' : ''}`} onClick={() => { const a = { ...credito }; if (!a.fechaCotizacion) a.fechaCotizacion = new Date().toISOString().split('T')[0]; else { a.fechaCotizacion = ''; a.fechaNotificacionC = ''; a.fechaPagoC = ''; a.fechaFacturacionC = ''; } setCreditos(creditos.map(c => c.id === credito.id ? a : c)); }}>📋</button>
-                              <button className={`proceso-icon notificado ${credito.fechaNotificacionC ? 'done' : ''}`} disabled={!credito.fechaCotizacion} style={{ opacity: !credito.fechaCotizacion ? 0.3 : 1 }} onClick={() => { if (!credito.fechaCotizacion) return; const a = { ...credito }; if (!a.fechaNotificacionC) a.fechaNotificacionC = new Date().toISOString().split('T')[0]; else { a.fechaNotificacionC = ''; a.fechaPagoC = ''; a.fechaFacturacionC = ''; } setCreditos(creditos.map(c => c.id === credito.id ? a : c)); }}>📧</button>
-                              <button className={`proceso-icon pagado ${credito.fechaPagoC ? 'done' : ''}`} disabled={!credito.fechaNotificacionC} style={{ opacity: !credito.fechaNotificacionC ? 0.3 : 1 }} onClick={() => { if (!credito.fechaNotificacionC) return; if (!credito.fechaPagoC) { abrirPagoCreditoModal(credito); return; } const a = { ...credito }; a.fechaPagoC = ''; a.fechaFacturacionC = ''; a.abonos = []; a.estado = 'Activo'; setCreditos(creditos.map(c => c.id === credito.id ? a : c)); }}>💰</button>
-                              <button className={`proceso-icon facturado ${credito.fechaFacturacionC ? 'done' : ''}`} disabled={!credito.fechaPagoC} style={{ opacity: !credito.fechaPagoC ? 0.3 : 1 }} onClick={() => { if (!credito.fechaPagoC) return; const a = { ...credito }; if (!a.fechaFacturacionC) a.fechaFacturacionC = new Date().toISOString().split('T')[0]; else a.fechaFacturacionC = ''; setCreditos(creditos.map(c => c.id === credito.id ? a : c)); }}>💲</button>
+                              <button className={`proceso-icon cotizado ${credito.fechaCotizacion ? 'done' : ''}`} onClick={() => { const a = { ...credito }; if (!a.fechaCotizacion) a.fechaCotizacion = new Date().toISOString().split('T')[0]; else { a.fechaCotizacion = ''; a.fechaNotificacionC = ''; a.fechaPagoC = ''; a.fechaFacturacionC = ''; } actualizarCredito(a); }}>📋</button>
+                              <button className={`proceso-icon notificado ${credito.fechaNotificacionC ? 'done' : ''}`} disabled={!credito.fechaCotizacion} style={{ opacity: !credito.fechaCotizacion ? 0.3 : 1 }} onClick={() => { if (!credito.fechaCotizacion) return; const a = { ...credito }; if (!a.fechaNotificacionC) a.fechaNotificacionC = new Date().toISOString().split('T')[0]; else { a.fechaNotificacionC = ''; a.fechaPagoC = ''; a.fechaFacturacionC = ''; } actualizarCredito(a); }}>📧</button>
+                              <button className={`proceso-icon pagado ${credito.fechaPagoC ? 'done' : ''}`} disabled={!credito.fechaNotificacionC} style={{ opacity: !credito.fechaNotificacionC ? 0.3 : 1 }} onClick={() => { if (!credito.fechaNotificacionC) return; if (!credito.fechaPagoC) { abrirPagoCreditoModal(credito); return; } const a = { ...credito }; a.fechaPagoC = ''; a.fechaFacturacionC = ''; a.abonos = []; a.estado = 'Activo'; actualizarCredito(a); }}>💰</button>
+                              <button className={`proceso-icon facturado ${credito.fechaFacturacionC ? 'done' : ''}`} disabled={!credito.fechaPagoC} style={{ opacity: !credito.fechaPagoC ? 0.3 : 1 }} onClick={() => { if (!credito.fechaPagoC) return; const a = { ...credito }; if (!a.fechaFacturacionC) a.fechaFacturacionC = new Date().toISOString().split('T')[0]; else a.fechaFacturacionC = ''; actualizarCredito(a); }}>💲</button>
                             </div>
                           </td>
                           <td>{new Date(credito.fechaInicio).toLocaleDateString('es-DO')}</td>
@@ -2383,7 +2554,7 @@ export default function App() {
                           <td><span className={`badge badge-${credito.estado.toLowerCase().replace(/ /g, '-')}`}>{credito.estado}</span></td>
                           <td>
                             <div className="action-btns">
-                              {credito.estado !== 'Pagado' && <button className="btn-icon" onClick={() => { const a = { ...credito, estado: 'Pagado', historial: [...(credito.historial || []), { fecha: new Date().toISOString(), accion: 'Marcado como Pagado' }] }; setCreditos(creditos.map(c => c.id === credito.id ? a : c)); }} title="Marcar Pagado">✅</button>}
+                              {credito.estado !== 'Pagado' && <button className="btn-icon" onClick={() => { const a = { ...credito, estado: 'Pagado', historial: [...(credito.historial || []), { fecha: new Date().toISOString(), accion: 'Marcado como Pagado' }] }; actualizarCredito(a); }} title="Marcar Pagado">✅</button>}
                               <button className="btn-icon" onClick={() => abrirCreditoModal(credito)} title="Editar">✏️</button>
                               <button className="btn-icon" onClick={() => eliminarCredito(credito.id)} title="Eliminar">🗑️</button>
                             </div>
@@ -2403,7 +2574,7 @@ export default function App() {
             <div className="modal-content">
               <div className="modal-header"><h2>{editingCliente ? 'Editar Cliente' : 'Nuevo Cliente'}</h2><button className="close-btn" onClick={cerrarModal}>×</button></div>
               <form onSubmit={guardarCliente}>
-                <div className="form-group"><label>ID del Cliente *</label><input type="number" value={formData.id || ''} onChange={(e) => setFormData({ ...formData, id: parseInt(e.target.value) || '' })} required placeholder="Ej: 1234" /></div>
+                <div className="form-group"><label>ID del Cliente <span style={{ fontSize:'0.75rem', color:'var(--text-muted)', fontWeight:400 }}>(opcional — se asigna automáticamente)</span></label><input type="number" value={formData.id || ''} onChange={(e) => setFormData({ ...formData, id: parseInt(e.target.value) || '' })} placeholder="Dejar vacío para auto-asignar" /></div>
                 <div className="form-group"><label>Nombre del Cliente *</label><input type="text" value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} required /></div>
                 <div className="form-group"><label>Contacto (Teléfono)</label><input type="text" value={formData.contacto} onChange={(e) => setFormData({ ...formData, contacto: e.target.value })} /></div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -2898,72 +3069,138 @@ export default function App() {
       )}
 
       {/* Modal Configuración */}
+      {/* ── Settings Panel — Claude style ── */}
+      {showSettingsPanel && (
+        <div className="settings-overlay" onClick={e => { if (e.target === e.currentTarget) setShowSettingsPanel(false); }}>
+          <div className="settings-panel">
+            {/* Left nav */}
+            <div className="settings-sidebar">
+              <div className="settings-sidebar-title">Configuración</div>
+              <button className={`settings-nav-item ${settingsSection === 'config' ? 'active' : ''}`} onClick={() => setSettingsSection('config')}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                Preferencias
+              </button>
+              {esAdmin && (
+                <button className={`settings-nav-item ${settingsSection === 'usuarios' ? 'active' : ''}`} onClick={() => setSettingsSection('usuarios')}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  Usuarios
+                </button>
+              )}
+              {esAdmin && (
+                <button className={`settings-nav-item ${settingsSection === 'auditoria' ? 'active' : ''}`} onClick={() => setSettingsSection('auditoria')}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                  Auditoría
+                </button>
+              )}
+              <button className="settings-nav-item" style={{ marginTop: 'auto', color: 'var(--danger)', opacity: 0.8 }} onClick={() => { setShowSettingsPanel(false); if (session) signOut(); else handleLogout(); }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Cerrar sesión
+              </button>
+            </div>
+
+            {/* Right content */}
+            <div className="settings-content">
+              {settingsSection === 'config' && (<>
+                <div className="settings-content-header">
+                  <div className="settings-content-title">Preferencias</div>
+                  <button className="settings-close-btn" onClick={() => setShowSettingsPanel(false)}>×</button>
+                </div>
+                <div className="settings-row">
+                  <div>
+                    <div className="settings-row-label">Color de acento</div>
+                    <div className="settings-row-desc">Color principal de la interfaz</div>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.75rem' }}>
+                      {['#635bff','#0284c7','#059669','#dc2626','#f97316','#8b5cf6','#14b8a6','#e11d48','#0f172a'].map(c => (
+                        <div key={c} onClick={() => setColorAcento(c)} style={{ width: '28px', height: '28px', borderRadius: '50%', background: c, cursor: 'pointer', border: colorAcento === c ? '3px solid white' : '2px solid transparent', boxShadow: colorAcento === c ? `0 0 0 2px ${c}` : 'none', transition: 'all 0.15s' }}></div>
+                      ))}
+                      <input type="color" value={colorAcento} onChange={e => setColorAcento(e.target.value)} style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer', padding: 0 }} />
+                    </div>
+                  </div>
+                </div>
+                <div className="settings-row">
+                  <div>
+                    <div className="settings-row-label">Modo oscuro</div>
+                    <div className="settings-row-desc">Cambia el tema de la interfaz</div>
+                  </div>
+                  <div className="settings-toggle" onClick={() => setDarkMode(m => !m)} style={{ background: darkMode ? 'var(--brand)' : 'var(--border-2)' }}>
+                    <div className="settings-toggle-thumb" style={{ left: darkMode ? '21px' : '3px' }}></div>
+                  </div>
+                </div>
+                <div className="settings-row">
+                  <div>
+                    <div className="settings-row-label">Modo compacto</div>
+                    <div className="settings-row-desc">Reduce el tamaño de filas en la tabla</div>
+                  </div>
+                  <div className="settings-toggle" onClick={() => setModoCompacto(m => !m)} style={{ background: modoCompacto ? 'var(--brand)' : 'var(--border-2)' }}>
+                    <div className="settings-toggle-thumb" style={{ left: modoCompacto ? '21px' : '3px' }}></div>
+                  </div>
+                </div>
+                <div className="settings-row">
+                  <div>
+                    <div className="settings-row-label">Alerta de créditos</div>
+                    <div className="settings-row-desc">Alertar cuando falten N días o menos</div>
+                  </div>
+                  <input type="number" value={recordatoriosDias} onChange={e => setRecordatoriosDias(parseInt(e.target.value) || 7)} min="1" max="30" style={{ width: '64px', padding: '0.35rem 0.5rem', border: '1px solid var(--border-2)', borderRadius: '7px', background: 'var(--surface-2)', color: 'var(--text)', fontSize: '0.85rem', fontFamily: 'var(--mono)', textAlign: 'center' }} />
+                </div>
+                <div className="settings-row">
+                  <div>
+                    <div className="settings-row-label">Meta mensual</div>
+                    <div className="settings-row-desc">Objetivo de cobros del mes</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>$</span>
+                    <input type="number" value={metaMensual || ''} onChange={e => setMetaMensual(parseFloat(e.target.value) || 0)} placeholder="0" style={{ width: '110px', padding: '0.35rem 0.5rem', border: '1px solid var(--border-2)', borderRadius: '7px', background: 'var(--surface-2)', color: 'var(--text)', fontSize: '0.85rem', fontFamily: 'var(--mono)' }} />
+                  </div>
+                </div>
+                <div style={{ marginTop: '1.5rem' }}>
+                  <button className="btn btn-primary" onClick={() => { setShowSettingsPanel(false); showToast('Configuración guardada', 'success'); }}>Guardar cambios</button>
+                </div>
+              </>)}
+
+              {settingsSection === 'usuarios' && esAdmin && (<>
+                <div className="settings-content-header">
+                  <div className="settings-content-title">Gestión de usuarios</div>
+                  <button className="settings-close-btn" onClick={() => setShowSettingsPanel(false)}>×</button>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {Object.entries(usuarios).map(([uname, u]) => (
+                    <div key={uname} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', background: 'var(--surface-2)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--brand-bg)', border: '1px solid var(--brand-glow)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.8rem', color: 'var(--brand)', flexShrink: 0 }}>{uname.charAt(0)}</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text)' }}>{u.nombre || uname}</div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{uname} · <span style={{ color: u.rol === 'admin' ? 'var(--brand)' : 'var(--text-light)', fontWeight: 600 }}>{u.rol}</span></div>
+                      </div>
+                      <button className="btn btn-secondary" style={{ padding: '0.3rem 0.7rem', fontSize: '0.75rem' }} onClick={() => { setShowSettingsPanel(false); setUsuarioEditando(uname); setUsuarioForm({ username: uname, nombre: u.nombre || '', pass: '', rol: u.rol || 'viewer' }); setShowUsuariosModal(true); }}>Editar</button>
+                    </div>
+                  ))}
+                  <button className="btn btn-primary" style={{ marginTop: '0.5rem' }} onClick={() => { setShowSettingsPanel(false); setUsuarioEditando(null); setUsuarioForm({ username:'', nombre:'', pass:'', rol:'viewer' }); setShowUsuariosModal(true); }}>Agregar usuario</button>
+                </div>
+              </>)}
+
+              {settingsSection === 'auditoria' && esAdmin && (<>
+                <div className="settings-content-header">
+                  <div className="settings-content-title">Auditoría</div>
+                  <button className="settings-close-btn" onClick={() => setShowSettingsPanel(false)}>×</button>
+                </div>
+                <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+                  <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>Ver el registro completo de actividad del sistema</div>
+                  <button className="btn btn-primary" onClick={() => { setShowSettingsPanel(false); abrirAuditLog(); }}>Abrir bitácora de auditoría</button>
+                </div>
+              </>)}
+            </div>
+          </div>
+        </div>
+      )}
+
       {showConfigModal && (
         <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowConfigModal(false); }}>
           <div className="modal-content" style={{ maxWidth: '480px' }}>
             <div className="modal-header">
-              <h2>⚙️ Configuración del Sistema</h2>
+              <h2>Configuración del Sistema</h2>
               <button className="close-btn" onClick={() => setShowConfigModal(false)}>×</button>
             </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              {/* Color de acento */}
-              <div>
-                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>🎨 Color Principal</div>
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                  {['#635bff','#0284c7','#059669','#dc2626','#f97316','#8b5cf6','#14b8a6','#e11d48','#0f172a'].map(c => (
-                    <div key={c} onClick={() => setColorAcento(c)} style={{ width: '32px', height: '32px', borderRadius: '50%', background: c, cursor: 'pointer', border: colorAcento === c ? '3px solid white' : '2px solid transparent', boxShadow: colorAcento === c ? `0 0 0 2px ${c}` : 'none', transition: 'all 0.15s' }}></div>
-                  ))}
-                  <input type="color" value={colorAcento} onChange={e => setColorAcento(e.target.value)} style={{ width: '32px', height: '32px', borderRadius: '50%', border: 'none', cursor: 'pointer', padding: 0 }} title="Color personalizado" />
-                </div>
-              </div>
-
-              {/* Recordatorios */}
-              <div>
-                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>🔔 Recordatorio de Créditos por Vencer</div>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Alertar cuando falten</span>
-                  <input type="number" value={recordatoriosDias} onChange={e => setRecordatoriosDias(parseInt(e.target.value) || 7)} min="1" max="30" style={{ width: '70px', padding: '0.4rem 0.6rem', border: '1px solid var(--border2)', borderRadius: '7px', background: 'var(--surface2)', color: 'var(--text)', fontSize: '0.85rem', fontFamily: 'var(--mono)', textAlign: 'center' }} />
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>días o menos</span>
-                </div>
-                <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Actualmente el sistema alerta créditos con {recordatoriosDias} días o menos.</div>
-              </div>
-
-              {/* Meta mensual */}
-              <div>
-                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>🎯 Meta de Cobros Mensual</div>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>$</span>
-                  <input type="number" value={metaMensual || ''} onChange={e => setMetaMensual(parseFloat(e.target.value) || 0)} placeholder="0" style={{ width: '150px', padding: '0.4rem 0.6rem', border: '1px solid var(--border2)', borderRadius: '7px', background: 'var(--surface2)', color: 'var(--text)', fontSize: '0.85rem', fontFamily: 'var(--mono)' }} />
-                </div>
-              </div>
-
-              {/* Modo compacto */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>⊟ Modo compacto</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Reduce el tamaño de filas en la tabla</div>
-                </div>
-                <div onClick={() => setModoCompacto(m => !m)} style={{ width: '44px', height: '24px', borderRadius: '12px', background: modoCompacto ? 'var(--accent)' : 'var(--border2)', cursor: 'pointer', position: 'relative', transition: 'background 0.2s' }}>
-                  <div style={{ position: 'absolute', top: '3px', left: modoCompacto ? '22px' : '3px', width: '18px', height: '18px', borderRadius: '50%', background: 'white', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}></div>
-                </div>
-              </div>
-
-              {/* Modo oscuro */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>{darkMode ? '☀️' : '🌙'} Modo oscuro</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Cambia el tema de la interfaz</div>
-                </div>
-                <div onClick={() => setDarkMode(m => !m)} style={{ width: '44px', height: '24px', borderRadius: '12px', background: darkMode ? 'var(--accent)' : 'var(--border2)', cursor: 'pointer', position: 'relative', transition: 'background 0.2s' }}>
-                  <div style={{ position: 'absolute', top: '3px', left: darkMode ? '22px' : '3px', width: '18px', height: '18px', borderRadius: '50%', background: 'white', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}></div>
-                </div>
-              </div>
-            </div>
-
             <div className="form-actions">
               <button className="btn btn-secondary" onClick={() => setShowConfigModal(false)}>Cerrar</button>
-              <button className="btn btn-primary" onClick={() => { setShowConfigModal(false); showToast('Configuración guardada', 'success'); }}>✅ Guardar</button>
             </div>
           </div>
         </div>
@@ -3032,8 +3269,9 @@ export default function App() {
                 <div className="form-group" style={{ margin:0 }}>
                   <label>Rol</label>
                   <select value={usuarioForm.rol} onChange={e => setUsuarioForm(p => ({ ...p, rol: e.target.value }))}>
-                    <option value="admin">🔑 Administrador — acceso total</option>
-                    <option value="viewer">👁️ Solo Lectura — no puede editar</option>
+                    <option value="admin">Administrador — acceso total</option>
+                    <option value="editor">Editor — operativo, sin auditoría ni usuarios</option>
+                    <option value="viewer">Viewer — solo lectura</option>
                   </select>
                 </div>
               </div>
@@ -3067,8 +3305,8 @@ export default function App() {
                     <div style={{ fontWeight:700, fontSize:'0.88rem', display:'flex', alignItems:'center', gap:'0.5rem' }}>
                       {key}
                       {key === currentUser && <span style={{ background:'var(--accent)', color:'white', borderRadius:'20px', padding:'0.1rem 0.5rem', fontSize:'0.65rem', fontWeight:800 }}>TÚ</span>}
-                      <span style={{ background: u.rol==='admin' ? '#fef9c3' : '#f0f9ff', border:`1px solid ${u.rol==='admin' ? '#fde047' : '#bae6fd'}`, borderRadius:'20px', padding:'0.1rem 0.5rem', fontSize:'0.68rem', fontWeight:700, color: u.rol==='admin' ? '#713f12' : '#075985' }}>
-                        {u.rol === 'admin' ? '🔑 Admin' : '👁️ Viewer'}
+                      <span style={{ background: u.rol==='admin' ? '#fef9c3' : u.rol==='editor' ? '#f0fdf4' : '#f0f9ff', border:`1px solid ${u.rol==='admin' ? '#fde047' : u.rol==='editor' ? '#86efac' : '#bae6fd'}`, borderRadius:'20px', padding:'0.1rem 0.5rem', fontSize:'0.68rem', fontWeight:700, color: u.rol==='admin' ? '#713f12' : u.rol==='editor' ? '#166534' : '#075985' }}>
+                        {u.rol === 'admin' ? 'Admin' : u.rol === 'editor' ? 'Editor' : 'Viewer'}
                       </span>
                     </div>
                     <div style={{ fontSize:'0.73rem', color:'var(--text-muted)' }}>{u.nombre || '—'}</div>
@@ -3084,10 +3322,11 @@ export default function App() {
             </div>
 
             <div style={{ marginTop:'1rem', background:'#f0f9ff', border:'1px solid #bae6fd', borderRadius:'9px', padding:'0.75rem 1rem', fontSize:'0.78rem', color:'#075985' }}>
-              <strong>💡 Roles:</strong>
+              <strong>Roles:</strong>
               <ul style={{ marginTop:'0.3rem', paddingLeft:'1.2rem', lineHeight:1.8 }}>
-                <li><strong>Administrador</strong> — puede crear, editar y eliminar clientes, créditos y documentos</li>
-                <li><strong>Solo Lectura</strong> — solo puede ver la información, sin modificar nada</li>
+                <li><strong>Administrador</strong> — acceso total: clientes, créditos, usuarios y auditoría</li>
+                <li><strong>Editor</strong> — puede crear, editar y eliminar clientes y créditos; sin acceso a usuarios ni auditoría</li>
+                <li><strong>Viewer</strong> — solo puede ver la información, sin modificar nada</li>
               </ul>
               <div style={{ marginTop:'0.5rem', color:'#059669', fontWeight:600 }}>✅ Los usuarios se guardan en el servidor — cualquier computadora puede acceder con sus credenciales.</div>
             </div>
@@ -3460,6 +3699,47 @@ export default function App() {
                 </button>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Bottom Navigation */}
+      <div className="mobile-bottom-nav">
+        <button className={`mobile-nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+          <span>Inicio</span>
+        </button>
+        <button className={`mobile-nav-btn ${activeTab === 'cartera' ? 'active' : ''}`} onClick={() => setActiveTab('cartera')}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="12" width="4" height="8" rx="1"/><rect x="10" y="8" width="4" height="12" rx="1"/><rect x="17" y="4" width="4" height="16" rx="1"/></svg>
+          <span>Cartera</span>
+        </button>
+        <button className={`mobile-nav-btn ${activeTab === 'credito' ? 'active' : ''}`} onClick={() => setActiveTab('credito')}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+          <span>Crédito</span>
+        </button>
+        <button className={`mobile-nav-btn ${activeTab === 'agenda' ? 'active' : ''}`} onClick={() => setActiveTab('agenda')}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span>Agenda</span>
+        </button>
+        <button className={`mobile-nav-btn ${showMobileMenu ? 'active' : ''}`} onClick={() => setShowMobileMenu(v => !v)}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          <span>Más</span>
+        </button>
+      </div>
+
+      {/* Modal de sesión expirada */}
+      {sessionExpired && (
+        <div className="modal-overlay" style={{ zIndex: 9999, backdropFilter: 'blur(6px)' }}>
+          <div className="modal-content" style={{ maxWidth: '380px', textAlign: 'center', padding: '2.5rem 2rem' }}>
+            <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>⏱️</div>
+            <h2 style={{ marginBottom: '0.6rem', fontSize: '1.3rem' }}>Sesión del día expirada</h2>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1.75rem', fontSize: '0.88rem', lineHeight: 1.5 }}>
+              Por seguridad, tu sesión expira cada 24 horas. Vuelve a iniciar sesión para continuar trabajando.
+            </p>
+            <button className="btn btn-primary" style={{ width: '100%', padding: '0.75rem', fontSize: '0.95rem' }}
+              onClick={() => { setSessionExpired(false); signOut({ callbackUrl: '/' }); }}>
+              Volver a entrar
+            </button>
           </div>
         </div>
       )}

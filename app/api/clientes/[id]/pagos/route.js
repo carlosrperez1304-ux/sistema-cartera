@@ -12,17 +12,25 @@ export async function POST(req, { params }) {
   const clienteId = parseInt(params.id);
   const body      = await req.json();
 
-  const { error } = await db().from('pagos').insert({
-    id:           body.id || Date.now(),
+  const { data, error } = await db().from('pagos').insert({
     cliente_id:   clienteId,
     monto:        parseFloat(body.monto),
     fecha:        body.fecha || new Date().toISOString(),
     fecha_formato: body.fechaFormato || '',
     nota:         body.nota || null,
-  });
+  }).select().single();
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json({ ok: true, pago: body }, { status: 201 });
+  return Response.json({
+    ok: true,
+    pago: {
+      id:          data.id,
+      monto:       parseFloat(data.monto),
+      fecha:       data.fecha,
+      fechaFormato: data.fecha_formato || '',
+      nota:        data.nota || '',
+    },
+  }, { status: 201 });
 }
 
 // DELETE — eliminar un pago específico

@@ -52,7 +52,7 @@ export async function POST(req) {
   const username = sanitize(body.username || '', 32).toUpperCase();
   const nombre   = sanitize(body.nombre   || '', 64);
   const pass     = (body.pass || '').trim();
-  const rol      = ['admin', 'viewer'].includes(body.rol) ? body.rol : 'viewer';
+  const rol      = ['admin', 'editor', 'viewer'].includes(body.rol) ? body.rol : 'viewer';
   const ip       = getIP(req);
 
   if (!username) return Response.json({ error: 'El nombre de usuario es requerido' }, { status: 400 });

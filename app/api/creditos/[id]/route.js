@@ -16,7 +16,7 @@ export async function PUT(req, { params }) {
   const { error } = await db().from('creditos').update({
     numero_orden:     body.numeroOrden      || null,
     cliente:          body.cliente,
-    monto:            body.monto ? parseFloat(body.monto) : null,
+    monto:            (body.monto !== null && body.monto !== undefined && body.monto !== '') ? parseFloat(body.monto) : null,
     fecha_inicio:     body.fechaInicio      || null,
     plazo_meses:      body.plazoMeses ? parseInt(body.plazoMeses) : null,
     fecha_vencimiento:body.fechaVencimiento || null,
@@ -30,17 +30,19 @@ export async function PUT(req, { params }) {
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
   // Reemplazar abonos (delete all → insert new)
-  await db().from('abonos').delete().eq('credito_id', id);
+  const { error: delErr } = await db().from('abonos').delete().eq('credito_id', id);
+  if (delErr) return Response.json({ error: delErr.message }, { status: 500 });
+
   if (abonos && abonos.length > 0) {
-    await db().from('abonos').insert(
+    const { error: insErr } = await db().from('abonos').insert(
       abonos.map(a => ({
-        id:           a.id,
         credito_id:   id,
         monto:        parseFloat(a.monto),
         fecha:        a.fecha,
         fecha_formato:a.fechaFormato || '',
       }))
     );
+    if (insErr) return Response.json({ error: insErr.message }, { status: 500 });
   }
 
   return Response.json({ ok: true, ...body, id });

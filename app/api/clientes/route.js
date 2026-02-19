@@ -33,8 +33,8 @@ function toFront(c) {
 
 // Transforma datos del frontend → formato para la DB
 function toRow(body) {
-  return {
-    id:                 parseInt(body.id),
+  const parsedId = parseInt(body.id);
+  const row = {
     nombre:             sanitize(body.nombre, 128),
     contacto:           body.contacto           || null,
     estado:             body.estado             || 'Cotizado',
@@ -45,7 +45,7 @@ function toRow(body) {
     fecha_suspension:   body.fechaSuspension     || null,
     mes:                body.mes                || null,
     anio:               body.año                || null,
-    monto:              body.monto ? parseFloat(body.monto) : null,
+    monto:              (body.monto !== null && body.monto !== undefined && body.monto !== '') ? parseFloat(body.monto) : null,
     comentario:         body.comentario ? sanitize(body.comentario, 500) : null,
     nota:               body.nota ? sanitize(body.nota, 500) : null,
     suspendido:         body.suspendido         || false,
@@ -53,6 +53,9 @@ function toRow(body) {
     historial:          body.historial          || [],
     updated_at:         new Date().toISOString(),
   };
+  // Solo incluir id si es un número válido (Supabase lo auto-genera si no se envía)
+  if (!isNaN(parsedId) && parsedId > 0) row.id = parsedId;
+  return row;
 }
 
 // GET — todos los clientes con sus pagos (sin documentos, se cargan por separado)
