@@ -36,7 +36,6 @@ export async function POST(req, { params }) {
   const body      = await req.json();
 
   const { data, error } = await db().from('cotizaciones').insert({
-    id:         body.id || Date.now(),
     cliente_id: clienteId,
     nombre:     body.nombre,
     datos:      body.base64 || null,
