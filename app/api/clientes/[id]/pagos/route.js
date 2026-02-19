@@ -9,7 +9,8 @@ export async function POST(req, { params }) {
   const auth = await requireAuth(req);
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
 
-  const clienteId = parseInt(params.id);
+  const { id: rawId } = await params;
+  const clienteId = parseInt(rawId);
   const body      = await req.json();
 
   const { data, error } = await db().from('pagos').insert({
@@ -41,11 +42,12 @@ export async function DELETE(req, { params }) {
   const auth = await requireAuth(req);
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
 
+  const { id: rawId } = await params;
   const { searchParams } = new URL(req.url);
   const pagoId = parseInt(searchParams.get('pagoId'));
   if (!pagoId) return Response.json({ error: 'Falta pagoId' }, { status: 400 });
 
-  const { error } = await db().from('pagos').delete().eq('id', pagoId).eq('cliente_id', parseInt(params.id));
+  const { error } = await db().from('pagos').delete().eq('id', pagoId).eq('cliente_id', parseInt(rawId));
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json({ ok: true });
 }

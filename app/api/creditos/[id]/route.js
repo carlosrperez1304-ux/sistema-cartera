@@ -9,7 +9,8 @@ export async function PUT(req, { params }) {
   const auth = await requireAuth(req);
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
 
-  const id          = parseInt(params.id);
+  const { id: rawId } = await params;
+  const id          = parseInt(rawId);
   if (!id || isNaN(id) || id <= 0) {
     return Response.json({ error: 'ID de crédito inválido' }, { status: 400 });
   }
@@ -59,7 +60,8 @@ export async function DELETE(req, { params }) {
   const auth = await requireAuth(req);
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
 
-  const id = parseInt(params.id);
+  const { id: rawId } = await params;
+  const id = parseInt(rawId);
   const { error } = await db().from('creditos').delete().eq('id', id);
   if (error) return Response.json({ error: error.message }, { status: 500 });
 

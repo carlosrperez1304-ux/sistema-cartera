@@ -6,7 +6,8 @@ export async function GET(req, { params }) {
   const auth = await requireAuth(req);
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
 
-  const clienteId = parseInt(params.clienteId);
+  const { clienteId: rawClienteId } = await params;
+  const clienteId = parseInt(rawClienteId);
   const { data, error } = await db()
     .from('cotizaciones')
     .select('*')
@@ -32,7 +33,8 @@ export async function POST(req, { params }) {
   const auth = await requireAuth(req);
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
 
-  const clienteId = parseInt(params.clienteId);
+  const { clienteId: rawClienteId } = await params;
+  const clienteId = parseInt(rawClienteId);
   const body      = await req.json();
 
   const { data, error } = await db().from('cotizaciones').insert({
