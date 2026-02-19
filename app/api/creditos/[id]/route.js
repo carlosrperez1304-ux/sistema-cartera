@@ -10,6 +10,9 @@ export async function PUT(req, { params }) {
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
 
   const id          = parseInt(params.id);
+  if (!id || isNaN(id) || id <= 0) {
+    return Response.json({ error: 'ID de crédito inválido' }, { status: 400 });
+  }
   const body        = await req.json();
   const { abonos }  = body;
 

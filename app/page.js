@@ -609,9 +609,8 @@ export default function App() {
     if (cliente) { setEditingCliente(cliente); setFormData(cliente); }
     else {
       const hoy = new Date();
-      const nuevoId = clientes.length > 0 ? Math.max(...clientes.map(c => parseInt(c.id) || 0)) + 1 : 1;
       setEditingCliente(null);
-      setFormData({ id: nuevoId, nombre: '', contacto: '', estado: 'Cotizado', fechaCotizacion: hoy.toISOString().split('T')[0], fechaNotificacion: '', fechaPago: '', fechaFacturacion: '', fechaSuspension: '', mes: (hoy.getMonth() + 1).toString(), año: hoy.getFullYear().toString(), monto: '', comentario: '', historial: [] });
+      setFormData({ nombre: '', contacto: '', estado: 'Cotizado', fechaCotizacion: hoy.toISOString().split('T')[0], fechaNotificacion: '', fechaPago: '', fechaFacturacion: '', fechaSuspension: '', mes: (hoy.getMonth() + 1).toString(), año: hoy.getFullYear().toString(), monto: '', comentario: '', historial: [] });
     }
     setShowModal(true);
   };
@@ -620,6 +619,11 @@ export default function App() {
 
   // ── Helpers: actualizar estado local + persistir en API ─────────────────
   const actualizarCliente = async (clienteActualizado) => {
+    const idNum = Number(clienteActualizado.id);
+    if (!clienteActualizado.id || isNaN(idNum) || idNum <= 0) {
+      showToast('Este cliente aún no está en la base de datos. Guárdalo primero con el formulario.', 'error');
+      return;
+    }
     setClientes(prev => prev.map(c => c.id === clienteActualizado.id ? clienteActualizado : c));
     try {
       const r = await fetch(`/api/clientes/${clienteActualizado.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(clienteActualizado) });
@@ -628,6 +632,11 @@ export default function App() {
   };
 
   const actualizarCredito = async (creditoActualizado) => {
+    const idNum = Number(creditoActualizado.id);
+    if (!creditoActualizado.id || isNaN(idNum) || idNum <= 0) {
+      showToast('Este crédito aún no está en la base de datos. Guárdalo primero.', 'error');
+      return;
+    }
     setCreditos(prev => prev.map(c => c.id === creditoActualizado.id ? creditoActualizado : c));
     try {
       const r = await fetch(`/api/creditos/${creditoActualizado.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(creditoActualizado) });
@@ -873,29 +882,36 @@ export default function App() {
   const importarDesdeExcel = (e) => {
     const file = e.target.files[0]; if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       try {
         const wb = XLSX.read(ev.target.result, { type: 'binary' });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const data = XLSX.utils.sheet_to_json(ws);
-        const nuevos = data.map((row, i) => ({
-          id: row['ID'] || row['id'] || Date.now() + i,
-          nombre: row['Nombre'] || row['nombre'] || '',
-          contacto: row['Contacto'] || row['contacto'] || '',
-          estado: row['Estado'] || row['estado'] || 'Cotizado',
-          mes: row['Mes'] || row['mes'] || new Date().getMonth() + 1,
-          año: row['Año'] || row['año'] || new Date().getFullYear(),
-          monto: row['Monto'] ? String(row['Monto']).replace(/[$,]/g, '') : '',
+        const nuevos = data.map((row) => ({
+          nombre:          row['Nombre']          || row['nombre']          || '',
+          contacto:        row['Contacto']         || row['contacto']         || '',
+          estado:          row['Estado']           || row['estado']           || 'Cotizado',
+          mes:             String(row['Mes']       || row['mes']       || new Date().getMonth() + 1),
+          año:             String(row['Año']       || row['año']       || new Date().getFullYear()),
+          monto:           row['Monto'] ? String(row['Monto']).replace(/[$,]/g, '') : '',
           fechaCotizacion: row['Fecha Cotización'] || '',
-          comentario: row['Comentario'] || '',
-          pagosRealizados: [], historial: [],
+          comentario:      row['Comentario']       || '',
+          pagosRealizados: [],
+          historial:       [],
         })).filter(c => c.nombre);
         if (!nuevos.length) { alert('No se encontraron clientes en el archivo.'); return; }
-        if (confirm(`Se importarán ${nuevos.length} clientes. ¿Continuar?`)) {
-          setClientes(prev => [...prev, ...nuevos]);
-          setShowImportModal(false);
-          alert(`✅ ${nuevos.length} clientes importados correctamente.`);
+        if (!confirm(`Se importarán ${nuevos.length} clientes a la base de datos. ¿Continuar?`)) return;
+        // POST cada cliente a la DB para obtener IDs reales
+        let importados = 0;
+        for (const cliente of nuevos) {
+          try {
+            const r = await fetch('/api/clientes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cliente) });
+            const d = await r.json();
+            if (r.ok) { setClientes(prev => [...prev, d]); importados++; }
+          } catch { /* skip */ }
         }
+        setShowImportModal(false);
+        showToast(`✅ ${importados} de ${nuevos.length} clientes importados`, 'success');
       } catch { showToast('Error al leer el archivo Excel', 'error'); }
     };
     reader.readAsBinaryString(file);
@@ -2606,7 +2622,7 @@ export default function App() {
             <div className="modal-content">
               <div className="modal-header"><h2>{editingCliente ? 'Editar Cliente' : 'Nuevo Cliente'}</h2><button className="close-btn" onClick={cerrarModal}>×</button></div>
               <form onSubmit={guardarCliente}>
-                <div className="form-group"><label>ID del Cliente <span style={{ fontSize:'0.75rem', color:'var(--text-muted)', fontWeight:400 }}>(opcional — se asigna automáticamente)</span></label><input type="number" value={formData.id || ''} onChange={(e) => setFormData({ ...formData, id: parseInt(e.target.value) || '' })} placeholder="Dejar vacío para auto-asignar" /></div>
+                {editingCliente && <div className="form-group"><label>ID del Cliente</label><input type="number" value={formData.id || ''} readOnly style={{ background: 'var(--surface2)', cursor: 'default', color: 'var(--text-muted)' }} /></div>}
                 <div className="form-group"><label>Nombre del Cliente *</label><input type="text" value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} required /></div>
                 <div className="form-group"><label>Contacto (Teléfono)</label><input type="text" value={formData.contacto} onChange={(e) => setFormData({ ...formData, contacto: e.target.value })} /></div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
