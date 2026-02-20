@@ -43,9 +43,9 @@ export async function GET(req) {
     .order('id');
 
   if (!puedeVerTodo) {
-    // Buscar delegaciones activas hacia el usuario actual
-    const { data: delegaciones, error: delError } = await db()
-      .from('delegaciones')
+    // Buscar delegations activas hacia el usuario actual
+    const { data: delegations, error: delError } = await db()
+      .from('delegations')
       .select('owner_id')
       .eq('assigned_user_id', username)
       .eq('status', 'Activa');
@@ -54,7 +54,7 @@ export async function GET(req) {
       return Response.json({ error: delError.message }, { status: 500 });
     }
 
-    const ownersDelegados = (delegaciones || []).map(d => d.owner_id);
+    const ownersDelegados = (delegations || []).map(d => d.owner_id);
 
     if (ownersDelegados.length > 0) {
       const ownersList = ownersDelegados.join(',');

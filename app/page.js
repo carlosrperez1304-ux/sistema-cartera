@@ -66,16 +66,16 @@ export default function App() {
     fetch('/api/usuarios').then(r => r.json()).then(data => setUsuarios(data)).catch(() => {});
   };
 
-  const cargarDelegaciones = () => {
-    fetch('/api/delegaciones').then(r => r.json()).then(data => {
-      if (data && data.comoDueno !== undefined) setDelegaciones(data);
+  const cargarDelegations = () => {
+    fetch('/api/delegations').then(r => r.json()).then(data => {
+      if (data && data.comoDueno !== undefined) setDelegations(data);
     }).catch(() => {});
   };
 
   const cargarPendientes = () => {
-    fetch('/api/delegaciones?pendientes=1').then(r => r.json()).then(data => {
+    fetch('/api/delegations?pendientes=1').then(r => r.json()).then(data => {
       if (Array.isArray(data) && data.length > 0) {
-        setDelegacionesPendientes(data);
+        setDelegationsPendientes(data);
         setPendienteIdx(0);
         setShowPendienteModal(true);
       }
@@ -85,7 +85,7 @@ export default function App() {
   useEffect(() => {
     if (isAuthenticated || session) {
       cargarUsuarios();
-      cargarDelegaciones();
+      cargarDelegations();
       cargarPendientes();
     }
   }, [isAuthenticated, session]);
@@ -235,10 +235,10 @@ export default function App() {
   const [direccionOrden, setDireccionOrden] = useState('desc');
   const [filtroAgente, setFiltroAgente] = useState('');
   const [confirmModal, setConfirmModal] = useState({ show: false, titulo: '', mensaje: '', onConfirm: null });
-  // — Delegaciones —
-  const [delegaciones, setDelegaciones] = useState({ comoDueno: [], comoRecibidas: [] });
+  // — Delegations —
+  const [delegations, setDelegations] = useState({ comoDueno: [], comoRecibidas: [] });
   const [showPendienteModal, setShowPendienteModal] = useState(false);
-  const [delegacionesPendientes, setDelegacionesPendientes] = useState([]);
+  const [delegationsPendientes, setDelegationsPendientes] = useState([]);
   const [pendienteIdx, setPendienteIdx] = useState(0);
   const [showCrearDelegacionModal, setShowCrearDelegacionModal] = useState(false);
   const [delegacionWizardStep, setDelegacionWizardStep] = useState(1);
@@ -246,7 +246,7 @@ export default function App() {
   const [delegacionBusquedaCliente, setDelegacionBusquedaCliente] = useState('');
   const [actividad, setActividad] = useState([]);
   const [actividadFiltro, setActividadFiltro] = useState({ delegationId: '', desde: '', hasta: '' });
-  const [actividadTab, setActividadTab] = useState('delegaciones'); // 'delegaciones' | 'recibidas' | 'actividad'
+  const [actividadTab, setActividadTab] = useState('delegations'); // 'delegations' | 'recibidas' | 'actividad'
   const mostrarConfirm = (titulo, mensaje, onConfirm) => setConfirmModal({ show: true, titulo, mensaje, onConfirm });
   const cerrarConfirm  = () => setConfirmModal({ show: false, titulo: '', mensaje: '', onConfirm: null });
   const [paginaActual, setPaginaActual] = useState(1);
@@ -670,19 +670,19 @@ export default function App() {
   // — Funciones de Delegación —
   const responderDelegacion = async (id, accion) => {
     try {
-      const r = await fetch(`/api/delegaciones/${id}/responder`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion }) });
+      const r = await fetch(`/api/delegations/${id}/responder`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion }) });
       const d = await r.json();
       if (r.ok) {
         showToast(accion === 'aceptar' ? '✅ Delegación aceptada. Los clientes ya están en tu cartera.' : 'Delegación rechazada.', accion === 'aceptar' ? 'success' : 'info');
         // Siguiente pendiente si hay más
-        const resto = delegacionesPendientes.slice(1);
-        if (resto.length > 0) { setDelegacionesPendientes(resto); setPendienteIdx(0); }
-        else { setShowPendienteModal(false); setDelegacionesPendientes([]); }
+        const resto = delegationsPendientes.slice(1);
+        if (resto.length > 0) { setDelegationsPendientes(resto); setPendienteIdx(0); }
+        else { setShowPendienteModal(false); setDelegationsPendientes([]); }
         if (accion === 'aceptar') {
           // Recargar clientes para ver los nuevos
           const rc = await fetch('/api/clientes'); const dc = await rc.json(); if (Array.isArray(dc)) setClientes(dc);
         }
-        cargarDelegaciones();
+        cargarDelegations();
       } else { showToast(d.error || 'Error al responder.', 'error'); }
     } catch { showToast('Sin conexión.', 'error'); }
   };
@@ -690,8 +690,8 @@ export default function App() {
   const cancelarDelegacion = async (id) => {
     mostrarConfirm('Cancelar Delegación', '¿Estás seguro de que deseas cancelar esta delegación? Los clientes regresarán al dueño original.', async () => {
       try {
-        const r = await fetch(`/api/delegaciones/${id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' } });
-        if (r.ok) { showToast('Delegación cancelada.', 'info'); cargarDelegaciones(); }
+        const r = await fetch(`/api/delegations/${id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' } });
+        if (r.ok) { showToast('Delegación cancelada.', 'info'); cargarDelegations(); }
         else { const d = await r.json(); showToast(d.error || 'Error.', 'error'); }
       } catch { showToast('Sin conexión.', 'error'); }
     });
@@ -699,14 +699,14 @@ export default function App() {
 
   const crearDelegacion = async () => {
     try {
-      const r = await fetch('/api/delegaciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(delegacionForm) });
+      const r = await fetch('/api/delegations', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(delegacionForm) });
       const d = await r.json();
       if (r.ok) {
         showToast('Delegación enviada. El usuario debe aceptarla.', 'success');
         setShowCrearDelegacionModal(false);
         setDelegacionWizardStep(1);
         setDelegacionForm({ assignedUserId: '', startDate: '', endDate: '', tipo: 'total', clienteIds: [], permisos: { can_edit: true, can_register_payments: true, can_delete: false, read_only: false } });
-        cargarDelegaciones();
+        cargarDelegations();
       } else { showToast(d.error || 'Error al crear delegación.', 'error'); }
     } catch { showToast('Sin conexión.', 'error'); }
   };
@@ -1705,7 +1705,7 @@ export default function App() {
             <button className={`topbar-nav-link ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => setActiveTab('documentos')}>Documentos</button>
             <button className={`topbar-nav-link ${activeTab === 'calendario' ? 'active' : ''}`} onClick={() => setActiveTab('calendario')}>Calendario</button>
             {puedeVerTodo && <button className={`topbar-nav-link ${activeTab === 'carteras' ? 'active' : ''}`} onClick={() => setActiveTab('carteras')}>Carteras</button>}
-            {(esAdmin || esEditor) && <button className={`topbar-nav-link ${activeTab === 'delegaciones' ? 'active' : ''}`} onClick={() => { setActiveTab('delegaciones'); cargarDelegaciones(); }} style={{ position: 'relative' }}>Delegaciones{delegacionesPendientes.length > 0 && <span style={{ position: 'absolute', top: '-2px', right: '-6px', width: '8px', height: '8px', background: '#f97316', borderRadius: '50%' }}></span>}</button>}
+            {(esAdmin || esEditor) && <button className={`topbar-nav-link ${activeTab === 'delegations' ? 'active' : ''}`} onClick={() => { setActiveTab('delegations'); cargarDelegations(); }} style={{ position: 'relative' }}>Delegations{delegationsPendientes.length > 0 && <span style={{ position: 'absolute', top: '-2px', right: '-6px', width: '8px', height: '8px', background: '#f97316', borderRadius: '50%' }}></span>}</button>}
           </nav>
         </div>
         <div className="topbar-right">
@@ -1738,7 +1738,7 @@ export default function App() {
             <div className={`sidebar-item ${activeTab === 'agenda' ? 'active' : ''}`} onClick={() => setActiveTab('agenda')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> Agenda del Día</div>
             <div className={`sidebar-item ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => setActiveTab('documentos')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span> Documentos</div>
             {puedeVerTodo && <div className={`sidebar-item ${activeTab === 'carteras' ? 'active' : ''}`} onClick={() => setActiveTab('carteras')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Carteras por Agente</div>}
-            {(esAdmin || esEditor) && <div className={`sidebar-item ${activeTab === 'delegaciones' ? 'active' : ''}`} onClick={() => { setActiveTab('delegaciones'); cargarDelegaciones(); }} style={{ position: 'relative' }}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span> Delegaciones{delegacionesPendientes.length > 0 && <span style={{ position: 'absolute', top: '6px', right: '8px', width: '8px', height: '8px', background: '#f97316', borderRadius: '50%' }}></span>}</div>}
+            {(esAdmin || esEditor) && <div className={`sidebar-item ${activeTab === 'delegations' ? 'active' : ''}`} onClick={() => { setActiveTab('delegations'); cargarDelegations(); }} style={{ position: 'relative' }}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span> Delegations{delegationsPendientes.length > 0 && <span style={{ position: 'absolute', top: '6px', right: '8px', width: '8px', height: '8px', background: '#f97316', borderRadius: '50%' }}></span>}</div>}
             <div className="sidebar-item" onClick={() => { setArchivosEnProceso([]); setShowCargaMasivaModal(true); }}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span> Carga Masiva PDF</div>
             <div className="sidebar-item" onClick={() => setShowPlantillasModal(true)}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span> Plantillas WA</div>
           </div>
@@ -1835,7 +1835,7 @@ export default function App() {
             <button className={`tab-btn ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => setActiveTab('documentos')}>Documentos</button>
             <button className={`tab-btn ${activeTab === 'calendario' ? 'active' : ''}`} onClick={() => setActiveTab('calendario')}>Calendario</button>
             {puedeVerTodo && <button className={`tab-btn ${activeTab === 'carteras' ? 'active' : ''}`} onClick={() => setActiveTab('carteras')}>Carteras</button>}
-            {(esAdmin || esEditor) && <button className={`tab-btn ${activeTab === 'delegaciones' ? 'active' : ''}`} onClick={() => { setActiveTab('delegaciones'); cargarDelegaciones(); }}>Delegaciones</button>}
+            {(esAdmin || esEditor) && <button className={`tab-btn ${activeTab === 'delegations' ? 'active' : ''}`} onClick={() => { setActiveTab('delegations'); cargarDelegations(); }}>Delegations</button>}
           </div>
 
           {/* TAB DASHBOARD */}
@@ -2816,29 +2816,29 @@ export default function App() {
 
           {/* TAB DELEGACIONES */}
           {(esAdmin || esEditor) && (
-            <div className={`tab-content ${activeTab === 'delegaciones' ? 'active' : ''}`}>
+            <div className={`tab-content ${activeTab === 'delegations' ? 'active' : ''}`}>
               {/* Sub-tabs */}
               <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', borderBottom: '2px solid var(--border)', paddingBottom: '0.75rem' }}>
-                {['delegaciones', 'recibidas', 'actividad'].map(t => (
+                {['delegations', 'recibidas', 'actividad'].map(t => (
                   <button key={t} onClick={() => { setActividadTab(t); if (t === 'actividad') cargarActividad(actividadFiltro); }}
                     style={{ padding: '0.45rem 1.1rem', borderRadius: '8px 8px 0 0', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem',
                       background: actividadTab === t ? 'var(--accent)' : 'var(--surface2)', color: actividadTab === t ? 'white' : 'var(--text-muted)' }}>
-                    {t === 'delegaciones' ? 'Mis Delegaciones' : t === 'recibidas' ? 'Recibidas' : 'Actividad'}
+                    {t === 'delegations' ? 'Mis Delegations' : t === 'recibidas' ? 'Recibidas' : 'Actividad'}
                   </button>
                 ))}
               </div>
 
               {/* Sub-tab: MIS DELEGACIONES */}
-              {actividadTab === 'delegaciones' && (
+              {actividadTab === 'delegations' && (
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                     <div>
-                      <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text)' }}>Mis Delegaciones</h3>
-                      <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Delegaciones que has creado para otros usuarios</p>
+                      <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text)' }}>Mis Delegations</h3>
+                      <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Delegations que has creado para otros usuarios</p>
                     </div>
                     <button onClick={() => { setShowCrearDelegacionModal(true); setDelegacionWizardStep(1); }} className="btn btn-primary" style={{ fontSize: '0.85rem' }}>+ Nueva Delegación</button>
                   </div>
-                  {delegaciones.comoDueno.length === 0 ? (
+                  {delegations.comoDueno.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', fontSize: '0.9rem', background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--border)' }}>
                       No has creado ninguna delegación aún.
                     </div>
@@ -2849,7 +2849,7 @@ export default function App() {
                           <th>Delegatario</th><th>Tipo</th><th>Clientes</th><th>Inicio</th><th>Fin</th><th>Permisos</th><th>Estado</th><th>Acciones</th>
                         </tr></thead>
                         <tbody>
-                          {delegaciones.comoDueno.map(d => {
+                          {delegations.comoDueno.map(d => {
                             const statusColors = { pending: '#f59e0b', accepted: '#10b981', rejected: '#ef4444', expired: '#94a3b8', cancelled: '#94a3b8' };
                             const statusLabels = { pending: 'Pendiente', accepted: 'Activa', rejected: 'Rechazada', expired: 'Expirada', cancelled: 'Cancelada' };
                             return (
@@ -2885,14 +2885,14 @@ export default function App() {
               {/* Sub-tab: RECIBIDAS */}
               {actividadTab === 'recibidas' && (
                 <div>
-                  <h3 style={{ margin: '0 0 1rem', fontSize: '1.1rem', fontWeight: 800, color: 'var(--text)' }}>Delegaciones Recibidas</h3>
-                  {delegaciones.comoRecibidas.length === 0 ? (
+                  <h3 style={{ margin: '0 0 1rem', fontSize: '1.1rem', fontWeight: 800, color: 'var(--text)' }}>Delegations Recibidas</h3>
+                  {delegations.comoRecibidas.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', fontSize: '0.9rem', background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                      No tienes delegaciones recibidas.
+                      No tienes delegations recibidas.
                     </div>
                   ) : (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
-                      {delegaciones.comoRecibidas.map(d => {
+                      {delegations.comoRecibidas.map(d => {
                         const statusColors = { pending: '#f59e0b', accepted: '#10b981', rejected: '#ef4444', expired: '#94a3b8', cancelled: '#94a3b8' };
                         const statusLabels = { pending: 'Pendiente', accepted: 'Activa', rejected: 'Rechazada', expired: 'Expirada', cancelled: 'Cancelada' };
                         const hoy = new Date().toISOString().slice(0,10);
@@ -2945,8 +2945,8 @@ export default function App() {
                     <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text)' }}>Actividad de Delegados</h3>
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                       <select value={actividadFiltro.delegationId} onChange={e => setActividadFiltro(f => ({ ...f, delegationId: e.target.value }))} style={{ padding: '0.35rem 0.6rem', border: '1px solid var(--border)', borderRadius: '6px', background: 'var(--surface)', color: 'var(--text)', fontSize: '0.82rem' }}>
-                        <option value="">Todas las delegaciones</option>
-                        {delegaciones.comoDueno.filter(d => d.status === 'accepted' || d.status === 'expired').map(d => (
+                        <option value="">Todas las delegations</option>
+                        {delegations.comoDueno.filter(d => d.status === 'accepted' || d.status === 'expired').map(d => (
                           <option key={d.id} value={d.id}>#{d.id} → {d.assignedNombre}</option>
                         ))}
                       </select>
@@ -3272,15 +3272,15 @@ export default function App() {
           <div id="save-indicator" className="save-indicator" style={{ display: 'none' }}></div>
 
           {/* ── Modal: Notificación de Delegación Pendiente ─────── */}
-          {showPendienteModal && delegacionesPendientes.length > 0 && (() => {
-            const d = delegacionesPendientes[pendienteIdx];
+          {showPendienteModal && delegationsPendientes.length > 0 && (() => {
+            const d = delegationsPendientes[pendienteIdx];
             if (!d) return null;
             return (
               <div className="modal show" style={{ zIndex: 100000 }}>
                 <div className="modal-content" style={{ maxWidth: '480px', border: '2px solid #f97316' }}>
                   <div className="modal-header" style={{ background: 'linear-gradient(135deg, #fff7ed, #ffedd5)', borderRadius: '12px 12px 0 0' }}>
                     <h2 style={{ fontSize: '1.1rem', color: '#c2410c' }}>📥 Solicitud de Delegación</h2>
-                    {delegacionesPendientes.length > 1 && <span style={{ fontSize: '0.75rem', color: '#9a3412', fontWeight: 700 }}>{pendienteIdx + 1}/{delegacionesPendientes.length}</span>}
+                    {delegationsPendientes.length > 1 && <span style={{ fontSize: '0.75rem', color: '#9a3412', fontWeight: 700 }}>{pendienteIdx + 1}/{delegationsPendientes.length}</span>}
                   </div>
                   <div style={{ padding: '1.25rem' }}>
                     <p style={{ margin: '0 0 1rem', fontSize: '0.93rem', color: 'var(--text)', lineHeight: 1.6 }}>
