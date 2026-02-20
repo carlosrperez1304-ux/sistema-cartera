@@ -26,22 +26,52 @@ function toFront(c) {
   };
 }
 
-// GET — créditos filtrados por usuario
+// GET — créditos filtrados por usuario (incluye delegaciones activas)
 export async function GET(req) {
   const auth = await requireAuth(req);
-  if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
+  if (auth.error) {
+    return Response.json({ error: auth.error }, { status: auth.status });
+  }
 
-  const userRol      = auth.session.user.rol || '';
-  const username     = auth.session.user.username || '';
+  const userRol = auth.session.user.rol || '';
+  const username = auth.session.user.username || '';
   const puedeVerTodo = ROLES_VER_TODO.includes(userRol);
 
-  let query = db().from('creditos').select('*, abonos(*)').order('id');
+  let query = db()
+    .from('creditos')
+    .select('*, abonos(*)')
+    .order('id');
+
   if (!puedeVerTodo) {
-    query = query.eq('creado_por', username);
+    // Buscar delegaciones activas hacia el usuario actual
+    const { data: delegaciones, error: delError } = await db()
+      .from('delegaciones')
+      .select('owner_id')
+      .eq('assigned_user_id', username)
+      .eq('status', 'Activa');
+
+    if (delError) {
+      return Response.json({ error: delError.message }, { status: 500 });
+    }
+
+    const ownersDelegados = (delegaciones || []).map(d => d.owner_id);
+
+    if (ownersDelegados.length > 0) {
+      const ownersList = ownersDelegados.join(',');
+      query = query.or(
+        `creado_por.eq.${username},creado_por.in.(${ownersList})`
+      );
+    } else {
+      query = query.eq('creado_por', username);
+    }
   }
 
   const { data, error } = await query;
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+
+  if (error) {
+    return Response.json({ error: error.message }, { status: 500 });
+  }
+
   return Response.json((data || []).map(toFront));
 }
 
