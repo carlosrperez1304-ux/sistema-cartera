@@ -7,7 +7,7 @@ export default withAuth(
     const token = req.nextauth.token;
 
     // Solo admins pueden acceder a gestión de usuarios
-    if (pathname.startsWith('/api/usuarios') && token?.rol !== 'admin') {
+    if (pathname.startsWith('/api/usuarios') && req.method !== 'GET' && token?.rol !== 'admin') {
       return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 });
     }
 
