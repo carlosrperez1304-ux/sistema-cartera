@@ -1,5 +1,6 @@
 import { db } from '../../../../lib/supabase.js';
 import { requireAuth, checkCsrf, getIP, auditLog, sanitize } from '../../../../lib/security.js';
+import { getDelegationContext, logActividad } from '../../../../lib/delegation.js';
 
 // PUT — actualizar cliente
 export async function PUT(req, { params }) {
@@ -14,6 +15,30 @@ export async function PUT(req, { params }) {
   if (!id || isNaN(id) || id <= 0) {
     return Response.json({ error: 'ID de cliente inválido' }, { status: 400 });
   }
+
+  const username = auth.session.user.username;
+  const userRol  = auth.session.user.rol || '';
+  const esAdmin  = userRol === 'admin';
+
+  // Verificar permisos de delegación si el usuario actúa como delegatario
+  if (!esAdmin) {
+    const ctx = await getDelegationContext(id, username);
+    if (!ctx) return Response.json({ error: 'Cliente no encontrado.' }, { status: 404 });
+
+    if (!ctx.esDueno && !ctx.esDelegatario) {
+      return Response.json({ error: 'No tienes acceso a este cliente.' }, { status: 403 });
+    }
+    if (ctx.esDelegatario && ctx.permisos && !ctx.permisos.editar) {
+      return Response.json({ error: 'No tienes permiso de edición en esta delegación.' }, { status: 403 });
+    }
+
+    // Registrar actividad si es delegatario
+    if (ctx.esDelegatario) {
+      logActividad(id, 'EDITAR', username, ctx.ownerId, ctx.delegationId,
+        `Cliente #${id} editado por delegado ${username}`);
+    }
+  }
+
   const body = await req.json();
 
   const row = {
@@ -62,9 +87,32 @@ export async function DELETE(req, { params }) {
 
   const { id: rawId } = await params;
   const id = parseInt(rawId);
+
+  const username = auth.session.user.username;
+  const userRol  = auth.session.user.rol || '';
+  const esAdmin  = userRol === 'admin';
+
+  // Verificar permisos de delegación si es delegatario
+  if (!esAdmin) {
+    const ctx = await getDelegationContext(id, username);
+    if (!ctx) return Response.json({ error: 'Cliente no encontrado.' }, { status: 404 });
+
+    if (!ctx.esDueno && !ctx.esDelegatario) {
+      return Response.json({ error: 'No tienes acceso a este cliente.' }, { status: 403 });
+    }
+    if (ctx.esDelegatario && ctx.permisos && !ctx.permisos.eliminar) {
+      return Response.json({ error: 'No tienes permiso para eliminar clientes en esta delegación.' }, { status: 403 });
+    }
+
+    if (ctx.esDelegatario) {
+      logActividad(id, 'ELIMINAR', username, ctx.ownerId, ctx.delegationId,
+        `Cliente #${id} eliminado por delegado ${username}`);
+    }
+  }
+
   const { error } = await db().from('clientes').delete().eq('id', id);
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
-  auditLog('DATA_READ', auth.session.user.username, getIP(req), `DELETE cliente id=${id}`);
+  auditLog('DATA_READ', username, getIP(req), `DELETE cliente id=${id}`);
   return Response.json({ ok: true });
 }

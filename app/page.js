@@ -66,8 +66,28 @@ export default function App() {
     fetch('/api/usuarios').then(r => r.json()).then(data => setUsuarios(data)).catch(() => {});
   };
 
+  const cargarDelegaciones = () => {
+    fetch('/api/delegaciones').then(r => r.json()).then(data => {
+      if (data && data.comoDueno !== undefined) setDelegaciones(data);
+    }).catch(() => {});
+  };
+
+  const cargarPendientes = () => {
+    fetch('/api/delegaciones?pendientes=1').then(r => r.json()).then(data => {
+      if (Array.isArray(data) && data.length > 0) {
+        setDelegacionesPendientes(data);
+        setPendienteIdx(0);
+        setShowPendienteModal(true);
+      }
+    }).catch(() => {});
+  };
+
   useEffect(() => {
-    if (isAuthenticated || session) cargarUsuarios();
+    if (isAuthenticated || session) {
+      cargarUsuarios();
+      cargarDelegaciones();
+      cargarPendientes();
+    }
   }, [isAuthenticated, session]);
 
   // Si hay sesión NextAuth: usar el rol del token JWT o el email de Google
@@ -215,6 +235,18 @@ export default function App() {
   const [direccionOrden, setDireccionOrden] = useState('desc');
   const [filtroAgente, setFiltroAgente] = useState('');
   const [confirmModal, setConfirmModal] = useState({ show: false, titulo: '', mensaje: '', onConfirm: null });
+  // — Delegaciones —
+  const [delegaciones, setDelegaciones] = useState({ comoDueno: [], comoRecibidas: [] });
+  const [showPendienteModal, setShowPendienteModal] = useState(false);
+  const [delegacionesPendientes, setDelegacionesPendientes] = useState([]);
+  const [pendienteIdx, setPendienteIdx] = useState(0);
+  const [showCrearDelegacionModal, setShowCrearDelegacionModal] = useState(false);
+  const [delegacionWizardStep, setDelegacionWizardStep] = useState(1);
+  const [delegacionForm, setDelegacionForm] = useState({ assignedUserId: '', startDate: '', endDate: '', tipo: 'total', clienteIds: [], permisos: { editar: true, pagos: true, eliminar: false } });
+  const [delegacionBusquedaCliente, setDelegacionBusquedaCliente] = useState('');
+  const [actividad, setActividad] = useState([]);
+  const [actividadFiltro, setActividadFiltro] = useState({ delegationId: '', desde: '', hasta: '' });
+  const [actividadTab, setActividadTab] = useState('delegaciones'); // 'delegaciones' | 'recibidas' | 'actividad'
   const mostrarConfirm = (titulo, mensaje, onConfirm) => setConfirmModal({ show: true, titulo, mensaje, onConfirm });
   const cerrarConfirm  = () => setConfirmModal({ show: false, titulo: '', mensaje: '', onConfirm: null });
   const [paginaActual, setPaginaActual] = useState(1);
@@ -633,6 +665,61 @@ export default function App() {
       const r = await fetch(`/api/creditos/${creditoActualizado.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(creditoActualizado) });
       if (!r.ok) { const d = await r.json().catch(() => ({})); showToast('Error al guardar crédito: ' + (d.error || r.status), 'error'); }
     } catch { showToast('Sin conexión — cambio no guardado en servidor', 'error'); }
+  };
+
+  // — Funciones de Delegación —
+  const responderDelegacion = async (id, accion) => {
+    try {
+      const r = await fetch(`/api/delegaciones/${id}/responder`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion }) });
+      const d = await r.json();
+      if (r.ok) {
+        showToast(accion === 'aceptar' ? '✅ Delegación aceptada. Los clientes ya están en tu cartera.' : 'Delegación rechazada.', accion === 'aceptar' ? 'success' : 'info');
+        // Siguiente pendiente si hay más
+        const resto = delegacionesPendientes.slice(1);
+        if (resto.length > 0) { setDelegacionesPendientes(resto); setPendienteIdx(0); }
+        else { setShowPendienteModal(false); setDelegacionesPendientes([]); }
+        if (accion === 'aceptar') {
+          // Recargar clientes para ver los nuevos
+          const rc = await fetch('/api/clientes'); const dc = await rc.json(); if (Array.isArray(dc)) setClientes(dc);
+        }
+        cargarDelegaciones();
+      } else { showToast(d.error || 'Error al responder.', 'error'); }
+    } catch { showToast('Sin conexión.', 'error'); }
+  };
+
+  const cancelarDelegacion = async (id) => {
+    mostrarConfirm('Cancelar Delegación', '¿Estás seguro de que deseas cancelar esta delegación? Los clientes regresarán al dueño original.', async () => {
+      try {
+        const r = await fetch(`/api/delegaciones/${id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' } });
+        if (r.ok) { showToast('Delegación cancelada.', 'info'); cargarDelegaciones(); }
+        else { const d = await r.json(); showToast(d.error || 'Error.', 'error'); }
+      } catch { showToast('Sin conexión.', 'error'); }
+    });
+  };
+
+  const crearDelegacion = async () => {
+    try {
+      const r = await fetch('/api/delegaciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(delegacionForm) });
+      const d = await r.json();
+      if (r.ok) {
+        showToast('Delegación enviada. El usuario debe aceptarla.', 'success');
+        setShowCrearDelegacionModal(false);
+        setDelegacionWizardStep(1);
+        setDelegacionForm({ assignedUserId: '', startDate: '', endDate: '', tipo: 'total', clienteIds: [], permisos: { editar: true, pagos: true, eliminar: false } });
+        cargarDelegaciones();
+      } else { showToast(d.error || 'Error al crear delegación.', 'error'); }
+    } catch { showToast('Sin conexión.', 'error'); }
+  };
+
+  const cargarActividad = async (filtros = {}) => {
+    const params = new URLSearchParams();
+    if (filtros.delegationId) params.set('delegationId', filtros.delegationId);
+    if (filtros.desde) params.set('desde', filtros.desde);
+    if (filtros.hasta) params.set('hasta', filtros.hasta);
+    try {
+      const r = await fetch('/api/actividad?' + params.toString()); const d = await r.json();
+      if (Array.isArray(d)) setActividad(d);
+    } catch {}
   };
 
   const guardarCliente = async (e) => {
@@ -1615,6 +1702,7 @@ export default function App() {
             <button className={`topbar-nav-link ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => setActiveTab('documentos')}>Documentos</button>
             <button className={`topbar-nav-link ${activeTab === 'calendario' ? 'active' : ''}`} onClick={() => setActiveTab('calendario')}>Calendario</button>
             {puedeVerTodo && <button className={`topbar-nav-link ${activeTab === 'carteras' ? 'active' : ''}`} onClick={() => setActiveTab('carteras')}>Carteras</button>}
+            {(esAdmin || esEditor) && <button className={`topbar-nav-link ${activeTab === 'delegaciones' ? 'active' : ''}`} onClick={() => { setActiveTab('delegaciones'); cargarDelegaciones(); }} style={{ position: 'relative' }}>Delegaciones{delegacionesPendientes.length > 0 && <span style={{ position: 'absolute', top: '-2px', right: '-6px', width: '8px', height: '8px', background: '#f97316', borderRadius: '50%' }}></span>}</button>}
           </nav>
         </div>
         <div className="topbar-right">
@@ -1647,6 +1735,7 @@ export default function App() {
             <div className={`sidebar-item ${activeTab === 'agenda' ? 'active' : ''}`} onClick={() => setActiveTab('agenda')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> Agenda del Día</div>
             <div className={`sidebar-item ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => setActiveTab('documentos')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span> Documentos</div>
             {puedeVerTodo && <div className={`sidebar-item ${activeTab === 'carteras' ? 'active' : ''}`} onClick={() => setActiveTab('carteras')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Carteras por Agente</div>}
+            {(esAdmin || esEditor) && <div className={`sidebar-item ${activeTab === 'delegaciones' ? 'active' : ''}`} onClick={() => { setActiveTab('delegaciones'); cargarDelegaciones(); }} style={{ position: 'relative' }}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span> Delegaciones{delegacionesPendientes.length > 0 && <span style={{ position: 'absolute', top: '6px', right: '8px', width: '8px', height: '8px', background: '#f97316', borderRadius: '50%' }}></span>}</div>}
             <div className="sidebar-item" onClick={() => { setArchivosEnProceso([]); setShowCargaMasivaModal(true); }}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span> Carga Masiva PDF</div>
             <div className="sidebar-item" onClick={() => setShowPlantillasModal(true)}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span> Plantillas WA</div>
           </div>
@@ -1743,6 +1832,7 @@ export default function App() {
             <button className={`tab-btn ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => setActiveTab('documentos')}>Documentos</button>
             <button className={`tab-btn ${activeTab === 'calendario' ? 'active' : ''}`} onClick={() => setActiveTab('calendario')}>Calendario</button>
             {puedeVerTodo && <button className={`tab-btn ${activeTab === 'carteras' ? 'active' : ''}`} onClick={() => setActiveTab('carteras')}>Carteras</button>}
+            {(esAdmin || esEditor) && <button className={`tab-btn ${activeTab === 'delegaciones' ? 'active' : ''}`} onClick={() => { setActiveTab('delegaciones'); cargarDelegaciones(); }}>Delegaciones</button>}
           </div>
 
           {/* TAB DASHBOARD */}
@@ -2481,7 +2571,12 @@ export default function App() {
                                 <button onClick={() => { setTagClienteId(cliente.id); setTagInput(''); setShowTagModal(true); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem', opacity: 0.4, padding: '0 0.2rem' }} title="Agregar etiqueta">🏷️</button>
                               </div>
                             </td>
-                            {puedeVerTodo && <td><span style={{ fontSize: '0.75rem', fontWeight: 700, background: 'var(--surface2)', padding: '0.15rem 0.5rem', borderRadius: '20px', color: 'var(--text-muted)' }}>{cliente.creadoPor || '—'}</span></td>}
+                            {puedeVerTodo && <td>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, background: 'var(--surface2)', padding: '0.15rem 0.5rem', borderRadius: '20px', color: 'var(--text-muted)' }}>{cliente.creadoPor || '—'}</span>
+                              {cliente.assignedTo && cliente.assignedTo !== cliente.creadoPor && (
+                                <div style={{ fontSize: '0.67rem', marginTop: '0.2rem', color: '#f97316', fontWeight: 700 }}>→ {cliente.assignedTo}</div>
+                              )}
+                            </td>}
                             <td>{cliente.contacto ? (
                               <span onClick={() => abrirWhatsappModal(cliente)} style={{ color: '#16a34a', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
                                 onMouseOver={e => e.currentTarget.style.textDecoration = 'underline'}
@@ -2713,6 +2808,178 @@ export default function App() {
                   </div>
                 );
               })()}
+            </div>
+          )}
+
+          {/* TAB DELEGACIONES */}
+          {(esAdmin || esEditor) && (
+            <div className={`tab-content ${activeTab === 'delegaciones' ? 'active' : ''}`}>
+              {/* Sub-tabs */}
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', borderBottom: '2px solid var(--border)', paddingBottom: '0.75rem' }}>
+                {['delegaciones', 'recibidas', 'actividad'].map(t => (
+                  <button key={t} onClick={() => { setActividadTab(t); if (t === 'actividad') cargarActividad(actividadFiltro); }}
+                    style={{ padding: '0.45rem 1.1rem', borderRadius: '8px 8px 0 0', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem',
+                      background: actividadTab === t ? 'var(--accent)' : 'var(--surface2)', color: actividadTab === t ? 'white' : 'var(--text-muted)' }}>
+                    {t === 'delegaciones' ? 'Mis Delegaciones' : t === 'recibidas' ? 'Recibidas' : 'Actividad'}
+                  </button>
+                ))}
+              </div>
+
+              {/* Sub-tab: MIS DELEGACIONES */}
+              {actividadTab === 'delegaciones' && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text)' }}>Mis Delegaciones</h3>
+                      <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Delegaciones que has creado para otros usuarios</p>
+                    </div>
+                    <button onClick={() => { setShowCrearDelegacionModal(true); setDelegacionWizardStep(1); }} className="btn btn-primary" style={{ fontSize: '0.85rem' }}>+ Nueva Delegación</button>
+                  </div>
+                  {delegaciones.comoDueno.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', fontSize: '0.9rem', background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                      No has creado ninguna delegación aún.
+                    </div>
+                  ) : (
+                    <div style={{ overflowX: 'auto' }}>
+                      <table className="tabla-clientes" style={{ minWidth: '700px' }}>
+                        <thead><tr>
+                          <th>Delegatario</th><th>Tipo</th><th>Clientes</th><th>Inicio</th><th>Fin</th><th>Permisos</th><th>Estado</th><th>Acciones</th>
+                        </tr></thead>
+                        <tbody>
+                          {delegaciones.comoDueno.map(d => {
+                            const statusColors = { pending: '#f59e0b', accepted: '#10b981', rejected: '#ef4444', expired: '#94a3b8', cancelled: '#94a3b8' };
+                            const statusLabels = { pending: 'Pendiente', accepted: 'Activa', rejected: 'Rechazada', expired: 'Expirada', cancelled: 'Cancelada' };
+                            return (
+                              <tr key={d.id}>
+                                <td><div style={{ fontWeight: 700 }}>{d.assignedNombre}</div><div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'var(--mono)' }}>@{d.assignedUserId}</div></td>
+                                <td><span style={{ fontSize: '0.75rem', fontWeight: 700, background: d.tipo === 'total' ? '#dbeafe' : '#fef9c3', color: d.tipo === 'total' ? '#1d4ed8' : '#854d0e', padding: '0.2rem 0.55rem', borderRadius: '20px' }}>{d.tipo === 'total' ? 'Total' : 'Parcial'}</span></td>
+                                <td><strong>{d.cantidadClientes}</strong></td>
+                                <td style={{ fontSize: '0.82rem' }}>{d.startDate}</td>
+                                <td style={{ fontSize: '0.82rem' }}>{d.endDate}</td>
+                                <td>
+                                  <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                                    {d.permisos.editar && <span style={{ fontSize: '0.65rem', background: '#dcfce7', color: '#166534', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>✏️ Editar</span>}
+                                    {d.permisos.pagos && <span style={{ fontSize: '0.65rem', background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>💰 Pagos</span>}
+                                    {d.permisos.eliminar && <span style={{ fontSize: '0.65rem', background: '#fee2e2', color: '#991b1b', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>🗑️ Eliminar</span>}
+                                  </div>
+                                </td>
+                                <td><span style={{ fontSize: '0.75rem', fontWeight: 700, background: statusColors[d.status] + '20', color: statusColors[d.status], padding: '0.2rem 0.6rem', borderRadius: '20px' }}>{statusLabels[d.status] || d.status}</span></td>
+                                <td>
+                                  {['pending', 'accepted'].includes(d.status) && (
+                                    <button onClick={() => cancelarDelegacion(d.id)} className="accion-btn delete" title="Cancelar delegación" style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}>Cancelar</button>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Sub-tab: RECIBIDAS */}
+              {actividadTab === 'recibidas' && (
+                <div>
+                  <h3 style={{ margin: '0 0 1rem', fontSize: '1.1rem', fontWeight: 800, color: 'var(--text)' }}>Delegaciones Recibidas</h3>
+                  {delegaciones.comoRecibidas.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', fontSize: '0.9rem', background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                      No tienes delegaciones recibidas.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+                      {delegaciones.comoRecibidas.map(d => {
+                        const statusColors = { pending: '#f59e0b', accepted: '#10b981', rejected: '#ef4444', expired: '#94a3b8', cancelled: '#94a3b8' };
+                        const statusLabels = { pending: 'Pendiente', accepted: 'Activa', rejected: 'Rechazada', expired: 'Expirada', cancelled: 'Cancelada' };
+                        const hoy = new Date().toISOString().slice(0,10);
+                        const diasRestantes = Math.ceil((new Date(d.endDate) - new Date(hoy)) / 86400000);
+                        return (
+                          <div key={d.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '1.2rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                              <div>
+                                <div style={{ fontWeight: 800, fontSize: '1rem' }}>De: {d.ownerNombre}</div>
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'var(--mono)' }}>@{d.ownerId}</div>
+                              </div>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, background: statusColors[d.status] + '20', color: statusColors[d.status], padding: '0.2rem 0.6rem', borderRadius: '20px' }}>{statusLabels[d.status] || d.status}</span>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                              <div style={{ background: 'var(--surface2)', borderRadius: '8px', padding: '0.5rem', textAlign: 'center' }}>
+                                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent)' }}>{d.cantidadClientes}</div>
+                                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700 }}>CLIENTES</div>
+                              </div>
+                              <div style={{ background: 'var(--surface2)', borderRadius: '8px', padding: '0.5rem', textAlign: 'center' }}>
+                                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: d.status === 'accepted' && diasRestantes <= 3 ? '#ef4444' : 'var(--accent2)' }}>{d.status === 'accepted' ? diasRestantes : '—'}</div>
+                                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700 }}>DÍAS REST.</div>
+                              </div>
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                              {d.startDate} → {d.endDate}
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+                              {d.permisos.editar && <span style={{ fontSize: '0.65rem', background: '#dcfce7', color: '#166534', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>✏️ Editar</span>}
+                              {d.permisos.pagos && <span style={{ fontSize: '0.65rem', background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>💰 Pagos</span>}
+                              {d.permisos.eliminar && <span style={{ fontSize: '0.65rem', background: '#fee2e2', color: '#991b1b', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>🗑️ Eliminar</span>}
+                              {!d.permisos.editar && !d.permisos.pagos && !d.permisos.eliminar && <span style={{ fontSize: '0.65rem', background: 'var(--surface2)', color: 'var(--text-muted)', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>👁 Solo lectura</span>}
+                            </div>
+                            {d.status === 'accepted' && (
+                              <button onClick={() => { setFiltroAgente(d.ownerId); setActiveTab('cartera'); }} style={{ marginTop: '0.75rem', width: '100%', padding: '0.45rem', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}>
+                                Ver clientes asignados
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Sub-tab: ACTIVIDAD */}
+              {actividadTab === 'actividad' && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text)' }}>Actividad de Delegados</h3>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <select value={actividadFiltro.delegationId} onChange={e => setActividadFiltro(f => ({ ...f, delegationId: e.target.value }))} style={{ padding: '0.35rem 0.6rem', border: '1px solid var(--border)', borderRadius: '6px', background: 'var(--surface)', color: 'var(--text)', fontSize: '0.82rem' }}>
+                        <option value="">Todas las delegaciones</option>
+                        {delegaciones.comoDueno.filter(d => d.status === 'accepted' || d.status === 'expired').map(d => (
+                          <option key={d.id} value={d.id}>#{d.id} → {d.assignedNombre}</option>
+                        ))}
+                      </select>
+                      <input type="date" value={actividadFiltro.desde} onChange={e => setActividadFiltro(f => ({ ...f, desde: e.target.value }))} style={{ padding: '0.35rem 0.6rem', border: '1px solid var(--border)', borderRadius: '6px', background: 'var(--surface)', color: 'var(--text)', fontSize: '0.82rem' }} />
+                      <input type="date" value={actividadFiltro.hasta} onChange={e => setActividadFiltro(f => ({ ...f, hasta: e.target.value }))} style={{ padding: '0.35rem 0.6rem', border: '1px solid var(--border)', borderRadius: '6px', background: 'var(--surface)', color: 'var(--text)', fontSize: '0.82rem' }} />
+                      <button onClick={() => cargarActividad(actividadFiltro)} className="btn btn-secondary" style={{ fontSize: '0.82rem' }}>Buscar</button>
+                    </div>
+                  </div>
+                  {actividad.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', fontSize: '0.9rem', background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                      No hay actividad registrada aún. Usa los filtros y presiona Buscar.
+                    </div>
+                  ) : (
+                    <div style={{ overflowX: 'auto' }}>
+                      <table className="tabla-clientes" style={{ minWidth: '600px' }}>
+                        <thead><tr><th>Fecha</th><th>Acción</th><th>Realizado por</th><th>Cliente ID</th><th>Delegación</th><th>Detalle</th></tr></thead>
+                        <tbody>
+                          {actividad.map(a => {
+                            const actionColors = { EDITAR: '#3b82f6', PAGO_ADD: '#10b981', PAGO_DEL: '#f59e0b', ELIMINAR: '#ef4444', DELEGACION_ACEPTADA: '#8b5cf6', DELEGACION_RECHAZADA: '#ef4444', DELEGACION_CANCELADA: '#94a3b8', DELEGACION_EXPIRADA: '#94a3b8' };
+                            return (
+                              <tr key={a.id}>
+                                <td style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{new Date(a.created_at).toLocaleString('es-DO')}</td>
+                                <td><span style={{ fontSize: '0.72rem', fontWeight: 700, background: (actionColors[a.action_type] || '#94a3b8') + '20', color: actionColors[a.action_type] || '#94a3b8', padding: '0.15rem 0.5rem', borderRadius: '9px' }}>{a.action_type}</span></td>
+                                <td style={{ fontWeight: 700, fontSize: '0.82rem', fontFamily: 'var(--mono)' }}>{a.performed_by}</td>
+                                <td style={{ fontSize: '0.82rem' }}>{a.client_id || '—'}</td>
+                                <td style={{ fontSize: '0.78rem' }}>#{a.delegation_id || '—'}</td>
+                                <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={a.description}>{a.description}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -3000,6 +3267,168 @@ export default function App() {
           </div>
 
           <div id="save-indicator" className="save-indicator" style={{ display: 'none' }}></div>
+
+          {/* ── Modal: Notificación de Delegación Pendiente ─────── */}
+          {showPendienteModal && delegacionesPendientes.length > 0 && (() => {
+            const d = delegacionesPendientes[pendienteIdx];
+            if (!d) return null;
+            return (
+              <div className="modal show" style={{ zIndex: 100000 }}>
+                <div className="modal-content" style={{ maxWidth: '480px', border: '2px solid #f97316' }}>
+                  <div className="modal-header" style={{ background: 'linear-gradient(135deg, #fff7ed, #ffedd5)', borderRadius: '12px 12px 0 0' }}>
+                    <h2 style={{ fontSize: '1.1rem', color: '#c2410c' }}>📥 Solicitud de Delegación</h2>
+                    {delegacionesPendientes.length > 1 && <span style={{ fontSize: '0.75rem', color: '#9a3412', fontWeight: 700 }}>{pendienteIdx + 1}/{delegacionesPendientes.length}</span>}
+                  </div>
+                  <div style={{ padding: '1.25rem' }}>
+                    <p style={{ margin: '0 0 1rem', fontSize: '0.93rem', color: 'var(--text)', lineHeight: 1.6 }}>
+                      <strong>{d.ownerNombre} (@{d.ownerId})</strong> te ha enviado una solicitud para cubrir su cartera de clientes.
+                    </p>
+                    <div style={{ background: 'var(--surface2)', borderRadius: '10px', padding: '1rem', marginBottom: '1rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--accent)' }}>{d.cantidadClientes}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700 }}>CLIENTES</div>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text)' }}>{d.startDate}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>al</div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text)' }}>{d.endDate}</div>
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: '1rem' }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.4rem' }}>Permisos que tendrás</div>
+                      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                        {d.permisos.editar && <span style={{ fontSize: '0.78rem', background: '#dcfce7', color: '#166534', padding: '0.2rem 0.6rem', borderRadius: '9px', fontWeight: 700 }}>✏️ Editar</span>}
+                        {d.permisos.pagos && <span style={{ fontSize: '0.78rem', background: '#dbeafe', color: '#1e40af', padding: '0.2rem 0.6rem', borderRadius: '9px', fontWeight: 700 }}>💰 Pagos</span>}
+                        {d.permisos.eliminar && <span style={{ fontSize: '0.78rem', background: '#fee2e2', color: '#991b1b', padding: '0.2rem 0.6rem', borderRadius: '9px', fontWeight: 700 }}>🗑️ Eliminar</span>}
+                        {!d.permisos.editar && !d.permisos.pagos && !d.permisos.eliminar && <span style={{ fontSize: '0.78rem', background: 'var(--surface2)', color: 'var(--text-muted)', padding: '0.2rem 0.6rem', borderRadius: '9px', fontWeight: 700 }}>👁 Solo lectura</span>}
+                      </div>
+                    </div>
+                    <p style={{ margin: '0 0 1.25rem', fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                      ¿Deseas aceptar esta delegación? Si aceptas, los clientes aparecerán en tu cartera mientras dure el período asignado.
+                    </p>
+                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                      <button className="btn btn-secondary" onClick={() => responderDelegacion(d.id, 'rechazar')} style={{ flex: 1 }}>Rechazar</button>
+                      <button className="btn btn-primary" onClick={() => responderDelegacion(d.id, 'aceptar')} style={{ flex: 1, background: '#10b981', border: 'none' }}>✅ Aceptar</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ── Modal: Crear Delegación (Wizard 3 pasos) ─────────── */}
+          {showCrearDelegacionModal && (
+            <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowCrearDelegacionModal(false); }}>
+              <div className="modal-content" style={{ maxWidth: '580px' }}>
+                <div className="modal-header">
+                  <h2>Crear Delegación — Paso {delegacionWizardStep} de 3</h2>
+                  <button className="close-btn" onClick={() => setShowCrearDelegacionModal(false)}>×</button>
+                </div>
+                {/* Barra de progreso */}
+                <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1.25rem' }}>
+                  {[1,2,3].map(s => <div key={s} style={{ flex: 1, height: '4px', borderRadius: '4px', background: delegacionWizardStep >= s ? 'var(--accent)' : 'var(--border)' }}></div>)}
+                </div>
+
+                {/* Paso 1: Usuario y fechas */}
+                {delegacionWizardStep === 1 && (
+                  <div>
+                    <div className="form-group">
+                      <label>Usuario destino *</label>
+                      <select value={delegacionForm.assignedUserId} onChange={e => setDelegacionForm(f => ({ ...f, assignedUserId: e.target.value }))}
+                        style={{ padding: '0.55rem', border: '1px solid var(--border2)', borderRadius: '8px', background: 'var(--surface)', color: 'var(--text)', fontSize: '0.9rem', width: '100%' }}>
+                        <option value="">Seleccionar usuario...</option>
+                        {Object.entries(usuarios).filter(([u]) => u !== (session?.user?.username || currentUser)).map(([u, info]) => (
+                          <option key={u} value={u}>{info.nombre || u} (@{u}) — {info.rol}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div className="form-group"><label>Fecha inicio *</label><input type="date" value={delegacionForm.startDate} onChange={e => setDelegacionForm(f => ({ ...f, startDate: e.target.value }))} /></div>
+                      <div className="form-group"><label>Fecha fin *</label><input type="date" value={delegacionForm.endDate} onChange={e => setDelegacionForm(f => ({ ...f, endDate: e.target.value }))} /></div>
+                    </div>
+                    <div className="form-group">
+                      <label>Tipo de delegación</label>
+                      <div style={{ display: 'flex', gap: '0.75rem' }}>
+                        {['total', 'parcial'].map(t => (
+                          <label key={t} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', padding: '0.6rem 1rem', border: `2px solid ${delegacionForm.tipo === t ? 'var(--accent)' : 'var(--border)'}`, borderRadius: '9px', flex: 1, fontWeight: 600, fontSize: '0.88rem', background: delegacionForm.tipo === t ? 'rgba(var(--accent-rgb),0.08)' : 'transparent' }}>
+                            <input type="radio" name="tipo" value={t} checked={delegacionForm.tipo === t} onChange={() => setDelegacionForm(f => ({ ...f, tipo: t, clienteIds: [] }))} style={{ marginRight: '0.2rem' }} />
+                            {t === 'total' ? '📋 Total (todos mis clientes)' : '🎯 Parcial (seleccionar)'}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="form-actions">
+                      <button className="btn btn-secondary" onClick={() => setShowCrearDelegacionModal(false)}>Cancelar</button>
+                      <button className="btn btn-primary" onClick={() => {
+                        if (!delegacionForm.assignedUserId) { showToast('Selecciona un usuario.', 'error'); return; }
+                        if (!delegacionForm.startDate || !delegacionForm.endDate) { showToast('Completa las fechas.', 'error'); return; }
+                        if (delegacionForm.endDate <= delegacionForm.startDate) { showToast('La fecha fin debe ser posterior.', 'error'); return; }
+                        setDelegacionWizardStep(delegacionForm.tipo === 'parcial' ? 2 : 3);
+                      }}>Siguiente →</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Paso 2: Selección de clientes (solo para parcial) */}
+                {delegacionWizardStep === 2 && delegacionForm.tipo === 'parcial' && (
+                  <div>
+                    <p style={{ margin: '0 0 0.75rem', fontSize: '0.88rem', color: 'var(--text-muted)' }}>Selecciona los clientes que deseas delegar:</p>
+                    <input type="text" placeholder="Buscar cliente..." value={delegacionBusquedaCliente} onChange={e => setDelegacionBusquedaCliente(e.target.value)}
+                      style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid var(--border2)', borderRadius: '8px', marginBottom: '0.75rem', background: 'var(--surface)', color: 'var(--text)', fontSize: '0.88rem' }} />
+                    <div style={{ maxHeight: '280px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                      {clientes.filter(c => c.creadoPor === (session?.user?.username || currentUser) && !c.delegationId &&
+                        (!delegacionBusquedaCliente || c.nombre.toLowerCase().includes(delegacionBusquedaCliente.toLowerCase()))
+                      ).map(c => (
+                        <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.9rem', borderBottom: '1px solid var(--border)', cursor: 'pointer', background: delegacionForm.clienteIds.includes(c.id) ? 'rgba(var(--accent-rgb),0.06)' : 'transparent' }}>
+                          <input type="checkbox" checked={delegacionForm.clienteIds.includes(c.id)} onChange={e => setDelegacionForm(f => ({ ...f, clienteIds: e.target.checked ? [...f.clienteIds, c.id] : f.clienteIds.filter(x => x !== c.id) }))} />
+                          <span style={{ fontWeight: 600, fontSize: '0.88rem' }}>{c.nombre}</span>
+                          <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: 'var(--text-muted)' }}>ID: {c.id} · ${(parseFloat(c.monto) || 0).toLocaleString()}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <div style={{ marginTop: '0.5rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>{delegacionForm.clienteIds.length} cliente(s) seleccionado(s)</div>
+                    <div className="form-actions">
+                      <button className="btn btn-secondary" onClick={() => setDelegacionWizardStep(1)}>← Atrás</button>
+                      <button className="btn btn-primary" onClick={() => {
+                        if (delegacionForm.clienteIds.length === 0) { showToast('Selecciona al menos un cliente.', 'error'); return; }
+                        setDelegacionWizardStep(3);
+                      }}>Siguiente →</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Paso 3: Permisos y resumen */}
+                {delegacionWizardStep === 3 && (
+                  <div>
+                    <p style={{ margin: '0 0 1rem', fontSize: '0.88rem', color: 'var(--text-muted)' }}>Configura los permisos del usuario delegado sobre tus clientes:</p>
+                    {[
+                      { key: 'editar', label: '✏️ Puede editar datos del cliente', desc: 'Nombre, contacto, estado, monto, comentarios' },
+                      { key: 'pagos', label: '💰 Puede registrar y eliminar pagos', desc: 'Gestión del historial de pagos' },
+                      { key: 'eliminar', label: '🗑️ Puede eliminar clientes', desc: 'Eliminación permanente (recomendado: desactivado)' },
+                    ].map(p => (
+                      <label key={p.key} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', border: `1px solid ${delegacionForm.permisos[p.key] ? 'var(--accent)' : 'var(--border)'}`, borderRadius: '9px', marginBottom: '0.5rem', cursor: 'pointer', background: delegacionForm.permisos[p.key] ? 'rgba(var(--accent-rgb),0.05)' : 'transparent' }}>
+                        <input type="checkbox" checked={delegacionForm.permisos[p.key]} onChange={e => setDelegacionForm(f => ({ ...f, permisos: { ...f.permisos, [p.key]: e.target.checked } }))} />
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{p.label}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{p.desc}</div>
+                        </div>
+                      </label>
+                    ))}
+                    <div style={{ background: 'var(--surface2)', borderRadius: '10px', padding: '1rem', marginTop: '1rem', fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.7 }}>
+                      <strong style={{ color: 'var(--text)', display: 'block', marginBottom: '0.4rem' }}>Resumen</strong>
+                      Usuario: <strong>{delegacionForm.assignedUserId}</strong><br/>
+                      Período: <strong>{delegacionForm.startDate} → {delegacionForm.endDate}</strong><br/>
+                      Tipo: <strong>{delegacionForm.tipo === 'total' ? 'Total (todos tus clientes)' : `Parcial (${delegacionForm.clienteIds.length} clientes)`}</strong>
+                    </div>
+                    <div className="form-actions" style={{ marginTop: '1.25rem' }}>
+                      <button className="btn btn-secondary" onClick={() => setDelegacionWizardStep(delegacionForm.tipo === 'parcial' ? 2 : 1)}>← Atrás</button>
+                      <button className="btn btn-primary" onClick={crearDelegacion}>Enviar Solicitud</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* ── Modal de Confirmación ─────────────────────────── */}
           {confirmModal.show && (

@@ -1,5 +1,6 @@
 import { db } from '../../../lib/supabase.js';
 import { requireAuth, checkCsrf, getIP, auditLog, sanitize } from '../../../lib/security.js';
+import { expirarDelegacionesVencidas } from '../../../lib/delegation.js';
 
 // Roles que pueden ver TODOS los registros de todos los usuarios
 const ROLES_VER_TODO = ['admin', 'supervisor_cobro', 'supervisor_contabilidad'];
@@ -21,6 +22,8 @@ function toFront(c) {
     monto:              c.monto           !== null ? String(c.monto) : '',
     codigoCliente:      c.codigo_cliente  !== null && c.codigo_cliente !== undefined ? String(c.codigo_cliente) : '',
     creadoPor:          c.creado_por      || '',
+    assignedTo:         c.assigned_to     || '',
+    delegationId:       c.delegation_id   || null,
     comentario:         c.comentario      || '',
     nota:               c.nota            || '',
     suspendido:         c.suspendido      || false,
@@ -64,6 +67,7 @@ function toRow(body) {
 }
 
 // GET — clientes filtrados por usuario (admins/supervisores ven todos)
+// Visibilidad: creado_por = yo  OR  assigned_to = yo (delegados a mí)
 export async function GET(req) {
   const auth = await requireAuth(req);
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
@@ -72,9 +76,13 @@ export async function GET(req) {
   const username     = auth.session.user.username || '';
   const puedeVerTodo = ROLES_VER_TODO.includes(userRol);
 
+  // Expiry check lazy — expira delegaciones vencidas antes de servir los datos
+  await expirarDelegacionesVencidas();
+
   let query = db().from('clientes').select('*, pagos(*)').order('id');
   if (!puedeVerTodo) {
-    query = query.eq('creado_por', username);
+    // Ver mis clientes propios + los que me fueron delegados
+    query = query.or(`creado_por.eq.${username},assigned_to.eq.${username}`);
   }
 
   const { data, error } = await query;
