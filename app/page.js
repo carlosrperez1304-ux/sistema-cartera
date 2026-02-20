@@ -2953,7 +2953,7 @@ export default function App() {
                               {d.permisos.read_only || (!d.permisos.can_edit && !d.permisos.can_register_payments && !d.permisos.can_delete) && <span style={{ fontSize: '0.65rem', background: 'var(--surface2)', color: 'var(--text-muted)', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>👁 Solo lectura</span>}
                             </div>
                             {d.status === 'accepted' && (
-                              <button onClick={() => { setFiltroAgente(d.ownerId); setActiveTab('cartera'); }} style={{ marginTop: '0.75rem', width: '100%', padding: '0.45rem', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}>
+                              <button onClick={() => { setFiltroAgente(currentUser); setActiveTab('cartera'); }} style={{ marginTop: '0.75rem', width: '100%', padding: '0.45rem', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}>
                                 Ver clientes asignados
                               </button>
                             )}
