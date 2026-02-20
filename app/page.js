@@ -874,21 +874,22 @@ export default function App() {
 
   const eliminarAbono = (abonoId) => { mostrarConfirm('¿Eliminar abono?', '¿Estás seguro que deseas eliminar este abono?', () => setCreditoFormData({ ...creditoFormData, abonos: creditoFormData.abonos.filter(a => a.id !== abonoId) })); };
 
-  const guardarCredito = async (e) => {
-    e.preventDefault();
-    const entrada = { ...creditoFormData, abonos: creditoFormData.abonos || [], historial: [...(creditoFormData.historial || []), { fecha: new Date().toISOString(), accion: editingCredito ? `Actualizado: ${creditoFormData.estado}` : `Creado: ${creditoFormData.estado}` }] };
-    if (editingCredito) {
-      await actualizarCredito({ ...entrada, id: editingCredito.id });
-    } else {
-      try {
-        const r = await fetch('/api/creditos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(entrada) });
-        const data = await r.json();
-        if (r.ok) setCreditos(prev => [...prev, data]);
-        else showToast('Error al guardar crédito: ' + data.error, 'error');
-      } catch { showToast('Error de conexión', 'error'); }
-    }
-    cerrarCreditoModal();
-  };
+ const guardarCredito = async (e) => {
+  e.preventDefault();
+  const montoNorm = String(creditoFormData.monto).replace(',', '.');
+  const entrada = { ...creditoFormData, monto: montoNorm, abonos: creditoFormData.abonos || [], historial: [...(creditoFormData.historial || []), { fecha: new Date().toISOString(), accion: editingCredito ? `Actualizado: ${creditoFormData.estado}` : `Creado: ${creditoFormData.estado}` }] };
+  if (editingCredito) {
+    await actualizarCredito({ ...entrada, id: editingCredito.id });
+  } else {
+    try {
+      const r = await fetch('/api/creditos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(entrada) });
+      const data = await r.json();
+      if (r.ok) setCreditos(prev => [...prev, data]);
+      else showToast('Error al guardar crédito: ' + data.error, 'error');
+    } catch { showToast('Error de conexión', 'error'); }
+  }
+  cerrarCreditoModal();
+};
 
   const eliminarCredito = async (id) => {
     const credito = creditos.find(c => c.id === id);
