@@ -35,7 +35,7 @@ export async function GET(req) {
   const username     = auth.session.user.username || '';
   const puedeVerTodo = ROLES_VER_TODO.includes(userRol);
 
-  let query = db().from('creditos').select('*').order('id');
+  let query = db().from('creditos').select('*, abonos(*)').order('id');
   if (!puedeVerTodo) {
     query = query.eq('creado_por', username);
   }
