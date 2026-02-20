@@ -773,9 +773,11 @@ export default function App() {
 
   const iniciarEdicionCreditoMonto = (credito) => { setEditingCreditoMontoId(credito.id); setTempCreditoMonto(credito.monto || ''); };
   const guardarCreditoMontoInline = (creditoId) => {
-    if (tempCreditoMonto === '' || isNaN(parseFloat(tempCreditoMonto))) { showToast('Monto inválido', 'error'); return; }
+    const montoNorm = tempCreditoMonto.replace(',', '.');
+    const montoNum = parseFloat(montoNorm);
+    if (tempCreditoMonto === '' || isNaN(montoNum) || montoNum <= 0) { showToast('Monto inválido', 'error'); return; }
     const updated = creditos.find(c => c.id === creditoId);
-    if (updated) actualizarCredito({ ...updated, monto: tempCreditoMonto, historial: [...(updated.historial || []), { fecha: new Date().toISOString(), accion: `Monto actualizado a $${tempCreditoMonto}`, usuario: currentUser || 'SISTEMA' }] });
+    if (updated) actualizarCredito({ ...updated, monto: String(montoNum), historial: [...(updated.historial || []), { fecha: new Date().toISOString(), accion: `Monto actualizado a $${montoNum}`, usuario: currentUser || 'SISTEMA' }] });
     setEditingCreditoMontoId(null); setTempCreditoMonto('');
   };
   const cancelarEdicionCreditoMonto = () => { setEditingCreditoMontoId(null); setTempCreditoMonto(''); };
@@ -2695,7 +2697,7 @@ export default function App() {
                           <td>{credito.cliente}</td>
                           <td>
                             {editingCreditoMontoId === credito.id ? (
-                              <input type="number" value={tempCreditoMonto} onChange={(e) => setTempCreditoMonto(e.target.value)} onBlur={() => guardarCreditoMontoInline(credito.id)} onKeyDown={(e) => { if (e.key === 'Enter') guardarCreditoMontoInline(credito.id); else if (e.key === 'Escape') cancelarEdicionCreditoMonto(); }} autoFocus step="0.01" style={{ width: '100%', padding: '0.5rem', border: '2px solid #0ea5e9', borderRadius: '6px', fontWeight: 700 }} />
+                              <input type="text" inputMode="decimal" value={tempCreditoMonto} onChange={(e) => setTempCreditoMonto(e.target.value)} onBlur={() => guardarCreditoMontoInline(credito.id)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); guardarCreditoMontoInline(credito.id); } else if (e.key === 'Escape') cancelarEdicionCreditoMonto(); }} autoFocus style={{ width: '100%', padding: '0.5rem', border: '2px solid #0ea5e9', borderRadius: '6px', fontWeight: 700 }} />
                             ) : (
                               <span onClick={() => iniciarEdicionCreditoMonto(credito)} style={{ cursor: 'pointer', padding: '0.5rem', borderRadius: '6px', display: 'inline-block', fontWeight: 700 }} title="Click para editar">${parseFloat(credito.monto || 0).toLocaleString()}</span>
                             )}
@@ -3370,32 +3372,52 @@ export default function App() {
                 )}
 
                 {/* Paso 2: Selección de clientes (solo para parcial) */}
-                {delegacionWizardStep === 2 && delegacionForm.tipo === 'parcial' && (
-                  <div>
-                    <p style={{ margin: '0 0 0.75rem', fontSize: '0.88rem', color: 'var(--text-muted)' }}>Selecciona los clientes que deseas delegar:</p>
-                    <input type="text" placeholder="Buscar cliente..." value={delegacionBusquedaCliente} onChange={e => setDelegacionBusquedaCliente(e.target.value)}
-                      style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid var(--border2)', borderRadius: '8px', marginBottom: '0.75rem', background: 'var(--surface)', color: 'var(--text)', fontSize: '0.88rem' }} />
-                    <div style={{ maxHeight: '280px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px' }}>
-                      {clientes.filter(c => c.creadoPor === (session?.user?.username || currentUser) && !c.delegationId &&
-                        (!delegacionBusquedaCliente || c.nombre.toLowerCase().includes(delegacionBusquedaCliente.toLowerCase()))
-                      ).map(c => (
-                        <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.9rem', borderBottom: '1px solid var(--border)', cursor: 'pointer', background: delegacionForm.clienteIds.includes(c.id) ? 'rgba(var(--accent-rgb),0.06)' : 'transparent' }}>
-                          <input type="checkbox" checked={delegacionForm.clienteIds.includes(c.id)} onChange={e => setDelegacionForm(f => ({ ...f, clienteIds: e.target.checked ? [...f.clienteIds, c.id] : f.clienteIds.filter(x => x !== c.id) }))} />
-                          <span style={{ fontWeight: 600, fontSize: '0.88rem' }}>{c.nombre}</span>
-                          <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: 'var(--text-muted)' }}>ID: {c.id} · ${(parseFloat(c.monto) || 0).toLocaleString()}</span>
-                        </label>
-                      ))}
+                {delegacionWizardStep === 2 && delegacionForm.tipo === 'parcial' && (() => {
+                  const misClientes = clientes.filter(c => c.creadoPor === (session?.user?.username || currentUser) &&
+                    (!delegacionBusquedaCliente || c.nombre.toLowerCase().includes(delegacionBusquedaCliente.toLowerCase())));
+                  const todosSeleccionados = misClientes.length > 0 && misClientes.every(c => delegacionForm.clienteIds.includes(c.id));
+                  return (
+                    <div>
+                      <p style={{ margin: '0 0 0.75rem', fontSize: '0.88rem', color: 'var(--text-muted)' }}>Selecciona los clientes que deseas delegar:</p>
+                      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                        <input type="text" placeholder="Buscar cliente..." value={delegacionBusquedaCliente} onChange={e => setDelegacionBusquedaCliente(e.target.value)}
+                          style={{ flex: 1, padding: '0.5rem 0.75rem', border: '1px solid var(--border2)', borderRadius: '8px', background: 'var(--surface)', color: 'var(--text)', fontSize: '0.88rem' }} />
+                        <button className="btn btn-secondary" style={{ whiteSpace: 'nowrap', fontSize: '0.82rem', padding: '0.4rem 0.75rem' }}
+                          onClick={() => {
+                            if (todosSeleccionados) {
+                              setDelegacionForm(f => ({ ...f, clienteIds: f.clienteIds.filter(id => !misClientes.find(c => c.id === id)) }));
+                            } else {
+                              const nuevos = misClientes.map(c => c.id);
+                              setDelegacionForm(f => ({ ...f, clienteIds: [...new Set([...f.clienteIds, ...nuevos])] }));
+                            }
+                          }}>
+                          {todosSeleccionados ? '☐ Deseleccionar todos' : '☑ Seleccionar todos'}
+                        </button>
+                      </div>
+                      <div style={{ maxHeight: '280px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                        {misClientes.length === 0 && (
+                          <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.88rem' }}>No hay clientes que coincidan.</div>
+                        )}
+                        {misClientes.map(c => (
+                          <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.9rem', borderBottom: '1px solid var(--border)', cursor: 'pointer', background: delegacionForm.clienteIds.includes(c.id) ? 'rgba(var(--accent-rgb),0.06)' : 'transparent' }}>
+                            <input type="checkbox" checked={delegacionForm.clienteIds.includes(c.id)} onChange={e => setDelegacionForm(f => ({ ...f, clienteIds: e.target.checked ? [...f.clienteIds, c.id] : f.clienteIds.filter(x => x !== c.id) }))} />
+                            <span style={{ fontWeight: 600, fontSize: '0.88rem' }}>{c.nombre}</span>
+                            {c.delegationId && <span style={{ fontSize: '0.7rem', color: '#f97316', fontWeight: 700 }}>EN DELEGACIÓN</span>}
+                            <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: 'var(--text-muted)' }}>ID: {c.id} · ${(parseFloat(c.monto) || 0).toLocaleString()}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <div style={{ marginTop: '0.5rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>{delegacionForm.clienteIds.length} de {misClientes.length} cliente(s) seleccionado(s)</div>
+                      <div className="form-actions">
+                        <button className="btn btn-secondary" onClick={() => setDelegacionWizardStep(1)}>← Atrás</button>
+                        <button className="btn btn-primary" onClick={() => {
+                          if (delegacionForm.clienteIds.length === 0) { showToast('Selecciona al menos un cliente.', 'error'); return; }
+                          setDelegacionWizardStep(3);
+                        }}>Siguiente →</button>
+                      </div>
                     </div>
-                    <div style={{ marginTop: '0.5rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>{delegacionForm.clienteIds.length} cliente(s) seleccionado(s)</div>
-                    <div className="form-actions">
-                      <button className="btn btn-secondary" onClick={() => setDelegacionWizardStep(1)}>← Atrás</button>
-                      <button className="btn btn-primary" onClick={() => {
-                        if (delegacionForm.clienteIds.length === 0) { showToast('Selecciona al menos un cliente.', 'error'); return; }
-                        setDelegacionWizardStep(3);
-                      }}>Siguiente →</button>
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Paso 3: Permisos y resumen */}
                 {delegacionWizardStep === 3 && (
