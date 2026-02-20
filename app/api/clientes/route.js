@@ -81,8 +81,23 @@ export async function GET(req) {
 
   let query = db().from('clientes').select('*, pagos(*)').order('id');
   if (!puedeVerTodo) {
-    // Ver mis clientes propios + los que me fueron delegados
-    query = query.or(`creado_por.eq.${username},assigned_to.eq.${username}`);
+    // Obtener delegations aceptadas hacia el usuario actual
+    const { data: delegations, error: delError } = await db()
+      .from('delegations')
+      .select('owner_id')
+      .eq('assigned_user_id', username)
+      .eq('status', 'accepted');
+
+    if (delError) {
+      return Response.json({ error: delError.message }, { status: 500 });
+    }
+
+    const ownersDelegados = (delegations || []).map(d => d.owner_id);
+    // Incluir: mis clientes + clientes de owners delegados + clientes asignados a mí directamente
+    const visibleOwners = [username, ...ownersDelegados];
+    query = query.or(
+      `creado_por.in.(${visibleOwners.join(',')}),assigned_to.eq.${username}`
+    );
   }
 
   const { data, error } = await query;
