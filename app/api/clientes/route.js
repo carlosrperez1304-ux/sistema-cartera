@@ -1,6 +1,5 @@
 import { db } from '../../../lib/supabase.js';
 import { requireAuth, checkCsrf, getIP, auditLog, sanitize } from '../../../lib/security.js';
-import { expirarDelegacionesVencidas } from '../../../lib/delegation.js';
 
 // Roles que pueden ver TODOS los registros de todos los usuarios
 const ROLES_VER_TODO = ['admin', 'supervisor_cobro', 'supervisor_contabilidad'];
@@ -76,28 +75,10 @@ export async function GET(req) {
   const username     = auth.session.user.username || '';
   const puedeVerTodo = ROLES_VER_TODO.includes(userRol);
 
-  // Expiry check lazy — expira delegaciones vencidas antes de servir los datos
-  await expirarDelegacionesVencidas();
-
   let query = db().from('clientes').select('*, pagos(*)').order('id');
   if (!puedeVerTodo) {
-    // Obtener delegations aceptadas hacia el usuario actual
-    const { data: delegations, error: delError } = await db()
-      .from('delegations')
-      .select('owner_id')
-      .eq('assigned_user_id', username)
-      .eq('status', 'accepted');
-
-    if (delError) {
-      return Response.json({ error: delError.message }, { status: 500 });
-    }
-
-    const ownersDelegados = (delegations || []).map(d => d.owner_id);
-    // Incluir: mis clientes + clientes de owners delegados + clientes asignados a mí directamente
-    const visibleOwners = [username, ...ownersDelegados];
-    query = query.or(
-      `creado_por.in.(${visibleOwners.join(',')}),assigned_to.eq.${username}`
-    );
+    // Cartera propia: solo registros creados por el usuario actual
+    query = query.eq('creado_por', username);
   }
 
   const { data, error } = await query;
