@@ -47,6 +47,7 @@ function toRow(body) {
     mes:                body.mes                || null,
     anio:               body.año                || null,
     monto:              (body.monto !== null && body.monto !== undefined && body.monto !== '') ? parseFloat(body.monto) : null,
+    codigo_cliente:     (body.codigoCliente !== null && body.codigoCliente !== undefined && body.codigoCliente !== '') ? parseInt(body.codigoCliente) : null,
     comentario:         body.comentario ? sanitize(body.comentario, 500) : null,
     nota:               body.nota ? sanitize(body.nota, 500) : null,
     suspendido:         body.suspendido         || false,
