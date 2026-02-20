@@ -43,27 +43,22 @@ export async function GET(req) {
     .order('id');
 
   if (!puedeVerTodo) {
-    // Buscar delegations activas hacia el usuario actual
+    // Buscar delegations aceptadas hacia el usuario actual
     const { data: delegations, error: delError } = await db()
       .from('delegations')
       .select('owner_id')
       .eq('assigned_user_id', username)
-      .eq('status', 'Activa');
+      .eq('status', 'accepted');
 
     if (delError) {
       return Response.json({ error: delError.message }, { status: 500 });
     }
 
     const ownersDelegados = (delegations || []).map(d => d.owner_id);
+    // Siempre incluir al usuario actual + cualquier owner delegado
+    const visibleOwners = [username, ...ownersDelegados];
 
-    if (ownersDelegados.length > 0) {
-      const ownersList = ownersDelegados.join(',');
-      query = query.or(
-        `creado_por.eq.${username},creado_por.in.(${ownersList})`
-      );
-    } else {
-      query = query.eq('creado_por', username);
-    }
+    query = query.in('creado_por', visibleOwners);
   }
 
   const { data, error } = await query;
