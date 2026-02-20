@@ -159,10 +159,21 @@ export default function App() {
     if (!session?.user) return;
     const cargar = async () => {
       try {
-        const [resC, resCr] = await Promise.all([fetch('/api/clientes'), fetch('/api/creditos')]);
-        const apiClientes = resC.ok ? await resC.json() : null;
-        const apiCreditos = resCr.ok ? await resCr.json() : null;
-        if (apiClientes && Array.isArray(apiClientes)) setClientes(apiClientes);
+        const [resC, resDelC, resCr] = await Promise.all([
+          fetch('/api/clientes'),
+          fetch('/api/delegacion-clientes'),
+          fetch('/api/creditos'),
+        ]);
+        const propios    = resC.ok    ? await resC.json()    : [];
+        const delegados  = resDelC.ok ? await resDelC.json() : [];
+        const apiCreditos = resCr.ok  ? await resCr.json()  : null;
+        // Unir propios + delegados evitando duplicados por id
+        if (Array.isArray(propios) || Array.isArray(delegados)) {
+          const mapa = new Map();
+          [...(Array.isArray(propios) ? propios : []),
+           ...(Array.isArray(delegados) ? delegados : [])].forEach(c => mapa.set(c.id, c));
+          setClientes([...mapa.values()]);
+        }
         if (apiCreditos && Array.isArray(apiCreditos)) setCreditos(apiCreditos);
       } catch { /* offline o error de red — mantener datos en pantalla */ }
     };
@@ -679,8 +690,14 @@ export default function App() {
         if (resto.length > 0) { setDelegationsPendientes(resto); setPendienteIdx(0); }
         else { setShowPendienteModal(false); setDelegationsPendientes([]); }
         if (accion === 'aceptar') {
-          // Recargar clientes para ver los nuevos
-          const rc = await fetch('/api/clientes'); const dc = await rc.json(); if (Array.isArray(dc)) setClientes(dc);
+          // Recargar clientes propios + delegados para ver los nuevos
+          const [rc, rd] = await Promise.all([fetch('/api/clientes'), fetch('/api/delegacion-clientes')]);
+          const propios   = rc.ok ? await rc.json() : [];
+          const delegados = rd.ok ? await rd.json() : [];
+          const mapa = new Map();
+          [...(Array.isArray(propios) ? propios : []),
+           ...(Array.isArray(delegados) ? delegados : [])].forEach(c => mapa.set(c.id, c));
+          setClientes([...mapa.values()]);
         }
         cargarDelegations();
       } else { showToast(d.error || 'Error al responder.', 'error'); }
