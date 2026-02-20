@@ -601,6 +601,14 @@ export default function App() {
 
   const clientesFiltrados = useMemo(() => {
     let resultado = datosActuales.clientes;
+    const myUsername = (session?.user?.username || '').toLowerCase();
+    if (filter === 'delegaciones') {
+      // Solo clientes delegados (creados por otro usuario)
+      resultado = resultado.filter(c => c.creadoPor.toLowerCase() !== myUsername);
+    } else if (!puedeVerTodo) {
+      // Cartera propia: solo los del usuario actual
+      resultado = resultado.filter(c => c.creadoPor.toLowerCase() === myUsername);
+    }
     if (filtroAgente) resultado = resultado.filter(c => c.creadoPor === filtroAgente);
     if (searchTerm) resultado = resultado.filter(c => c.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || (c.contacto || '').includes(searchTerm) || c.id.toString().includes(searchTerm));
     if (fechaDesde) resultado = resultado.filter(c => c.fechaCotizacion && c.fechaCotizacion >= fechaDesde);
@@ -608,7 +616,7 @@ export default function App() {
     if (filtroMontoMin !== '') resultado = resultado.filter(c => (parseFloat(c.monto) || 0) >= parseFloat(filtroMontoMin));
     if (filtroMontoMax !== '') resultado = resultado.filter(c => (parseFloat(c.monto) || 0) <= parseFloat(filtroMontoMax));
     if (filtroEstados.length > 0) resultado = resultado.filter(c => filtroEstados.includes(c.estado));
-    else if (filter !== 'todos') {
+    else if (filter !== 'todos' && filter !== 'delegaciones') {
       if (filter === 'no-generaron') resultado = resultado.filter(c => c.estado === 'No Generaron');
       else resultado = resultado.filter(c => c.estado.toLowerCase() === filter);
     }
@@ -623,7 +631,7 @@ export default function App() {
       return direccionOrden === 'asc' ? comparacion : -comparacion;
     });
     return resultado;
-  }, [datosActuales.clientes, searchTerm, filter, ordenarPor, direccionOrden]);
+  }, [datosActuales.clientes, searchTerm, filter, ordenarPor, direccionOrden, puedeVerTodo, session?.user?.username]);
 
   const totalPaginas = Math.ceil(clientesFiltrados.length / ITEMS_POR_PAGINA);
   const clientesPaginados = clientesFiltrados.slice((paginaActual - 1) * ITEMS_POR_PAGINA, paginaActual * ITEMS_POR_PAGINA);
@@ -2421,8 +2429,10 @@ export default function App() {
                 {(fechaDesde || fechaHasta) && <button onClick={() => { setFechaDesde(''); setFechaHasta(''); }} style={{ padding: '0.4rem 0.7rem', borderRadius: '7px', border: '1px solid var(--danger)', background: '#fef2f2', color: 'var(--danger)', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}>✕ Limpiar</button>}
               </div>
               <div className="filter-buttons">
-                {['todos', 'cotizado', 'notificado', 'pagado', 'facturado', 'vencido', 'no-generaron'].map(f => (
-                  <button key={f} className={`btn btn-filter ${filter === f ? 'active' : ''}`} onClick={() => { setFilter(f); setPaginaActual(1); }}>{f === 'todos' ? 'Todos' : f === 'no-generaron' ? 'No Generaron' : f.charAt(0).toUpperCase() + f.slice(1)}</button>
+                {['todos', 'cotizado', 'notificado', 'pagado', 'facturado', 'vencido', 'no-generaron', 'delegaciones'].map(f => (
+                  <button key={f} className={`btn btn-filter ${filter === f ? 'active' : ''}`} onClick={() => { setFilter(f); setPaginaActual(1); }}>
+                    {f === 'todos' ? 'Todos' : f === 'no-generaron' ? 'No Generaron' : f === 'delegaciones' ? '🤝 Delegaciones' : f.charAt(0).toUpperCase() + f.slice(1)}
+                  </button>
                 ))}
               </div>
               <div style={{ display: 'flex', gap: '0.3rem' }}>
