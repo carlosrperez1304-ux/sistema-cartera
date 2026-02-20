@@ -194,7 +194,7 @@ export default function App() {
   const [notaClienteId, setNotaClienteId] = useState(null);
   const [notaTexto, setNotaTexto] = useState('');
   const [editingCliente, setEditingCliente] = useState(null);
-  const [formData, setFormData] = useState({ id: '', nombre: '', contacto: '', estado: 'Cotizado', fechaCotizacion: '', fechaNotificacion: '', fechaPago: '', fechaFacturacion: '', fechaSuspension: '', mes: '', año: '', monto: '', comentario: '', historial: [] });
+  const [formData, setFormData] = useState({ id: '', codigoCliente: '', nombre: '', contacto: '', estado: 'Cotizado', fechaCotizacion: '', fechaNotificacion: '', fechaPago: '', fechaFacturacion: '', fechaSuspension: '', mes: '', año: '', monto: '', comentario: '', historial: [] });
   const [activeTab, setActiveTab] = useState('cartera');
   const [darkMode, setDarkMode] = useState(false);
   const [vistaCards, setVistaCards] = useState(false);
@@ -610,7 +610,7 @@ export default function App() {
     else {
       const hoy = new Date();
       setEditingCliente(null);
-      setFormData({ nombre: '', contacto: '', estado: 'Cotizado', fechaCotizacion: hoy.toISOString().split('T')[0], fechaNotificacion: '', fechaPago: '', fechaFacturacion: '', fechaSuspension: '', mes: (hoy.getMonth() + 1).toString(), año: hoy.getFullYear().toString(), monto: '', comentario: '', historial: [] });
+      setFormData({ codigoCliente: '', nombre: '', contacto: '', estado: 'Cotizado', fechaCotizacion: hoy.toISOString().split('T')[0], fechaNotificacion: '', fechaPago: '', fechaFacturacion: '', fechaSuspension: '', mes: (hoy.getMonth() + 1).toString(), año: hoy.getFullYear().toString(), monto: '', comentario: '', historial: [] });
     }
     setShowModal(true);
   };
@@ -2408,7 +2408,7 @@ export default function App() {
                                 onClick={() => { setHistorialPagosCliente(cliente); setShowHistorialPagosModal(true); }}>
                                 {cliente.nombre}
                               </div>
-                              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>#{cliente.id} · {cliente.mes}/{cliente.año}</div>
+                              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>{cliente.codigoCliente ? <span style={{ fontWeight: 700, color: 'var(--accent)' }}>#{cliente.codigoCliente}</span> : `#${cliente.id}`} · {cliente.mes}/{cliente.año}</div>
                               {s.monto > 0 && <div style={{ fontWeight: 800, fontFamily: 'var(--mono)', fontSize: '0.9rem', color: 'var(--accent2)', marginBottom: '0.35rem' }}>${s.monto.toLocaleString('en-US', { maximumFractionDigits: 0 })}</div>}
                               {s.monto > 0 && (
                                 <div className="progress-bar-wrap" style={{ marginBottom: '0.4rem' }}>
@@ -2438,7 +2438,7 @@ export default function App() {
                   <table className={modoCompacto ? 'compact-mode' : ''}>
                     <thead><tr>
                       <th><input type="checkbox" onChange={toggleTodos} checked={clientesPaginados.length > 0 && clientesPaginados.every(c => clientesSeleccionados.includes(c.id))} style={{ cursor:'pointer' }} title="Seleccionar todos" /></th>
-                      <th>ID</th><th>Cliente</th><th>Contacto</th><th>Estado Actual</th><th>Mes/Año</th><th>Monto</th><th>Fecha Cotización</th><th>Proceso</th><th>Suspensión</th><th>Opciones</th>
+                      <th>ID</th><th>Código</th><th>Cliente</th><th>Contacto</th><th>Estado Actual</th><th>Mes/Año</th><th>Monto</th><th>Fecha Cotización</th><th>Proceso</th><th>Suspensión</th><th>Opciones</th>
                     </tr></thead>
                     <tbody>
                       {clientesPaginados.map(cliente => {
@@ -2447,6 +2447,7 @@ export default function App() {
                           <tr key={cliente.id} className={`${estaSuspendido ? 'cliente-suspendido' : ''} ${clientesSeleccionados.includes(cliente.id) ? 'row-selected' : ''}`}>
                             <td><input type="checkbox" checked={clientesSeleccionados.includes(cliente.id)} onChange={() => toggleSeleccion(cliente.id)} style={{ cursor:'pointer' }} /></td>
                             <td><div className="id-with-led"><span className={`status-led ${estaSuspendido ? 'suspended' : esClienteActivo(cliente) ? 'active' : 'inactive'}`}></span><strong>{cliente.id}</strong></div></td>
+                            <td><strong style={{ fontFamily: 'var(--mono)', color: 'var(--accent)' }}>{cliente.codigoCliente || '—'}</strong></td>
                             <td>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 {(() => { const av = getAvatar(cliente.nombre); return <div className="avatar avatar-sm" style={{ background: av.color }}>{av.letra}</div>; })()}
@@ -2622,7 +2623,8 @@ export default function App() {
             <div className="modal-content">
               <div className="modal-header"><h2>{editingCliente ? 'Editar Cliente' : 'Nuevo Cliente'}</h2><button className="close-btn" onClick={cerrarModal}>×</button></div>
               <form onSubmit={guardarCliente}>
-                {editingCliente && <div className="form-group"><label>ID del Cliente</label><input type="number" value={formData.id || ''} readOnly style={{ background: 'var(--surface2)', cursor: 'default', color: 'var(--text-muted)' }} /></div>}
+                {editingCliente && <div className="form-group"><label>ID del Sistema</label><input type="number" value={formData.id || ''} readOnly style={{ background: 'var(--surface2)', cursor: 'default', color: 'var(--text-muted)' }} /></div>}
+                <div className="form-group"><label>Código de Cliente</label><input type="number" value={formData.codigoCliente || ''} onChange={(e) => setFormData({ ...formData, codigoCliente: e.target.value })} placeholder="Ej: 1001" /></div>
                 <div className="form-group"><label>Nombre del Cliente *</label><input type="text" value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} required /></div>
                 <div className="form-group"><label>Contacto (Teléfono)</label><input type="text" value={formData.contacto} onChange={(e) => setFormData({ ...formData, contacto: e.target.value })} /></div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
