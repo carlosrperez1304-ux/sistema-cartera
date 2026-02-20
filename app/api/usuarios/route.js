@@ -1,10 +1,11 @@
 import {
-  getUsers, saveUsers, requireAdmin,
+  getUsers, saveUsers, requireAdmin, requireAuth,
   hashPassword, sanitize, validatePassword,
   auditLog, checkCsrf, checkApiRateLimit, getIP,
 } from '../../../lib/security.js';
 
-// GET — lista de usuarios sin contraseñas (solo admins autenticados)
+// GET — lista de usuarios sin contraseñas (cualquier usuario autenticado)
+// Necesario para que agentes puedan ver a sus compañeros en el wizard de delegación
 export async function GET(req) {
   // Rate limit: 30 peticiones/min por IP
   const rl = checkApiRateLimit(req, 'GET:/api/usuarios');
@@ -13,9 +14,8 @@ export async function GET(req) {
     return Response.json({ error: rl.message }, { status: 429 });
   }
 
-  const auth = await requireAdmin(req);
+  const auth = await requireAuth(req);
   if (auth.error) {
-    auditLog('ACCESS_DENY', '?', getIP(req), `GET /api/usuarios: ${auth.error}`);
     return Response.json({ error: auth.error }, { status: auth.status });
   }
 
