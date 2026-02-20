@@ -1,6 +1,8 @@
 import { db } from '../../../lib/supabase.js';
 import { requireAuth, checkCsrf, sanitize } from '../../../lib/security.js';
 
+const ROLES_VER_TODO = ['admin', 'supervisor_cobro', 'supervisor_contabilidad'];
+
 function toFront(c) {
   return {
     id:               c.id,
@@ -13,6 +15,7 @@ function toFront(c) {
     fechaPagoC:       c.fecha_pago_c     || '',
     estado:           c.estado           || 'Activo',
     comentario:       c.comentario       || '',
+    creadoPor:        c.creado_por       || '',
     historial:        c.historial        || [],
     abonos: (c.abonos || []).map(a => ({
       id:           a.id,
@@ -23,21 +26,26 @@ function toFront(c) {
   };
 }
 
-// GET — todos los créditos con sus abonos
+// GET — créditos filtrados por usuario
 export async function GET(req) {
   const auth = await requireAuth(req);
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
 
-  const { data, error } = await db()
-    .from('creditos')
-    .select('*, abonos(*)')
-    .order('id');
+  const userRol      = auth.session.user.rol || '';
+  const username     = auth.session.user.username || '';
+  const puedeVerTodo = ROLES_VER_TODO.includes(userRol);
 
+  let query = db().from('creditos').select('*, abonos(*)').order('id');
+  if (!puedeVerTodo) {
+    query = query.eq('creado_por', username);
+  }
+
+  const { data, error } = await query;
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json((data || []).map(toFront));
 }
 
-// POST — crear crédito (con sus abonos)
+// POST — crear crédito (asigna creado_por al usuario actual)
 export async function POST(req) {
   const csrf = checkCsrf(req);
   if (csrf) return Response.json({ error: csrf.error }, { status: csrf.status });
@@ -45,10 +53,9 @@ export async function POST(req) {
   const auth = await requireAuth(req);
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
 
-  const body        = await req.json();
+  const body = await req.json();
   const { abonos, ...creditoData } = body;
 
-  // Validación de campos obligatorios
   if (!creditoData.cliente) {
     return Response.json({ error: 'El campo cliente es obligatorio.' }, { status: 400 });
   }
@@ -59,31 +66,30 @@ export async function POST(req) {
 
   const parsedId = parseInt(creditoData.id);
   const insertRow = {
-    numero_orden:     creditoData.numeroOrden     || null,
-    cliente:          creditoData.cliente,
-    monto:            (creditoData.monto !== null && creditoData.monto !== undefined && creditoData.monto !== '') ? parseFloat(creditoData.monto) : null,
-    fecha_inicio:     creditoData.fechaInicio     || null,
-    plazo_meses:      creditoData.plazoMeses ? parseInt(creditoData.plazoMeses) : null,
-    fecha_vencimiento:creditoData.fechaVencimiento|| null,
-    fecha_pago_c:     creditoData.fechaPagoC      || null,
-    estado:           creditoData.estado          || 'Activo',
-    comentario:       creditoData.comentario ? sanitize(creditoData.comentario, 500) : null,
-    historial:        creditoData.historial       || [],
-    updated_at:       new Date().toISOString(),
+    numero_orden:      creditoData.numeroOrden     || null,
+    cliente:           creditoData.cliente,
+    monto:             montoNum,
+    fecha_inicio:      creditoData.fechaInicio     || null,
+    plazo_meses:       creditoData.plazoMeses ? parseInt(creditoData.plazoMeses) : null,
+    fecha_vencimiento: creditoData.fechaVencimiento|| null,
+    fecha_pago_c:      creditoData.fechaPagoC      || null,
+    estado:            creditoData.estado          || 'Activo',
+    comentario:        creditoData.comentario ? sanitize(creditoData.comentario, 500) : null,
+    historial:         creditoData.historial       || [],
+    creado_por:        auth.session.user.username,
+    updated_at:        new Date().toISOString(),
   };
   if (!isNaN(parsedId) && parsedId > 0) insertRow.id = parsedId;
 
   const { data, error } = await db().from('creditos').insert(insertRow).select().single();
-
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
-  // Insertar abonos si los hay (sin id — auto-generado)
   if (abonos && abonos.length > 0) {
     await db().from('abonos').insert(
       abonos.map(a => ({
-        credito_id: data.id,
-        monto: parseFloat(a.monto),
-        fecha: a.fecha || new Date().toISOString(),
+        credito_id:    data.id,
+        monto:         parseFloat(a.monto),
+        fecha:         a.fecha || new Date().toISOString(),
         fecha_formato: a.fechaFormato || '',
       }))
     );

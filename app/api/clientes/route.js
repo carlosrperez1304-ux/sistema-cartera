@@ -1,6 +1,9 @@
 import { db } from '../../../lib/supabase.js';
 import { requireAuth, checkCsrf, getIP, auditLog, sanitize } from '../../../lib/security.js';
 
+// Roles que pueden ver TODOS los registros de todos los usuarios
+const ROLES_VER_TODO = ['admin', 'supervisor_cobro', 'supervisor_contabilidad'];
+
 // Transforma fila DB → formato esperado por el frontend
 function toFront(c) {
   return {
@@ -17,6 +20,7 @@ function toFront(c) {
     año:                c.anio            || '',
     monto:              c.monto           !== null ? String(c.monto) : '',
     codigoCliente:      c.codigo_cliente  !== null && c.codigo_cliente !== undefined ? String(c.codigo_cliente) : '',
+    creadoPor:          c.creado_por      || '',
     comentario:         c.comentario      || '',
     nota:               c.nota            || '',
     suspendido:         c.suspendido      || false,
@@ -55,26 +59,30 @@ function toRow(body) {
     historial:          body.historial          || [],
     updated_at:         new Date().toISOString(),
   };
-  // Solo incluir id si es un número válido (Supabase lo auto-genera si no se envía)
   if (!isNaN(parsedId) && parsedId > 0) row.id = parsedId;
   return row;
 }
 
-// GET — todos los clientes con sus pagos (sin documentos, se cargan por separado)
+// GET — clientes filtrados por usuario (admins/supervisores ven todos)
 export async function GET(req) {
   const auth = await requireAuth(req);
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
 
-  const { data, error } = await db()
-    .from('clientes')
-    .select('*, pagos(*)')
-    .order('id');
+  const userRol      = auth.session.user.rol || '';
+  const username     = auth.session.user.username || '';
+  const puedeVerTodo = ROLES_VER_TODO.includes(userRol);
 
+  let query = db().from('clientes').select('*, pagos(*)').order('id');
+  if (!puedeVerTodo) {
+    query = query.eq('creado_por', username);
+  }
+
+  const { data, error } = await query;
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json((data || []).map(toFront));
 }
 
-// POST — crear cliente
+// POST — crear cliente (asigna creado_por al usuario actual)
 export async function POST(req) {
   const csrf = checkCsrf(req);
   if (csrf) return Response.json({ error: csrf.error }, { status: csrf.status });
@@ -84,12 +92,12 @@ export async function POST(req) {
 
   const body = await req.json();
 
-  // Validación de campos obligatorios
   if (!body.nombre || !body.nombre.trim()) {
     return Response.json({ error: 'El campo nombre es obligatorio.' }, { status: 400 });
   }
 
-  const row  = toRow(body);
+  const row = toRow(body);
+  row.creado_por = auth.session.user.username;
 
   const { data, error } = await db().from('clientes').insert(row).select().single();
   if (error) return Response.json({ error: error.message }, { status: 500 });

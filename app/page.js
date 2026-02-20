@@ -75,11 +75,12 @@ export default function App() {
   const esAdmin = session
     ? (session.user?.rol === 'admin' || ADMIN_EMAILS.includes(session.user?.email))
     : (usuarios[currentUser]?.rol === 'admin');
-  const ROLES_EDITOR = ['editor', 'agente_cobro', 'contabilidad', 'supervisor_cobro', 'supervisor_contabilidad'];
-  const esEditor = session
-    ? ROLES_EDITOR.includes(session.user?.rol)
-    : ROLES_EDITOR.includes(usuarios[currentUser]?.rol);
-  const soloLectura = !esAdmin && !esEditor;
+  const ROLES_EDITOR    = ['editor', 'agente_cobro', 'contabilidad', 'supervisor_cobro', 'supervisor_contabilidad'];
+  const ROLES_VER_TODO  = ['admin', 'supervisor_cobro', 'supervisor_contabilidad'];
+  const rolActual       = session ? (session.user?.rol || '') : (usuarios[currentUser]?.rol || '');
+  const esEditor        = ROLES_EDITOR.includes(rolActual);
+  const puedeVerTodo    = esAdmin || ROLES_VER_TODO.includes(rolActual);
+  const soloLectura     = !esAdmin && !esEditor;
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -212,6 +213,7 @@ export default function App() {
   const [selectedAutoIndex, setSelectedAutoIndex] = useState(-1);
   const [ordenarPor, setOrdenarPor] = useState('prioridad');
   const [direccionOrden, setDireccionOrden] = useState('desc');
+  const [filtroAgente, setFiltroAgente] = useState('');
   const [confirmModal, setConfirmModal] = useState({ show: false, titulo: '', mensaje: '', onConfirm: null });
   const mostrarConfirm = (titulo, mensaje, onConfirm) => setConfirmModal({ show: true, titulo, mensaje, onConfirm });
   const cerrarConfirm  = () => setConfirmModal({ show: false, titulo: '', mensaje: '', onConfirm: null });
@@ -556,6 +558,7 @@ export default function App() {
 
   const clientesFiltrados = useMemo(() => {
     let resultado = datosActuales.clientes;
+    if (filtroAgente) resultado = resultado.filter(c => c.creadoPor === filtroAgente);
     if (searchTerm) resultado = resultado.filter(c => c.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || (c.contacto || '').includes(searchTerm) || c.id.toString().includes(searchTerm));
     if (fechaDesde) resultado = resultado.filter(c => c.fechaCotizacion && c.fechaCotizacion >= fechaDesde);
     if (fechaHasta) resultado = resultado.filter(c => c.fechaCotizacion && c.fechaCotizacion <= fechaHasta);
@@ -1611,6 +1614,7 @@ export default function App() {
             <button className={`topbar-nav-link ${activeTab === 'agenda' ? 'active' : ''}`} onClick={() => setActiveTab('agenda')}>Agenda</button>
             <button className={`topbar-nav-link ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => setActiveTab('documentos')}>Documentos</button>
             <button className={`topbar-nav-link ${activeTab === 'calendario' ? 'active' : ''}`} onClick={() => setActiveTab('calendario')}>Calendario</button>
+            {puedeVerTodo && <button className={`topbar-nav-link ${activeTab === 'carteras' ? 'active' : ''}`} onClick={() => setActiveTab('carteras')}>Carteras</button>}
           </nav>
         </div>
         <div className="topbar-right">
@@ -1642,6 +1646,7 @@ export default function App() {
             <div className={`sidebar-item ${activeTab === 'credito' ? 'active' : ''}`} onClick={() => setActiveTab('credito')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></span> Crédito</div>
             <div className={`sidebar-item ${activeTab === 'agenda' ? 'active' : ''}`} onClick={() => setActiveTab('agenda')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> Agenda del Día</div>
             <div className={`sidebar-item ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => setActiveTab('documentos')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span> Documentos</div>
+            {puedeVerTodo && <div className={`sidebar-item ${activeTab === 'carteras' ? 'active' : ''}`} onClick={() => setActiveTab('carteras')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Carteras por Agente</div>}
             <div className="sidebar-item" onClick={() => { setArchivosEnProceso([]); setShowCargaMasivaModal(true); }}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span> Carga Masiva PDF</div>
             <div className="sidebar-item" onClick={() => setShowPlantillasModal(true)}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span> Plantillas WA</div>
           </div>
@@ -1737,6 +1742,7 @@ export default function App() {
             <button className={`tab-btn ${activeTab === 'credito' ? 'active' : ''}`} onClick={() => setActiveTab('credito')}>Crédito</button>
             <button className={`tab-btn ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => setActiveTab('documentos')}>Documentos</button>
             <button className={`tab-btn ${activeTab === 'calendario' ? 'active' : ''}`} onClick={() => setActiveTab('calendario')}>Calendario</button>
+            {puedeVerTodo && <button className={`tab-btn ${activeTab === 'carteras' ? 'active' : ''}`} onClick={() => setActiveTab('carteras')}>Carteras</button>}
           </div>
 
           {/* TAB DASHBOARD */}
@@ -2315,7 +2321,7 @@ export default function App() {
                 <button className="btn btn-secondary" onClick={() => { setVistaKanban(true); setVistaCards(false); }} style={{ background: vistaKanban ? 'var(--navy)' : '', color: vistaKanban ? 'white' : '' }} title="Kanban">📌 Kanban</button>
                 <button className="btn btn-secondary" onClick={() => setModoCompacto(m => !m)} style={{ background: modoCompacto ? 'var(--navy)' : '', color: modoCompacto ? 'white' : '' }} title="Modo compacto">⊟</button>
                 <button className="btn btn-secondary" onClick={() => setShowBusquedaAvanzada(b => !b)} style={{ background: showBusquedaAvanzada ? 'var(--accent)' : '', color: showBusquedaAvanzada ? 'white' : '', position: 'relative' }} title="Filtros avanzados">
-                  🎛️{(filtroMontoMin || filtroMontoMax || filtroEstados.length > 0) && <span style={{ position: 'absolute', top: '-4px', right: '-4px', width: '8px', height: '8px', background: '#f97316', borderRadius: '50%' }}></span>}
+                  🎛️{(filtroMontoMin || filtroMontoMax || filtroEstados.length > 0 || filtroAgente) && <span style={{ position: 'absolute', top: '-4px', right: '-4px', width: '8px', height: '8px', background: '#f97316', borderRadius: '50%' }}></span>}
                 </button>
               </div>
               <button className="btn btn-primary" onClick={() => !esModoPasado && abrirModal()} disabled={esModoPasado} style={{ opacity: esModoPasado ? 0.5 : 1 }}>+ Nuevo Cliente</button>
@@ -2323,7 +2329,7 @@ export default function App() {
 
             {showBusquedaAvanzada && (
               <div className="adv-search-panel">
-                <div className="panel-title">🎛️ Filtros Avanzados {(filtroMontoMin || filtroMontoMax || filtroEstados.length > 0) && <button onClick={() => { setFiltroMontoMin(''); setFiltroMontoMax(''); setFiltroEstados([]); }} style={{ marginLeft: '0.5rem', padding: '0.1rem 0.5rem', fontSize: '0.68rem', border: '1px solid var(--danger)', borderRadius: '5px', background: '#fef2f2', color: 'var(--danger)', cursor: 'pointer', fontWeight: 700 }}>✕ Limpiar</button>}</div>
+                <div className="panel-title">🎛️ Filtros Avanzados {(filtroMontoMin || filtroMontoMax || filtroEstados.length > 0 || filtroAgente) && <button onClick={() => { setFiltroMontoMin(''); setFiltroMontoMax(''); setFiltroEstados([]); setFiltroAgente(''); }} style={{ marginLeft: '0.5rem', padding: '0.1rem 0.5rem', fontSize: '0.68rem', border: '1px solid var(--danger)', borderRadius: '5px', background: '#fef2f2', color: 'var(--danger)', cursor: 'pointer', fontWeight: 700 }}>✕ Limpiar</button>}</div>
                 <div className="adv-row">
                   <div className="adv-field">
                     <label>Monto mínimo</label>
@@ -2341,6 +2347,17 @@ export default function App() {
                       ))}
                     </div>
                   </div>
+                  {puedeVerTodo && (
+                    <div className="adv-field">
+                      <label>Agente</label>
+                      <select value={filtroAgente} onChange={e => { setFiltroAgente(e.target.value); setPaginaActual(1); }} style={{ padding: '0.4rem 0.6rem', border: '1px solid var(--border)', borderRadius: '6px', background: 'var(--surface)', color: 'var(--text)', fontSize: '0.85rem' }}>
+                        <option value="">Todos</option>
+                        {[...new Set(datosActuales.clientes.map(c => c.creadoPor).filter(Boolean))].sort().map(ag => (
+                          <option key={ag} value={ag}>{ag}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
                 {clientesFiltrados.length > 0 && <div style={{ marginTop: '0.6rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Mostrando <strong style={{ color: 'var(--accent)' }}>{clientesFiltrados.length}</strong> clientes con los filtros aplicados</div>}
               </div>
@@ -2438,7 +2455,7 @@ export default function App() {
                   <table className={modoCompacto ? 'compact-mode' : ''}>
                     <thead><tr>
                       <th><input type="checkbox" onChange={toggleTodos} checked={clientesPaginados.length > 0 && clientesPaginados.every(c => clientesSeleccionados.includes(c.id))} style={{ cursor:'pointer' }} title="Seleccionar todos" /></th>
-                      <th>ID</th><th>Código</th><th>Cliente</th><th>Contacto</th><th>Estado Actual</th><th>Mes/Año</th><th>Monto</th><th>Fecha Cotización</th><th>Proceso</th><th>Suspensión</th><th>Opciones</th>
+                      <th>ID</th><th>Código</th><th>Cliente</th>{puedeVerTodo && <th>Agente</th>}<th>Contacto</th><th>Estado Actual</th><th>Mes/Año</th><th>Monto</th><th>Fecha Cotización</th><th>Proceso</th><th>Suspensión</th><th>Opciones</th>
                     </tr></thead>
                     <tbody>
                       {clientesPaginados.map(cliente => {
@@ -2464,6 +2481,7 @@ export default function App() {
                                 <button onClick={() => { setTagClienteId(cliente.id); setTagInput(''); setShowTagModal(true); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem', opacity: 0.4, padding: '0 0.2rem' }} title="Agregar etiqueta">🏷️</button>
                               </div>
                             </td>
+                            {puedeVerTodo && <td><span style={{ fontSize: '0.75rem', fontWeight: 700, background: 'var(--surface2)', padding: '0.15rem 0.5rem', borderRadius: '20px', color: 'var(--text-muted)' }}>{cliente.creadoPor || '—'}</span></td>}
                             <td>{cliente.contacto ? (
                               <span onClick={() => abrirWhatsappModal(cliente)} style={{ color: '#16a34a', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
                                 onMouseOver={e => e.currentTarget.style.textDecoration = 'underline'}
@@ -2616,6 +2634,87 @@ export default function App() {
               )}
             </div>
           </div>
+
+          {/* TAB CARTERAS POR AGENTE */}
+          {puedeVerTodo && (
+            <div className={`tab-content ${activeTab === 'carteras' ? 'active' : ''}`}>
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.5rem', marginBottom: '1.5rem' }}>
+                <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.2rem', fontWeight: 800, color: 'var(--text)' }}>Carteras por Agente</h2>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Resumen de clientes y créditos registrados por cada usuario</p>
+              </div>
+              {(() => {
+                const agentes = [...new Set([
+                  ...datosActuales.clientes.map(c => c.creadoPor),
+                  ...datosActuales.creditos.map(c => c.creadoPor),
+                ].filter(Boolean))].sort();
+
+                if (agentes.length === 0) {
+                  return <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', fontSize: '0.95rem' }}>No hay registros con agente asignado aún.</div>;
+                }
+
+                return (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.2rem' }}>
+                    {agentes.map(agente => {
+                      const clientesAgente = datosActuales.clientes.filter(c => c.creadoPor === agente);
+                      const creditosAgente = datosActuales.creditos.filter(c => c.creadoPor === agente);
+                      const totalMonto = clientesAgente.reduce((s, c) => s + (parseFloat(c.monto) || 0), 0);
+                      const totalCreditos = creditosAgente.reduce((s, c) => s + (parseFloat(c.monto) || 0), 0);
+                      const estadoCount = clientesAgente.reduce((acc, c) => { acc[c.estado] = (acc[c.estado] || 0) + 1; return acc; }, {});
+                      const nombreUsuario = usuarios[agente]?.nombre || agente;
+                      return (
+                        <div key={agente} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.3rem', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                            <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'var(--accent)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.1rem', flexShrink: 0 }}>
+                              {agente.charAt(0)}
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text)' }}>{nombreUsuario}</div>
+                              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'var(--mono)' }}>@{agente} · {usuarios[agente]?.rol || 'sin rol'}</div>
+                            </div>
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', marginBottom: '1rem' }}>
+                            <div style={{ background: 'var(--surface2)', borderRadius: '9px', padding: '0.7rem', textAlign: 'center' }}>
+                              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--accent)' }}>{clientesAgente.length}</div>
+                              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>CLIENTES</div>
+                            </div>
+                            <div style={{ background: 'var(--surface2)', borderRadius: '9px', padding: '0.7rem', textAlign: 'center' }}>
+                              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#059669' }}>{creditosAgente.length}</div>
+                              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>CRÉDITOS</div>
+                            </div>
+                          </div>
+                          <div style={{ marginBottom: '0.75rem' }}>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Monto cartera</div>
+                            <div style={{ fontSize: '1.1rem', fontWeight: 800, fontFamily: 'var(--mono)', color: 'var(--accent2)' }}>${totalMonto.toLocaleString('en-US', { maximumFractionDigits: 0 })}</div>
+                          </div>
+                          {totalCreditos > 0 && (
+                            <div style={{ marginBottom: '0.75rem' }}>
+                              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Monto créditos</div>
+                              <div style={{ fontSize: '1rem', fontWeight: 700, fontFamily: 'var(--mono)', color: '#059669' }}>${totalCreditos.toLocaleString('en-US', { maximumFractionDigits: 0 })}</div>
+                            </div>
+                          )}
+                          {Object.keys(estadoCount).length > 0 && (
+                            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
+                              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.4rem' }}>Por estado</div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
+                                {Object.entries(estadoCount).map(([est, cnt]) => (
+                                  <span key={est} className={`badge badge-${est.toLowerCase().replace(/ /g, '-')}`} style={{ fontSize: '0.68rem' }}>{est}: {cnt}</span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          <div style={{ marginTop: '0.75rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
+                            <button onClick={() => { setFiltroAgente(agente); setActiveTab('cartera'); }} style={{ width: '100%', padding: '0.5rem', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}>
+                              Ver cartera de {nombreUsuario}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
 
           {/* MODALES */}
           {/* Modal Cliente */}
