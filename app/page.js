@@ -75,9 +75,10 @@ export default function App() {
   const esAdmin = session
     ? (session.user?.rol === 'admin' || ADMIN_EMAILS.includes(session.user?.email))
     : (usuarios[currentUser]?.rol === 'admin');
+  const ROLES_EDITOR = ['editor', 'agente_cobro', 'contabilidad', 'supervisor_cobro', 'supervisor_contabilidad'];
   const esEditor = session
-    ? session.user?.rol === 'editor'
-    : (usuarios[currentUser]?.rol === 'editor');
+    ? ROLES_EDITOR.includes(session.user?.rol)
+    : ROLES_EDITOR.includes(usuarios[currentUser]?.rol);
   const soloLectura = !esAdmin && !esEditor;
 
   const handleLogin = async (e) => {
@@ -211,6 +212,9 @@ export default function App() {
   const [selectedAutoIndex, setSelectedAutoIndex] = useState(-1);
   const [ordenarPor, setOrdenarPor] = useState('prioridad');
   const [direccionOrden, setDireccionOrden] = useState('desc');
+  const [confirmModal, setConfirmModal] = useState({ show: false, titulo: '', mensaje: '', onConfirm: null });
+  const mostrarConfirm = (titulo, mensaje, onConfirm) => setConfirmModal({ show: true, titulo, mensaje, onConfirm });
+  const cerrarConfirm  = () => setConfirmModal({ show: false, titulo: '', mensaje: '', onConfirm: null });
   const [paginaActual, setPaginaActual] = useState(1);
   const ITEMS_POR_PAGINA = 15;
   const [editingMontoId, setEditingMontoId] = useState(null);
@@ -376,20 +380,12 @@ export default function App() {
   useEffect(() => {
     if (!isAuthenticated && !session) return;
     const TIMEOUT = 30 * 60 * 1000;
-    let timer = setTimeout(() => {
-      showToast('Sesión cerrada por inactividad', 'info');
-      setTimeout(() => {
-        if (session) signOut();
-        else { setIsAuthenticated(false); localStorage.removeItem('isLoggedIn'); localStorage.removeItem('currentUser'); }
-      }, 2000);
-    }, TIMEOUT);
-    const reset = () => { clearTimeout(timer); timer = setTimeout(() => {
-      showToast('Sesión cerrada por inactividad', 'info');
-      setTimeout(() => {
-        if (session) signOut();
-        else { setIsAuthenticated(false); localStorage.removeItem('isLoggedIn'); localStorage.removeItem('currentUser'); }
-      }, 2000);
-    }, TIMEOUT); };
+    const cerrarSesion = () => {
+      if (session) { signOut({ callbackUrl: '/' }); }
+      else { setIsAuthenticated(false); localStorage.removeItem('isLoggedIn'); localStorage.removeItem('currentUser'); window.location.reload(); }
+    };
+    let timer = setTimeout(cerrarSesion, TIMEOUT);
+    const reset = () => { clearTimeout(timer); timer = setTimeout(cerrarSesion, TIMEOUT); };
     window.addEventListener('mousemove', reset);
     window.addEventListener('keydown', reset);
     window.addEventListener('click', reset);
@@ -446,15 +442,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [clientes, hydrated]);
 
-  useEffect(() => {
-    if (!hydrated) return;
-    // Indicador visual de guardado (los datos ya se persisten en la API)
-    const indicator = document.getElementById('save-indicator');
-    if (indicator && clientes.length > 0) {
-      indicator.style.opacity = '1';
-      setTimeout(() => { indicator.style.opacity = '0'; }, 2000);
-    }
-  }, [clientes, hydrated]);
+  // Indicador de guardado deshabilitado — el sistema guarda silenciosamente
 
   const datosActuales = mesVisualizando === obtenerMesActual()
     ? { clientes, creditos }
@@ -663,12 +651,18 @@ export default function App() {
   };
 
   const eliminarCliente = async (id) => {
-    if (!confirm('¿Eliminar este cliente?')) return;
-    setClientes(prev => prev.filter(c => c.id !== id));
-    try {
-      const r = await fetch(`/api/clientes/${id}`, { method: 'DELETE' });
-      if (!r.ok) { const d = await r.json().catch(() => ({})); showToast('Error al eliminar: ' + (d.error || r.status), 'error'); }
-    } catch { showToast('Sin conexión — cliente no eliminado del servidor', 'error'); }
+    const cliente = clientes.find(c => c.id === id);
+    mostrarConfirm(
+      '¿Eliminar cliente?',
+      `¿Estás seguro que deseas eliminar a "${cliente?.nombre || id}"? Esta acción eliminará también sus pagos, documentos y gestiones registradas.`,
+      async () => {
+        setClientes(prev => prev.filter(c => c.id !== id));
+        try {
+          const r = await fetch(`/api/clientes/${id}`, { method: 'DELETE' });
+          if (!r.ok) { const d = await r.json().catch(() => ({})); showToast('Error al eliminar: ' + (d.error || r.status), 'error'); }
+        } catch { showToast('Sin conexión — cliente no eliminado del servidor', 'error'); }
+      }
+    );
   };
 
   const abrirNotaModal = (cliente) => { setNotaClienteId(cliente.id); setNotaTexto(cliente.nota || ''); setShowNotaModal(true); };
@@ -786,7 +780,7 @@ export default function App() {
     setNuevoAbono('');
   };
 
-  const eliminarAbono = (abonoId) => { if (confirm('¿Eliminar este abono?')) setCreditoFormData({ ...creditoFormData, abonos: creditoFormData.abonos.filter(a => a.id !== abonoId) }); };
+  const eliminarAbono = (abonoId) => { mostrarConfirm('¿Eliminar abono?', '¿Estás seguro que deseas eliminar este abono?', () => setCreditoFormData({ ...creditoFormData, abonos: creditoFormData.abonos.filter(a => a.id !== abonoId) })); };
 
   const guardarCredito = async (e) => {
     e.preventDefault();
@@ -805,12 +799,18 @@ export default function App() {
   };
 
   const eliminarCredito = async (id) => {
-    if (!confirm('¿Eliminar este crédito?')) return;
-    setCreditos(prev => prev.filter(c => c.id !== id));
-    try {
-      const r = await fetch(`/api/creditos/${id}`, { method: 'DELETE' });
-      if (!r.ok) { const d = await r.json().catch(() => ({})); showToast('Error al eliminar: ' + (d.error || r.status), 'error'); }
-    } catch { showToast('Sin conexión — crédito no eliminado del servidor', 'error'); }
+    const credito = creditos.find(c => c.id === id);
+    mostrarConfirm(
+      '¿Eliminar crédito?',
+      `¿Estás seguro que deseas eliminar el crédito de "${credito?.cliente || id}"? Esta acción eliminará también todos sus abonos.`,
+      async () => {
+        setCreditos(prev => prev.filter(c => c.id !== id));
+        try {
+          const r = await fetch(`/api/creditos/${id}`, { method: 'DELETE' });
+          if (!r.ok) { const d = await r.json().catch(() => ({})); showToast('Error al eliminar: ' + (d.error || r.status), 'error'); }
+        } catch { showToast('Sin conexión — crédito no eliminado del servidor', 'error'); }
+      }
+    );
   };
 
   const obtenerNombreMes = (mesKey) => {
@@ -2900,7 +2900,29 @@ export default function App() {
             </div>
           </div>
 
-          <div id="save-indicator" className="save-indicator">✅ Guardado automáticamente</div>
+          <div id="save-indicator" className="save-indicator" style={{ display: 'none' }}></div>
+
+          {/* ── Modal de Confirmación ─────────────────────────── */}
+          {confirmModal.show && (
+            <div className="modal show" style={{ zIndex: 99999 }}>
+              <div className="modal-content" style={{ maxWidth: '420px' }}>
+                <div className="modal-header">
+                  <h2 style={{ fontSize: '1.1rem', color: '#dc2626' }}>⚠️ {confirmModal.titulo}</h2>
+                  <button className="close-btn" onClick={cerrarConfirm}>×</button>
+                </div>
+                <div style={{ padding: '1.25rem 0', fontSize: '0.93rem', color: 'var(--text)', lineHeight: 1.6 }}>
+                  {confirmModal.mensaje}
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                  <button className="btn btn-secondary" onClick={cerrarConfirm}>Cancelar</button>
+                  <button className="btn" style={{ background: '#dc2626', color: 'white', border: 'none' }}
+                    onClick={() => { confirmModal.onConfirm?.(); cerrarConfirm(); }}>
+                    Sí, eliminar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -3321,6 +3343,10 @@ export default function App() {
                   <select value={usuarioForm.rol} onChange={e => setUsuarioForm(p => ({ ...p, rol: e.target.value }))}>
                     <option value="admin">Administrador — acceso total</option>
                     <option value="editor">Editor — operativo, sin auditoría ni usuarios</option>
+                    <option value="agente_cobro">Agente de Cobro — operativo</option>
+                    <option value="contabilidad">Contabilidad — operativo</option>
+                    <option value="supervisor_cobro">Supervisor de Cobro — operativo</option>
+                    <option value="supervisor_contabilidad">Supervisor de Contabilidad — operativo</option>
                     <option value="viewer">Viewer — solo lectura</option>
                   </select>
                 </div>
@@ -3355,9 +3381,14 @@ export default function App() {
                     <div style={{ fontWeight:700, fontSize:'0.88rem', display:'flex', alignItems:'center', gap:'0.5rem' }}>
                       {key}
                       {key === currentUser && <span style={{ background:'var(--accent)', color:'white', borderRadius:'20px', padding:'0.1rem 0.5rem', fontSize:'0.65rem', fontWeight:800 }}>TÚ</span>}
-                      <span style={{ background: u.rol==='admin' ? '#fef9c3' : u.rol==='editor' ? '#f0fdf4' : '#f0f9ff', border:`1px solid ${u.rol==='admin' ? '#fde047' : u.rol==='editor' ? '#86efac' : '#bae6fd'}`, borderRadius:'20px', padding:'0.1rem 0.5rem', fontSize:'0.68rem', fontWeight:700, color: u.rol==='admin' ? '#713f12' : u.rol==='editor' ? '#166534' : '#075985' }}>
-                        {u.rol === 'admin' ? 'Admin' : u.rol === 'editor' ? 'Editor' : 'Viewer'}
-                      </span>
+                      {(() => {
+                        const ROL_LABEL = { admin: 'Admin', editor: 'Editor', agente_cobro: 'Agente Cobro', contabilidad: 'Contabilidad', supervisor_cobro: 'Sup. Cobro', supervisor_contabilidad: 'Sup. Contabilidad', viewer: 'Viewer' };
+                        const esOp = ['editor','agente_cobro','contabilidad','supervisor_cobro','supervisor_contabilidad'].includes(u.rol);
+                        const bg = u.rol==='admin' ? '#fef9c3' : esOp ? '#f0fdf4' : '#f0f9ff';
+                        const bd = u.rol==='admin' ? '#fde047' : esOp ? '#86efac' : '#bae6fd';
+                        const cl = u.rol==='admin' ? '#713f12' : esOp ? '#166534' : '#075985';
+                        return <span style={{ background:bg, border:`1px solid ${bd}`, borderRadius:'20px', padding:'0.1rem 0.5rem', fontSize:'0.68rem', fontWeight:700, color:cl }}>{ROL_LABEL[u.rol] || u.rol}</span>;
+                      })()}
                     </div>
                     <div style={{ fontSize:'0.73rem', color:'var(--text-muted)' }}>{u.nombre || '—'}</div>
                   </div>
