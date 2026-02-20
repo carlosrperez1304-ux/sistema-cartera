@@ -22,9 +22,10 @@ export async function POST(req, { params }) {
     return Response.json({ error: 'Acción inválida. Usa: aceptar o rechazar.' }, { status: 400 });
   }
 
+  // Verificar que la delegación existe y está dirigida al usuario actual
   const { data: del } = await db()
     .from('delegations')
-    .select('*')
+    .select('id, assigned_user_id, owner_id, status')
     .eq('id', id)
     .single();
 
@@ -48,38 +49,17 @@ export async function POST(req, { params }) {
     return Response.json({ ok: true, status: 'rejected' });
   }
 
-  // ACEPTAR: actualizar clientes
-  if (del.tipo === 'total') {
-    // Todos los clientes del owner que no tengan ya otra delegación activa
-    await db()
-      .from('clientes')
-      .update({ assigned_to: username, delegation_id: id })
-      .eq('creado_por', del.owner_id)
-      .or('assigned_to.is.null,delegation_id.eq.' + id);
-  } else {
-    // Parcial: solo los clientes de delegation_clients
-    const { data: dcList } = await db()
-      .from('delegation_clients')
-      .select('client_id')
-      .eq('delegation_id', id);
+  // ACEPTAR: usar RPC atómica para evitar race conditions
+  const { data: rpcResult, error: rpcError } = await db()
+    .rpc('accept_delegation', { p_delegation_id: id, p_user_id: username });
 
-    const clientIds = (dcList || []).map(r => r.client_id);
-    if (clientIds.length > 0) {
-      await db()
-        .from('clientes')
-        .update({ assigned_to: username, delegation_id: id })
-        .in('id', clientIds);
-    }
+  if (rpcError) {
+    return Response.json({ error: rpcError.message || 'Error al aceptar la delegación.' }, { status: 500 });
   }
 
-  // Marcar como aceptada
-  await db()
-    .from('delegations')
-    .update({ status: 'accepted', updated_at: new Date().toISOString() })
-    .eq('id', id);
+  if (!rpcResult?.ok) {
+    return Response.json({ error: rpcResult?.error || 'Error desconocido en RPC.' }, { status: 400 });
+  }
 
-  logActividad(null, 'DELEGACION_ACEPTADA', username, del.owner_id, id,
-    `Delegación #${id} aceptada por ${username}. Tipo: ${del.tipo}.`);
-
-  return Response.json({ ok: true, status: 'accepted' });
+  return Response.json({ ok: true, status: 'accepted', clientesAsignados: rpcResult.clientes_asignados });
 }

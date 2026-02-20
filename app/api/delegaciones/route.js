@@ -16,7 +16,12 @@ function toFrontDelegacion(d, usuarios = {}) {
     startDate:      d.start_date,
     endDate:        d.end_date,
     status:         d.status,
-    permisos:       d.permisos || { editar: true, pagos: true, eliminar: false },
+    permisos: {
+      can_edit:              d.can_edit              ?? true,
+      can_register_payments: d.can_register_payments ?? true,
+      can_delete:            d.can_delete            ?? false,
+      read_only:             d.read_only             ?? false,
+    },
     cantidadClientes: d.cantidad_clientes || 0,
     createdAt:      d.created_at,
   };
@@ -159,19 +164,19 @@ export async function POST(req) {
     }
   }
 
-  const permisosDefault = { editar: true, pagos: true, eliminar: false };
-  const permisosFinales = permisos ? { ...permisosDefault, ...permisos } : permisosDefault;
-
   const { data: nueva, error } = await db()
     .from('delegations')
     .insert({
-      owner_id:         username,
-      assigned_user_id: assignedUserId,
+      owner_id:              username,
+      assigned_user_id:      assignedUserId,
       tipo,
-      start_date:       startDate,
-      end_date:         endDate,
-      status:           'pending',
-      permisos:         permisosFinales,
+      start_date:            startDate,
+      end_date:              endDate,
+      status:                'pending',
+      can_edit:              permisos?.can_edit              ?? true,
+      can_register_payments: permisos?.can_register_payments ?? true,
+      can_delete:            permisos?.can_delete            ?? false,
+      read_only:             permisos?.read_only             ?? false,
     })
     .select()
     .single();

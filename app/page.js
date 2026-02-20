@@ -242,7 +242,7 @@ export default function App() {
   const [pendienteIdx, setPendienteIdx] = useState(0);
   const [showCrearDelegacionModal, setShowCrearDelegacionModal] = useState(false);
   const [delegacionWizardStep, setDelegacionWizardStep] = useState(1);
-  const [delegacionForm, setDelegacionForm] = useState({ assignedUserId: '', startDate: '', endDate: '', tipo: 'total', clienteIds: [], permisos: { editar: true, pagos: true, eliminar: false } });
+  const [delegacionForm, setDelegacionForm] = useState({ assignedUserId: '', startDate: '', endDate: '', tipo: 'total', clienteIds: [], permisos: { can_edit: true, can_register_payments: true, can_delete: false, read_only: false } });
   const [delegacionBusquedaCliente, setDelegacionBusquedaCliente] = useState('');
   const [actividad, setActividad] = useState([]);
   const [actividadFiltro, setActividadFiltro] = useState({ delegationId: '', desde: '', hasta: '' });
@@ -705,7 +705,7 @@ export default function App() {
         showToast('Delegación enviada. El usuario debe aceptarla.', 'success');
         setShowCrearDelegacionModal(false);
         setDelegacionWizardStep(1);
-        setDelegacionForm({ assignedUserId: '', startDate: '', endDate: '', tipo: 'total', clienteIds: [], permisos: { editar: true, pagos: true, eliminar: false } });
+        setDelegacionForm({ assignedUserId: '', startDate: '', endDate: '', tipo: 'total', clienteIds: [], permisos: { can_edit: true, can_register_payments: true, can_delete: false, read_only: false } });
         cargarDelegaciones();
       } else { showToast(d.error || 'Error al crear delegación.', 'error'); }
     } catch { showToast('Sin conexión.', 'error'); }
@@ -2858,9 +2858,9 @@ export default function App() {
                                 <td style={{ fontSize: '0.82rem' }}>{d.endDate}</td>
                                 <td>
                                   <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
-                                    {d.permisos.editar && <span style={{ fontSize: '0.65rem', background: '#dcfce7', color: '#166534', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>✏️ Editar</span>}
-                                    {d.permisos.pagos && <span style={{ fontSize: '0.65rem', background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>💰 Pagos</span>}
-                                    {d.permisos.eliminar && <span style={{ fontSize: '0.65rem', background: '#fee2e2', color: '#991b1b', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>🗑️ Eliminar</span>}
+                                    {d.permisos.can_edit && <span style={{ fontSize: '0.65rem', background: '#dcfce7', color: '#166534', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>✏️ Editar</span>}
+                                    {d.permisos.can_register_payments && <span style={{ fontSize: '0.65rem', background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>💰 Pagos</span>}
+                                    {d.permisos.can_delete && <span style={{ fontSize: '0.65rem', background: '#fee2e2', color: '#991b1b', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>🗑️ Eliminar</span>}
                                   </div>
                                 </td>
                                 <td><span style={{ fontSize: '0.75rem', fontWeight: 700, background: statusColors[d.status] + '20', color: statusColors[d.status], padding: '0.2rem 0.6rem', borderRadius: '20px' }}>{statusLabels[d.status] || d.status}</span></td>
@@ -2917,10 +2917,10 @@ export default function App() {
                               {d.startDate} → {d.endDate}
                             </div>
                             <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
-                              {d.permisos.editar && <span style={{ fontSize: '0.65rem', background: '#dcfce7', color: '#166534', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>✏️ Editar</span>}
-                              {d.permisos.pagos && <span style={{ fontSize: '0.65rem', background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>💰 Pagos</span>}
-                              {d.permisos.eliminar && <span style={{ fontSize: '0.65rem', background: '#fee2e2', color: '#991b1b', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>🗑️ Eliminar</span>}
-                              {!d.permisos.editar && !d.permisos.pagos && !d.permisos.eliminar && <span style={{ fontSize: '0.65rem', background: 'var(--surface2)', color: 'var(--text-muted)', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>👁 Solo lectura</span>}
+                              {d.permisos.can_edit && <span style={{ fontSize: '0.65rem', background: '#dcfce7', color: '#166534', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>✏️ Editar</span>}
+                              {d.permisos.can_register_payments && <span style={{ fontSize: '0.65rem', background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>💰 Pagos</span>}
+                              {d.permisos.can_delete && <span style={{ fontSize: '0.65rem', background: '#fee2e2', color: '#991b1b', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>🗑️ Eliminar</span>}
+                              {d.permisos.read_only || (!d.permisos.can_edit && !d.permisos.can_register_payments && !d.permisos.can_delete) && <span style={{ fontSize: '0.65rem', background: 'var(--surface2)', color: 'var(--text-muted)', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>👁 Solo lectura</span>}
                             </div>
                             {d.status === 'accepted' && (
                               <button onClick={() => { setFiltroAgente(d.ownerId); setActiveTab('cartera'); }} style={{ marginTop: '0.75rem', width: '100%', padding: '0.45rem', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}>
@@ -3297,10 +3297,10 @@ export default function App() {
                     <div style={{ marginBottom: '1rem' }}>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.4rem' }}>Permisos que tendrás</div>
                       <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                        {d.permisos.editar && <span style={{ fontSize: '0.78rem', background: '#dcfce7', color: '#166534', padding: '0.2rem 0.6rem', borderRadius: '9px', fontWeight: 700 }}>✏️ Editar</span>}
-                        {d.permisos.pagos && <span style={{ fontSize: '0.78rem', background: '#dbeafe', color: '#1e40af', padding: '0.2rem 0.6rem', borderRadius: '9px', fontWeight: 700 }}>💰 Pagos</span>}
-                        {d.permisos.eliminar && <span style={{ fontSize: '0.78rem', background: '#fee2e2', color: '#991b1b', padding: '0.2rem 0.6rem', borderRadius: '9px', fontWeight: 700 }}>🗑️ Eliminar</span>}
-                        {!d.permisos.editar && !d.permisos.pagos && !d.permisos.eliminar && <span style={{ fontSize: '0.78rem', background: 'var(--surface2)', color: 'var(--text-muted)', padding: '0.2rem 0.6rem', borderRadius: '9px', fontWeight: 700 }}>👁 Solo lectura</span>}
+                        {d.permisos.can_edit && <span style={{ fontSize: '0.78rem', background: '#dcfce7', color: '#166534', padding: '0.2rem 0.6rem', borderRadius: '9px', fontWeight: 700 }}>✏️ Editar</span>}
+                        {d.permisos.can_register_payments && <span style={{ fontSize: '0.78rem', background: '#dbeafe', color: '#1e40af', padding: '0.2rem 0.6rem', borderRadius: '9px', fontWeight: 700 }}>💰 Pagos</span>}
+                        {d.permisos.can_delete && <span style={{ fontSize: '0.78rem', background: '#fee2e2', color: '#991b1b', padding: '0.2rem 0.6rem', borderRadius: '9px', fontWeight: 700 }}>🗑️ Eliminar</span>}
+                        {d.permisos.read_only || (!d.permisos.can_edit && !d.permisos.can_register_payments && !d.permisos.can_delete) && <span style={{ fontSize: '0.78rem', background: 'var(--surface2)', color: 'var(--text-muted)', padding: '0.2rem 0.6rem', borderRadius: '9px', fontWeight: 700 }}>👁 Solo lectura</span>}
                       </div>
                     </div>
                     <p style={{ margin: '0 0 1.25rem', fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
@@ -3402,9 +3402,10 @@ export default function App() {
                   <div>
                     <p style={{ margin: '0 0 1rem', fontSize: '0.88rem', color: 'var(--text-muted)' }}>Configura los permisos del usuario delegado sobre tus clientes:</p>
                     {[
-                      { key: 'editar', label: '✏️ Puede editar datos del cliente', desc: 'Nombre, contacto, estado, monto, comentarios' },
-                      { key: 'pagos', label: '💰 Puede registrar y eliminar pagos', desc: 'Gestión del historial de pagos' },
-                      { key: 'eliminar', label: '🗑️ Puede eliminar clientes', desc: 'Eliminación permanente (recomendado: desactivado)' },
+                      { key: 'can_edit', label: '✏️ Puede editar datos del cliente', desc: 'Nombre, contacto, estado, monto, comentarios' },
+                      { key: 'can_register_payments', label: '💰 Puede registrar y eliminar pagos', desc: 'Gestión del historial de pagos' },
+                      { key: 'can_delete', label: '🗑️ Puede eliminar clientes', desc: 'Eliminación permanente (recomendado: desactivado)' },
+                      { key: 'read_only', label: '👁 Solo lectura', desc: 'Bloquea edición, pagos y eliminación — solo visualización' },
                     ].map(p => (
                       <label key={p.key} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', border: `1px solid ${delegacionForm.permisos[p.key] ? 'var(--accent)' : 'var(--border)'}`, borderRadius: '9px', marginBottom: '0.5rem', cursor: 'pointer', background: delegacionForm.permisos[p.key] ? 'rgba(var(--accent-rgb),0.05)' : 'transparent' }}>
                         <input type="checkbox" checked={delegacionForm.permisos[p.key]} onChange={e => setDelegacionForm(f => ({ ...f, permisos: { ...f.permisos, [p.key]: e.target.checked } }))} />

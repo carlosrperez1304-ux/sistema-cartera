@@ -28,7 +28,7 @@ export async function PUT(req, { params }) {
     if (!ctx.esDueno && !ctx.esDelegatario) {
       return Response.json({ error: 'No tienes acceso a este cliente.' }, { status: 403 });
     }
-    if (ctx.esDelegatario && ctx.permisos && !ctx.permisos.editar) {
+    if (ctx.esDelegatario && ctx.permisos && (!ctx.permisos.can_edit || ctx.permisos.read_only)) {
       return Response.json({ error: 'No tienes permiso de edición en esta delegación.' }, { status: 403 });
     }
 
@@ -100,7 +100,7 @@ export async function DELETE(req, { params }) {
     if (!ctx.esDueno && !ctx.esDelegatario) {
       return Response.json({ error: 'No tienes acceso a este cliente.' }, { status: 403 });
     }
-    if (ctx.esDelegatario && ctx.permisos && !ctx.permisos.eliminar) {
+    if (ctx.esDelegatario && ctx.permisos && (!ctx.permisos.can_delete || ctx.permisos.read_only)) {
       return Response.json({ error: 'No tienes permiso para eliminar clientes en esta delegación.' }, { status: 403 });
     }
 

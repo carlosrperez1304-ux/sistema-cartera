@@ -22,7 +22,7 @@ export async function POST(req, { params }) {
     if (ctx && !ctx.esDueno && !ctx.esDelegatario) {
       return Response.json({ error: 'No tienes acceso a este cliente.' }, { status: 403 });
     }
-    if (ctx && ctx.esDelegatario && ctx.permisos && !ctx.permisos.pagos) {
+    if (ctx && ctx.esDelegatario && ctx.permisos && (!ctx.permisos.can_register_payments || ctx.permisos.read_only)) {
       return Response.json({ error: 'No tienes permiso para registrar pagos en esta delegación.' }, { status: 403 });
     }
     if (ctx && ctx.esDelegatario) {
@@ -74,7 +74,7 @@ export async function DELETE(req, { params }) {
     if (ctx && !ctx.esDueno && !ctx.esDelegatario) {
       return Response.json({ error: 'No tienes acceso a este cliente.' }, { status: 403 });
     }
-    if (ctx && ctx.esDelegatario && ctx.permisos && !ctx.permisos.pagos) {
+    if (ctx && ctx.esDelegatario && ctx.permisos && (!ctx.permisos.can_register_payments || ctx.permisos.read_only)) {
       return Response.json({ error: 'No tienes permiso para eliminar pagos en esta delegación.' }, { status: 403 });
     }
     if (ctx && ctx.esDelegatario) {
