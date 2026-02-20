@@ -78,7 +78,7 @@ export async function GET(req) {
   let query = db().from('clientes').select('*, pagos(*)').order('id');
   if (!puedeVerTodo) {
     // Cartera propia: solo registros creados por el usuario actual
-    query = query.eq('creado_por', username);
+    query = query.or(`creado_por.eq.${username},assigned_to.eq.${username}`);
   }
 
   const { data, error } = await query;
