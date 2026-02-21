@@ -1,5 +1,6 @@
 'use client';
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { getSupabaseBrowser } from '../lib/supabase-browser.js';
 import * as XLSX from 'xlsx';
 import { signIn, signOut, useSession } from 'next-auth/react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -154,40 +155,70 @@ export default function App() {
     setHydrated(true);
   }, []);
 
-  // Cargar clientes y créditos desde la API — auto-refresh para sincronizar entre dispositivos
+  // — Funciones de carga separadas (estables con useCallback) —
+  const cargarClientes = useCallback(async () => {
+    try {
+      const [resC, resDelC] = await Promise.all([
+        fetch('/api/clientes'),
+        fetch('/api/delegacion-clientes'),
+      ]);
+      const propios   = resC.ok    ? await resC.json()    : [];
+      const delegados = resDelC.ok ? await resDelC.json() : [];
+      const mapa = new Map();
+      [...(Array.isArray(propios)   ? propios   : []),
+       ...(Array.isArray(delegados) ? delegados : [])].forEach(c => mapa.set(c.id, c));
+      setClientes([...mapa.values()]);
+    } catch { /* offline — mantener datos en pantalla */ }
+  }, []);
+
+  const cargarCreditos = useCallback(async () => {
+    try {
+      const res = await fetch('/api/creditos');
+      const data = res.ok ? await res.json() : null;
+      if (Array.isArray(data)) setCreditos(data);
+    } catch { /* offline — mantener datos en pantalla */ }
+  }, []);
+
+  // Carga inicial + suscripción Supabase Realtime
   useEffect(() => {
     if (!session?.user) return;
-    const cargar = async () => {
-      try {
-        const [resC, resDelC, resCr] = await Promise.all([
-          fetch('/api/clientes'),
-          fetch('/api/delegacion-clientes'),
-          fetch('/api/creditos'),
-        ]);
-        const propios    = resC.ok    ? await resC.json()    : [];
-        const delegados  = resDelC.ok ? await resDelC.json() : [];
-        const apiCreditos = resCr.ok  ? await resCr.json()  : null;
-        // Unir propios + delegados evitando duplicados por id
-        if (Array.isArray(propios) || Array.isArray(delegados)) {
-          const mapa = new Map();
-          [...(Array.isArray(propios) ? propios : []),
-           ...(Array.isArray(delegados) ? delegados : [])].forEach(c => mapa.set(c.id, c));
-          setClientes([...mapa.values()]);
+
+    // Carga inicial de datos
+    cargarClientes();
+    cargarCreditos();
+
+    // Supabase Realtime — reemplaza el setInterval por eventos en tiempo real
+    const supabase = getSupabaseBrowser();
+    if (!supabase) return; // anon key no configurada — sin realtime
+
+    const channel = supabase
+      .channel('cartera-realtime')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'clientes' },
+        () => cargarClientes()
+      )
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'creditos' },
+        () => cargarCreditos()
+      )
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'delegations' },
+        () => {
+          // Un cambio en delegaciones afecta qué clientes son visibles
+          cargarClientes();
+          cargarCreditos();
         }
-        if (apiCreditos && Array.isArray(apiCreditos)) setCreditos(apiCreditos);
-      } catch { /* offline o error de red — mantener datos en pantalla */ }
-    };
-    cargar();
-    // Refrescar cada 45 s para ver cambios de otros dispositivos
-    const intervalo = setInterval(cargar, 45 * 1000);
-    // Refrescar al volver al tab / abrir la app
-    const alVolver = () => { if (document.visibilityState === 'visible') cargar(); };
-    document.addEventListener('visibilitychange', alVolver);
+      )
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.warn('[Realtime] Error en canal — verifica que las tablas tienen Realtime habilitado en Supabase.');
+        }
+      });
+
     return () => {
-      clearInterval(intervalo);
-      document.removeEventListener('visibilitychange', alVolver);
+      supabase.removeChannel(channel);
     };
-  }, [session?.user?.username]);
+  }, [session?.user?.username, cargarClientes, cargarCreditos]);
 
   // Detectar nueva versión desplegada — cerrar sesión y recargar automáticamente
   useEffect(() => {
@@ -698,14 +729,7 @@ export default function App() {
         if (resto.length > 0) { setDelegationsPendientes(resto); setPendienteIdx(0); }
         else { setShowPendienteModal(false); setDelegationsPendientes([]); }
         if (accion === 'aceptar') {
-          // Recargar clientes propios + delegados para ver los nuevos
-          const [rc, rd] = await Promise.all([fetch('/api/clientes'), fetch('/api/delegacion-clientes')]);
-          const propios   = rc.ok ? await rc.json() : [];
-          const delegados = rd.ok ? await rd.json() : [];
-          const mapa = new Map();
-          [...(Array.isArray(propios) ? propios : []),
-           ...(Array.isArray(delegados) ? delegados : [])].forEach(c => mapa.set(c.id, c));
-          setClientes([...mapa.values()]);
+          cargarClientes();
         }
         cargarDelegations();
       } else { showToast(d.error || 'Error al responder.', 'error'); }
