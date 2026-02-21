@@ -2715,8 +2715,16 @@ export default function App() {
                 ) : (
                   <table className={modoCompacto ? 'compact-mode' : ''}>
                     <thead><tr>
-                      <th><input type="checkbox" onChange={toggleTodos} checked={clientesPaginados.length > 0 && clientesPaginados.every(c => clientesSeleccionados.includes(c.id))} style={{ cursor:'pointer' }} title="Seleccionar todos" /></th>
-                      <th>ID</th><th>Código</th><th>Cliente</th>{puedeVerTodo && <th>Agente</th>}<th>Contacto</th><th>Estado Actual</th><th>Mes/Año</th><th>Monto</th><th>Fecha Cotización</th><th>Proceso</th><th>Suspensión</th><th>Opciones</th>
+                      <th style={{ width:'32px' }}><input type="checkbox" onChange={toggleTodos} checked={clientesPaginados.length > 0 && clientesPaginados.every(c => clientesSeleccionados.includes(c.id))} style={{ cursor:'pointer' }} title="Seleccionar todos" /></th>
+                      <th style={{ width:'60px' }}>ID</th>
+                      <th style={{ width:'70px' }}>Código</th>
+                      <th>Cliente</th>
+                      {puedeVerTodo && <th style={{ width:'90px' }}>Agente</th>}
+                      <th style={{ width:'120px' }}>Estado</th>
+                      <th style={{ width:'100px' }}>Monto</th>
+                      <th style={{ width:'110px' }}>Proceso</th>
+                      <th style={{ width:'110px' }}>Suspensión</th>
+                      <th style={{ width:'120px', textAlign:'right' }}>Opciones</th>
                     </tr></thead>
                     <tbody>
                       {clientesPaginados.map(cliente => {
@@ -2748,15 +2756,9 @@ export default function App() {
                                 <div style={{ fontSize: '0.67rem', marginTop: '0.2rem', color: '#f97316', fontWeight: 700 }}>→ {cliente.assignedTo}</div>
                               )}
                             </td>}
-                            <td>{cliente.contacto ? (
-                              <span onClick={() => abrirWhatsappModal(cliente)} style={{ color: '#16a34a', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-                                onMouseOver={e => e.currentTarget.style.textDecoration = 'underline'}
-                                onMouseOut={e => e.currentTarget.style.textDecoration = 'none'}>
-                                📱 {cliente.contacto}
-                              </span>
-                            ) : '-'}</td>
+
                             <td><span className={`badge badge-${estadoActivoCliente(cliente).toLowerCase().replace(/ /g, '-')}`}>{estadoActivoCliente(cliente)}</span></td>
-                            <td><span className="fecha-badge">{cliente.mes}/{cliente.año}</span></td>
+
                             <td>
                               {editingMontoId === cliente.id ? (
                                 <input type="number" value={tempMonto} onChange={(e) => setTempMonto(e.target.value)} onBlur={() => guardarMontoInline(cliente.id)} onKeyDown={(e) => { if (e.key === 'Enter') guardarMontoInline(cliente.id); else if (e.key === 'Escape') cancelarEdicionMonto(); }} autoFocus step="0.01" style={{ width: '100%', padding: '0.5rem', border: '2px solid #0ea5e9', borderRadius: '6px', fontSize: '1rem', fontWeight: 700 }} />
@@ -2769,7 +2771,7 @@ export default function App() {
                                 </div>
                               )}
                             </td>
-                            <td>{cliente.fechaCotizacion ? new Date(cliente.fechaCotizacion).toLocaleDateString('es-DO') : '-'}</td>
+
                             <td>
                               <div className="proceso-icons">
                                 <button className={`proceso-icon cotizado ${cliente.fechaCotizacion ? 'done' : ''}`} disabled={esModoPasado} title={cliente.fechaCotizacion ? 'Cotizado' : 'Marcar Cotizado'} onClick={() => { if (esModoPasado) return; const a = { ...cliente }; if (!a.fechaCotizacion) { a.fechaCotizacion = new Date().toISOString().split('T')[0]; if (!a.estado || a.estado === 'No Generaron') a.estado = 'Cotizado'; } else { a.fechaCotizacion = ''; a.fechaNotificacion = ''; a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'No Generaron'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaCotizacion ? 'Marco Cotizado' : 'Desmarco Cotizado', usuario: 'CPEREZ' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}>📋</button>
