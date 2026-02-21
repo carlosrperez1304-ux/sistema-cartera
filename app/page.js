@@ -341,6 +341,7 @@ export default function App() {
   const [cotizaciones, setCotizaciones] = useState({});          // { clienteId: [{id, nombre, base64, fecha, monto}] }
   const [showDocsModal, setShowDocsModal] = useState(false);
   const [docsClienteId, setDocsClienteId] = useState(null);
+  const [nuevaCotForm, setNuevaCotForm] = useState({ monto: '', estado: 'Cotizado', show: false });
   const [showGenCotModal, setShowGenCotModal] = useState(false);
   const [genCotCliente, setGenCotCliente] = useState(null);
   const [cotItems, setCotItems] = useState([{ descripcion: '', cantidad: 1, precio: '' }]);
@@ -385,13 +386,21 @@ export default function App() {
     const savedTags = localStorage.getItem('cliente-tags');
     const savedRecordatorio = localStorage.getItem('recordatorio-dias');
     const savedCompacto = localStorage.getItem('modo-compacto');
-    const savedCots = localStorage.getItem('cotizaciones-v1');
+    const savedCots = localStorage.getItem('cotizaciones-v2') || localStorage.getItem('cotizaciones-v1');
     if (savedMeta) setMetaMensual(parseFloat(savedMeta) || 0);
     if (savedColor) setColorAcento(savedColor);
     if (savedTags) setTags(JSON.parse(savedTags));
     if (savedRecordatorio) setRecordatoriosDias(parseInt(savedRecordatorio) || 7);
     if (savedCompacto) setModoCompacto(savedCompacto === 'true');
-    if (savedCots) setCotizaciones(JSON.parse(savedCots));
+    if (savedCots) {
+      const parsed = JSON.parse(savedCots);
+      const migradas = Object.fromEntries(
+        Object.entries(parsed).map(([cid, docs]) => [
+          cid, docs.map(d => ({ ...d, estado: d.estado || 'Cotizado' }))
+        ])
+      );
+      setCotizaciones(migradas);
+    }
     const savedGestiones = localStorage.getItem('gestiones-v1');
     if (savedGestiones) setGestiones(JSON.parse(savedGestiones));
     const savedPlantillas = localStorage.getItem('plantillas-v1');
@@ -408,9 +417,26 @@ export default function App() {
   useEffect(() => { if (Object.keys(gestiones).length >= 0) localStorage.setItem('gestiones-v1', JSON.stringify(gestiones)); }, [gestiones]);
   useEffect(() => { if (plantillas.length > 0) localStorage.setItem('plantillas-v1', JSON.stringify(plantillas)); }, [plantillas]);
 
+  // Migración legacy: crear cotizacion para clientes con monto pero sin docs
+  useEffect(() => {
+    if (!clientes.length) return;
+    setCotizaciones(prev => {
+      let changed = false;
+      const result = { ...prev };
+      clientes.forEach(c => {
+        if (parseFloat(c.monto) > 0 && !(result[c.id]?.length > 0)) {
+          const estadoValido = ['Cotizado','Notificado','Pagado','Facturado','Vencido'].includes(c.estado) ? c.estado : 'Cotizado';
+          result[c.id] = [{ id: Date.now() + Math.random(), nombre: null, base64: null, fecha: new Date().toISOString(), monto: parseFloat(c.monto), tipo: 'legacy', estado: estadoValido }];
+          changed = true;
+        }
+      });
+      return changed ? result : prev;
+    });
+  }, [clientes]);
+
   useEffect(() => {
     if (Object.keys(cotizaciones).length >= 0) {
-      try { localStorage.setItem('cotizaciones-v1', JSON.stringify(cotizaciones)); } catch { showToast('Almacenamiento lleno. Elimina documentos antiguos.', 'error'); }
+      try { localStorage.setItem('cotizaciones-v2', JSON.stringify(cotizaciones)); } catch { showToast('Almacenamiento lleno. Elimina documentos antiguos.', 'error'); }
     }
   }, [cotizaciones]);
 
@@ -535,6 +561,12 @@ export default function App() {
     return { monto, pagado, pendiente: Math.max(0, monto - pagado) };
   };
 
+  const estadoActivoCliente = (cliente) => {
+    const docs = cotizaciones[cliente.id] || [];
+    if (!docs.length) return cliente.estado;
+    return docs.reduce((a, b) => (a.id > b.id ? a : b)).estado;
+  };
+
   const calcularSaldoCredito = (credito) => {
     const total = parseFloat(credito.monto) || 0;
     const abonado = (credito.abonos || []).reduce((s, a) => s + (parseFloat(a.monto) || 0), 0);
@@ -564,34 +596,41 @@ export default function App() {
   const estadisticas = useMemo(() => {
     const clientesData = datosActuales.clientes;
     const total = clientesData.length;
-    const sumM = (arr) => arr.reduce((acc, c) => acc + (parseFloat(c.monto) || 0), 0);
-    const sumPend = (arr) => arr.reduce((acc, c) => {
-      const m = parseFloat(c.monto) || 0;
-      const p = (c.pagosRealizados || []).reduce((s, x) => s + (parseFloat(x.monto) || 0), 0);
-      return acc + Math.max(0, m - p);
-    }, 0);
-    const cotizados = clientesData.filter(c => c.estado === 'Cotizado');
-    const notificados = clientesData.filter(c => c.estado === 'Notificado');
-    const pagados = clientesData.filter(c => c.estado === 'Pagado');
-    const facturados = clientesData.filter(c => c.estado === 'Facturado');
-    const vencidos = clientesData.filter(c => c.estado === 'Vencido');
+    // Aplanar todas las cotizaciones con su clienteId
+    const todasCots = Object.entries(cotizaciones).flatMap(([cid, docs]) =>
+      (docs || []).map(d => ({ ...d, clienteId: cid }))
+    );
+    const sumMonto = (arr) => arr.reduce((s, d) => s + (parseFloat(d.monto) || 0), 0);
+    const clientesConEstado = (est) => new Set(todasCots.filter(d => d.estado === est).map(d => d.clienteId)).size;
+    const cotizados   = todasCots.filter(d => d.estado === 'Cotizado');
+    const notificados = todasCots.filter(d => d.estado === 'Notificado');
+    const pagados     = todasCots.filter(d => d.estado === 'Pagado');
+    const facturados  = todasCots.filter(d => d.estado === 'Facturado');
+    const vencidos    = todasCots.filter(d => d.estado === 'Vencido');
     const suspendidos = clientesData.filter(c => c.suspendido === true);
     const noGeneraron = clientesData.filter(c => c.estado === 'No Generaron');
     return {
-      cotizado: cotizados.length, notificado: notificados.length, pagado: pagados.length,
-      facturado: facturados.length, vencido: vencidos.length, suspendido: suspendidos.length,
+      cotizado: clientesConEstado('Cotizado'), notificado: clientesConEstado('Notificado'),
+      pagado: clientesConEstado('Pagado'), facturado: clientesConEstado('Facturado'),
+      vencido: clientesConEstado('Vencido'), suspendido: suspendidos.length,
       noGeneraron: noGeneraron.length, total,
-      montoCotizado: sumM(cotizados), montoNotificado: sumM(notificados), montoPagado: sumM(pagados),
-      montoFacturado: sumM(facturados), montoVencido: sumM(vencidos), montoSuspendido: sumPend(suspendidos),
-      cotizadoPct: total > 0 ? ((cotizados.length / total) * 100).toFixed(1) : 0,
-      notificadoPct: total > 0 ? ((notificados.length / total) * 100).toFixed(1) : 0,
-      pagadoPct: total > 0 ? ((pagados.length / total) * 100).toFixed(1) : 0,
-      facturadoPct: total > 0 ? ((facturados.length / total) * 100).toFixed(1) : 0,
-      vencidoPct: total > 0 ? ((vencidos.length / total) * 100).toFixed(1) : 0,
-      suspendidoPct: total > 0 ? ((suspendidos.length / total) * 100).toFixed(1) : 0,
+      montoCotizado: sumMonto(cotizados), montoNotificado: sumMonto(notificados),
+      montoPagado: sumMonto(pagados), montoFacturado: sumMonto(facturados),
+      montoVencido: sumMonto(vencidos),
+      montoSuspendido: suspendidos.reduce((acc, c) => {
+        const m = parseFloat(c.monto) || 0;
+        const p = (c.pagosRealizados || []).reduce((s, x) => s + (parseFloat(x.monto) || 0), 0);
+        return acc + Math.max(0, m - p);
+      }, 0),
+      cotizadoPct:    total > 0 ? ((clientesConEstado('Cotizado')   / total) * 100).toFixed(1) : 0,
+      notificadoPct:  total > 0 ? ((clientesConEstado('Notificado') / total) * 100).toFixed(1) : 0,
+      pagadoPct:      total > 0 ? ((clientesConEstado('Pagado')     / total) * 100).toFixed(1) : 0,
+      facturadoPct:   total > 0 ? ((clientesConEstado('Facturado')  / total) * 100).toFixed(1) : 0,
+      vencidoPct:     total > 0 ? ((clientesConEstado('Vencido')    / total) * 100).toFixed(1) : 0,
+      suspendidoPct:  total > 0 ? ((suspendidos.length / total) * 100).toFixed(1) : 0,
       noGeneraronPct: total > 0 ? ((noGeneraron.length / total) * 100).toFixed(1) : 0,
     };
-  }, [datosActuales.clientes]);
+  }, [datosActuales.clientes, cotizaciones]);
 
   const creditoStats = useMemo(() => {
     const creditosData = datosActuales.creditos;
@@ -651,23 +690,23 @@ export default function App() {
     if (fechaHasta) resultado = resultado.filter(c => c.fechaCotizacion && c.fechaCotizacion <= fechaHasta);
     if (filtroMontoMin !== '') resultado = resultado.filter(c => (parseFloat(c.monto) || 0) >= parseFloat(filtroMontoMin));
     if (filtroMontoMax !== '') resultado = resultado.filter(c => (parseFloat(c.monto) || 0) <= parseFloat(filtroMontoMax));
-    if (filtroEstados.length > 0) resultado = resultado.filter(c => filtroEstados.includes(c.estado));
+    if (filtroEstados.length > 0) resultado = resultado.filter(c => filtroEstados.includes(estadoActivoCliente(c)));
     else if (filter !== 'todos' && filter !== 'delegaciones') {
       if (filter === 'no-generaron') resultado = resultado.filter(c => c.estado === 'No Generaron');
-      else resultado = resultado.filter(c => c.estado.toLowerCase() === filter);
+      else resultado = resultado.filter(c => estadoActivoCliente(c).toLowerCase() === filter);
     }
     resultado = [...resultado].sort((a, b) => {
       let comparacion = 0;
       if (ordenarPor === 'prioridad') {
         const p = { 'Vencido': 1, 'Notificado': 2, 'Cotizado': 3, 'Pagado': 4, 'Facturado': 5, 'No Generaron': 6 };
-        comparacion = (p[a.estado] || 999) - (p[b.estado] || 999);
+        comparacion = (p[estadoActivoCliente(a)] || 999) - (p[estadoActivoCliente(b)] || 999);
       } else if (ordenarPor === 'id') comparacion = parseInt(a.id) - parseInt(b.id);
       else if (ordenarPor === 'nombre') comparacion = a.nombre.localeCompare(b.nombre);
       else if (ordenarPor === 'monto') comparacion = parseFloat(a.monto || 0) - parseFloat(b.monto || 0);
       return direccionOrden === 'asc' ? comparacion : -comparacion;
     });
     return resultado;
-  }, [datosActuales.clientes, searchTerm, filter, ordenarPor, direccionOrden, puedeVerTodo, session?.user?.username]);
+  }, [datosActuales.clientes, searchTerm, filter, ordenarPor, direccionOrden, puedeVerTodo, session?.user?.username, cotizaciones]);
 
   const totalPaginas = Math.ceil(clientesFiltrados.length / ITEMS_POR_PAGINA);
   const clientesPaginados = clientesFiltrados.slice((paginaActual - 1) * ITEMS_POR_PAGINA, paginaActual * ITEMS_POR_PAGINA);
@@ -1241,10 +1280,9 @@ export default function App() {
     reader.onload = async (ev) => {
       const base64 = ev.target.result;
       const montoDetectado = await extraerMontoPDF(base64);
-      const nueva = { id: Date.now(), nombre: file.name, base64, fecha: new Date().toISOString(), monto: montoDetectado, tipo: 'subido' };
+      const nueva = { id: Date.now(), nombre: file.name, base64, fecha: new Date().toISOString(), monto: montoDetectado, tipo: 'subido', estado: 'Cotizado' };
       setCotizaciones(prev => ({ ...prev, [clienteId]: [...(prev[clienteId] || []), nueva] }));
       if (montoDetectado) {
-        setClientes(prev => prev.map(c => c.id === clienteId ? { ...c, monto: montoDetectado.toString() } : c));
         showToast(`Documento guardado · Monto detectado: RD$${montoDetectado.toLocaleString('en-US')}`, 'success');
       } else {
         showToast('Documento guardado correctamente', 'success');
@@ -1256,6 +1294,19 @@ export default function App() {
   const eliminarDocumento = (clienteId, docId) => {
     setCotizaciones(prev => ({ ...prev, [clienteId]: (prev[clienteId] || []).filter(d => d.id !== docId) }));
     showToast('Documento eliminado', 'info');
+  };
+
+  const actualizarEstadoCotizacion = (clienteId, docId, nuevoEstado) => {
+    setCotizaciones(prev => ({
+      ...prev,
+      [clienteId]: (prev[clienteId] || []).map(d => d.id === docId ? { ...d, estado: nuevoEstado } : d)
+    }));
+  };
+
+  const crearCotizacionManual = (clienteId, monto, estado = 'Cotizado') => {
+    const nueva = { id: Date.now(), nombre: null, base64: null, fecha: new Date().toISOString(), monto: parseFloat(monto), tipo: 'manual', estado };
+    setCotizaciones(prev => ({ ...prev, [clienteId]: [...(prev[clienteId] || []), nueva] }));
+    showToast(`Cotización creada · RD$${parseFloat(monto).toLocaleString('en-US')} · ${estado}`, 'success');
   };
 
   const descargarDocumento = (doc) => {
@@ -1419,24 +1470,17 @@ export default function App() {
   };
 
   const confirmarCargaMasiva = () => {
-    let guardados = 0; let errores = 0; let montosActualizados = 0;
-    const clientesConMonto = {};
+    let guardados = 0; let errores = 0;
     archivosEnProceso.forEach(arch => {
       if (!arch.base64 || !arch.clienteAsignado) { errores++; return; }
-      const nueva = { id: Date.now() + Math.random(), nombre: arch.nombre, base64: arch.base64, fecha: new Date().toISOString(), monto: arch.montoDetectado || null, tipo: 'subido' };
+      const nueva = { id: Date.now() + Math.random(), nombre: arch.nombre, base64: arch.base64, fecha: new Date().toISOString(), monto: arch.montoDetectado || null, tipo: 'subido', estado: 'Cotizado' };
       setCotizaciones(prev => ({ ...prev, [arch.clienteAsignado.id]: [...(prev[arch.clienteAsignado.id] || []), nueva] }));
-      if (arch.montoDetectado) clientesConMonto[arch.clienteAsignado.id] = arch.montoDetectado;
       guardados++;
     });
-    if (Object.keys(clientesConMonto).length > 0) {
-      setClientes(prev => prev.map(c => clientesConMonto[c.id] !== undefined ? { ...c, monto: clientesConMonto[c.id].toString() } : c));
-      montosActualizados = Object.keys(clientesConMonto).length;
-    }
     setShowCargaMasivaModal(false);
     setArchivosEnProceso([]);
     const msg = [
       `${guardados} documento${guardados !== 1 ? 's' : ''} guardado${guardados !== 1 ? 's' : ''}`,
-      montosActualizados > 0 ? `💰 ${montosActualizados} monto${montosActualizados !== 1 ? 's' : ''} actualizado${montosActualizados !== 1 ? 's' : ''}` : null,
       errores > 0 ? `${errores} sin vincular omitidos` : null,
     ].filter(Boolean).join(' · ');
     showToast(msg, guardados > 0 ? 'success' : 'error');
@@ -2345,7 +2389,7 @@ export default function App() {
                         <div>
                           <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text)' }}>{cliente.nombre}</div>
                           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                            ID: {cliente.id} · <span className={`badge badge-${cliente.estado.toLowerCase().replace(/ /g,'-')}`}>{cliente.estado}</span>
+                            ID: {cliente.id} · <span className={`badge badge-${estadoActivoCliente(cliente).toLowerCase().replace(/ /g,'-')}`}>{estadoActivoCliente(cliente)}</span>
                             {docs.length > 0 && <span style={{ marginLeft: '0.5rem', color: 'var(--accent)', fontWeight: 700 }}>· {docs.length} doc{docs.length !== 1 ? 's' : ''}</span>}
                           </div>
                         </div>
@@ -2539,7 +2583,7 @@ export default function App() {
                           <span className="nombre-cliente" onClick={() => { setHistorialPagosCliente(cliente); setShowHistorialPagosModal(true); }} style={{ fontSize: '1rem' }}>{cliente.nombre}</span>
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>ID: {cliente.id} · {cliente.mes}/{cliente.año}</div>
                         </div>
-                        <span className={`badge badge-${cliente.estado.toLowerCase().replace(/ /g, '-')}`}>{cliente.estado}</span>
+                        <span className={`badge badge-${estadoActivoCliente(cliente).toLowerCase().replace(/ /g, '-')}`}>{estadoActivoCliente(cliente)}</span>
                       </div>
                       <div style={{ fontSize: '1.4rem', fontWeight: 800, fontFamily: 'var(--mono)', color: 'var(--accent2)', marginBottom: '0.5rem' }}>${(parseFloat(cliente.monto) || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}</div>
                       {s.pagado > 0 && <div style={{ fontSize: '0.75rem', color: '#059669' }}>✓ Pagado: ${s.pagado.toLocaleString('en-US', { maximumFractionDigits: 0 })} · Pend: ${s.pendiente.toLocaleString('en-US', { maximumFractionDigits: 0 })}</div>}
@@ -2564,7 +2608,7 @@ export default function App() {
                   { estado: 'Vencido', color: '#dc2626', emoji: '❌' },
                   { estado: 'No Generaron', color: '#64748b', emoji: '🚫' },
                 ].map(({ estado, color, emoji }) => {
-                  const cols = clientesFiltrados.filter(c => c.estado === estado);
+                  const cols = clientesFiltrados.filter(c => estadoActivoCliente(c) === estado);
                   return (
                     <div key={estado} className="kanban-col">
                       <div className="kanban-col-header" style={{ borderTop: `3px solid ${color}` }}>
@@ -2650,7 +2694,7 @@ export default function App() {
                                 📱 {cliente.contacto}
                               </span>
                             ) : '-'}</td>
-                            <td><span className={`badge badge-${cliente.estado.toLowerCase().replace(/ /g, '-')}`}>{cliente.estado}</span></td>
+                            <td><span className={`badge badge-${estadoActivoCliente(cliente).toLowerCase().replace(/ /g, '-')}`}>{estadoActivoCliente(cliente)}</span></td>
                             <td><span className="fecha-badge">{cliente.mes}/{cliente.año}</span></td>
                             <td>
                               {editingMontoId === cliente.id ? (
@@ -2674,7 +2718,7 @@ export default function App() {
                               </div>
                             </td>
                             <td style={{ textAlign: 'center' }}>
-                              {(cliente.estado === 'Pagado' || cliente.estado === 'Facturado') ? <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>—</span> : (
+                              {(estadoActivoCliente(cliente) === 'Pagado' || estadoActivoCliente(cliente) === 'Facturado') ? <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>—</span> : (
                                 <button disabled={esModoPasado} onClick={() => { if (esModoPasado) return; const a = { ...cliente }; a.suspendido = !a.suspendido; a.fechaSuspension = a.suspendido ? new Date().toISOString().split('T')[0] : ''; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.suspendido ? 'Cliente SUSPENDIDO' : 'Suspensión removida', usuario: 'CPEREZ' }]; actualizarCliente(a); }} style={{ padding: '0.3rem 0.65rem', borderRadius: '7px', border: cliente.suspendido ? '1px solid #dc2626' : '1px solid #cbd5e1', background: cliente.suspendido ? '#ef4444' : 'white', color: cliente.suspendido ? 'white' : '#64748b', fontWeight: 700, fontSize: '0.75rem', cursor: esModoPasado ? 'not-allowed' : 'pointer', opacity: esModoPasado ? 0.4 : 1 }}>
                                   {cliente.suspendido ? '🔴 Activo' : '⏸️ Suspender'}
                                 </button>
@@ -3575,38 +3619,58 @@ export default function App() {
                   📂 Subir PDF
                   <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => { subirDocumento(docsClienteId, e.target.files[0]); e.target.value = ''; }} />
                 </label>
-                {docs.length > 0 && (
+                <button className="btn btn-secondary" onClick={() => setNuevaCotForm(f => ({ ...f, show: !f.show, monto: '', estado: 'Cotizado' }))}>➕ Nueva Cotización</button>
+                {docs.filter(d => d.base64).length > 0 && (
                   <button className="btn btn-success" onClick={() => { setShowDocsModal(false); abrirNotifDocModal(cliente); }}>
                     📤 Notificar con Documento
                   </button>
                 )}
               </div>
 
-              {/* Lista de documentos */}
+              {/* Formulario nueva cotización manual */}
+              {nuevaCotForm.show && (
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem', padding: '0.75rem', background: 'var(--surface2)', borderRadius: '10px', border: '1px solid var(--border)', flexWrap: 'wrap' }}>
+                  <input type="number" placeholder="Monto RD$" value={nuevaCotForm.monto} onChange={e => setNuevaCotForm(f => ({ ...f, monto: e.target.value }))} style={{ flex: '1', minWidth: '120px', padding: '0.4rem 0.65rem', borderRadius: '7px', border: '1px solid var(--border)', fontSize: '0.85rem' }} />
+                  <select value={nuevaCotForm.estado} onChange={e => setNuevaCotForm(f => ({ ...f, estado: e.target.value }))} style={{ padding: '0.4rem 0.65rem', borderRadius: '7px', border: '1px solid var(--border)', fontSize: '0.85rem' }}>
+                    {['Cotizado','Notificado','Pagado','Facturado','Vencido'].map(est => <option key={est} value={est}>{est}</option>)}
+                  </select>
+                  <button className="btn btn-primary" style={{ padding: '0.4rem 0.85rem', fontSize: '0.82rem' }} onClick={() => { if (!nuevaCotForm.monto || parseFloat(nuevaCotForm.monto) <= 0) return; crearCotizacionManual(docsClienteId, nuevaCotForm.monto, nuevaCotForm.estado); setNuevaCotForm(f => ({ ...f, show: false, monto: '' })); }}>Guardar</button>
+                  <button className="btn btn-secondary" style={{ padding: '0.4rem 0.65rem', fontSize: '0.82rem' }} onClick={() => setNuevaCotForm(f => ({ ...f, show: false }))}>Cancelar</button>
+                </div>
+              )}
+
+              {/* Lista de cotizaciones/documentos */}
               {docs.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)', border: '2px dashed var(--border)', borderRadius: '12px' }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📭</div>
-                  <p style={{ fontWeight: 600 }}>Sin documentos aún</p>
-                  <p style={{ fontSize: '0.82rem', marginTop: '0.25rem' }}>Genera una cotización o sube un PDF existente</p>
+                  <p style={{ fontWeight: 600 }}>Sin cotizaciones aún</p>
+                  <p style={{ fontSize: '0.82rem', marginTop: '0.25rem' }}>Genera, sube un PDF o crea una cotización manual</p>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxHeight: '340px', overflowY: 'auto' }}>
-                  {docs.map(doc => (
-                    <div key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1rem', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '10px' }}>
-                      <div style={{ fontSize: '1.8rem', flexShrink: 0 }}>{doc.tipo === 'generado' ? '📋' : '📄'}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.nombre}</div>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
-                          {doc.tipo === 'generado' ? '✏️ Generado' : '📂 Subido'} · {new Date(doc.fecha).toLocaleDateString('es-DO')}
-                          {doc.monto && <span style={{ marginLeft: '0.5rem', color: '#059669', fontWeight: 700 }}>${parseFloat(doc.monto).toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>}
+                  {docs.map(doc => {
+                    const ESTADO_COLORS = { Cotizado: '#ea580c', Notificado: '#0284c7', Pagado: '#059669', Facturado: '#16a34a', Vencido: '#dc2626' };
+                    const color = ESTADO_COLORS[doc.estado] || '#64748b';
+                    return (
+                      <div key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1rem', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '10px' }}>
+                        <div style={{ fontSize: '1.8rem', flexShrink: 0 }}>{doc.tipo === 'generado' ? '📋' : doc.tipo === 'manual' ? '📝' : doc.tipo === 'legacy' ? '🗂️' : '📄'}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.nombre || (doc.tipo === 'manual' ? 'Cotización manual' : doc.tipo === 'legacy' ? 'Datos anteriores' : '—')}</div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
+                            {new Date(doc.fecha).toLocaleDateString('es-DO')}
+                            {doc.monto && <span style={{ marginLeft: '0.5rem', color: '#059669', fontWeight: 700 }}>RD${parseFloat(doc.monto).toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>}
+                          </div>
+                        </div>
+                        <select value={doc.estado || 'Cotizado'} onChange={e => actualizarEstadoCotizacion(docsClienteId, doc.id, e.target.value)} style={{ padding: '0.25rem 0.5rem', borderRadius: '6px', border: `1.5px solid ${color}`, color, fontWeight: 700, fontSize: '0.75rem', background: color + '15', cursor: 'pointer' }}>
+                          {['Cotizado','Notificado','Pagado','Facturado','Vencido'].map(est => <option key={est} value={est}>{est}</option>)}
+                        </select>
+                        <div style={{ display: 'flex', gap: '0.3rem', flexShrink: 0 }}>
+                          {doc.base64 && <button onClick={() => descargarDocumento(doc)} className="btn btn-secondary" style={{ padding: '0.3rem 0.65rem', fontSize: '0.78rem' }}>⬇️</button>}
+                          <button onClick={() => eliminarDocumento(docsClienteId, doc.id)} style={{ width: '30px', height: '30px', borderRadius: '7px', border: '1px solid #fca5a5', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', fontSize: '0.82rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑️</button>
                         </div>
                       </div>
-                      <div style={{ display: 'flex', gap: '0.3rem', flexShrink: 0 }}>
-                        <button onClick={() => descargarDocumento(doc)} className="btn btn-secondary" style={{ padding: '0.3rem 0.65rem', fontSize: '0.78rem' }}>⬇️ Descargar</button>
-                        <button onClick={() => eliminarDocumento(docsClienteId, doc.id)} style={{ width: '30px', height: '30px', borderRadius: '7px', border: '1px solid #fca5a5', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', fontSize: '0.82rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑️</button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
               <div style={{ marginTop: '1rem', fontSize: '0.73rem', color: 'var(--text-muted)', textAlign: 'center' }}>
