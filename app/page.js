@@ -29,8 +29,11 @@ export default function App() {
       setIsAuthenticated(true);
       const uname = session.user.username || session.user.email || '';
       setCurrentUser(uname.toUpperCase());
+    } else if (sessionStatus !== 'loading') {
+      // Sesión terminó (logout manual o expirada) → limpiar estado local
+      setIsAuthenticated(false);
     }
-  }, [session]);
+  }, [session, sessionStatus]);
 
   const ADMIN_EMAILS = ['carlosperez@gmail.com'];
 
@@ -1690,7 +1693,7 @@ export default function App() {
     });
   };
 
-  if (!hydrated) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#f0f3f8', fontSize: '1.1rem', color: '#64748b' }}>Cargando...</div>;
+  if (!hydrated || sessionStatus === 'loading') return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#f0f3f8', fontSize: '1.1rem', color: '#64748b' }}>Cargando...</div>;
 
   if (!isAuthenticated && !session) {
     return (
