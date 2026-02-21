@@ -262,6 +262,8 @@ export default function App() {
   const [notaTexto, setNotaTexto] = useState('');
   const [editingCliente, setEditingCliente] = useState(null);
   const [formData, setFormData] = useState({ id: '', codigoCliente: '', nombre: '', contacto: '', estado: 'Cotizado', fechaCotizacion: '', fechaNotificacion: '', fechaPago: '', fechaFacturacion: '', fechaSuspension: '', mes: '', año: '', monto: '', comentario: '', historial: [] });
+  const [pdfCargando, setPdfCargando] = useState(false);
+  const [pdfError,    setPdfError]    = useState('');
   const [activeTab, setActiveTab] = useState('cartera');
   const [darkMode, setDarkMode] = useState(false);
   const [vistaCards, setVistaCards] = useState(false);
@@ -691,7 +693,29 @@ export default function App() {
     setShowModal(true);
   };
 
-  const cerrarModal = () => { setShowModal(false); setEditingCliente(null); };
+  const cerrarModal = () => { setShowModal(false); setEditingCliente(null); setPdfError(''); };
+
+  // Lee una factura PDF y autocompleta el campo monto
+  const leerFacturaPDF = async (archivo) => {
+    if (!archivo) return;
+    setPdfCargando(true);
+    setPdfError('');
+    try {
+      const fd = new FormData();
+      fd.append('pdf', archivo);
+      const res  = await fetch('/api/leer-pdf', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (res.ok && data.monto != null) {
+        setFormData(prev => ({ ...prev, monto: String(data.monto) }));
+      } else {
+        setPdfError(data.error || 'No se pudo leer el PDF.');
+      }
+    } catch {
+      setPdfError('Error de conexión al leer el PDF.');
+    } finally {
+      setPdfCargando(false);
+    }
+  };
 
   // ── Helpers: actualizar estado local + persistir en API ─────────────────
   const actualizarCliente = async (clienteActualizado) => {
@@ -3054,7 +3078,17 @@ export default function App() {
                   <div className="form-group"><label>Mes *</label><select value={formData.mes} onChange={(e) => setFormData({ ...formData, mes: e.target.value })} required><option value="">Seleccionar...</option>{[1,2,3,4,5,6,7,8,9,10,11,12].map(m => <option key={m} value={m}>{m}</option>)}</select></div>
                   <div className="form-group"><label>Año *</label><input type="number" value={formData.año} onChange={(e) => setFormData({ ...formData, año: e.target.value })} min="2024" max="2030" required /></div>
                 </div>
-                <div className="form-group"><label>Monto</label><input type="number" value={formData.monto} onChange={(e) => setFormData({ ...formData, monto: e.target.value })} step="0.01" placeholder="Ej: 5000" /></div>
+                <div className="form-group">
+                  <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>Monto</span>
+                    <label style={{ cursor: pdfCargando ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.6rem', background: '#f1f5f9', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', userSelect: 'none' }}>
+                      {pdfCargando ? '⏳ Leyendo PDF…' : '📄 Leer desde factura PDF'}
+                      <input type="file" accept=".pdf,application/pdf" style={{ display: 'none' }} disabled={pdfCargando} onChange={e => { if (e.target.files[0]) leerFacturaPDF(e.target.files[0]); e.target.value = ''; }} />
+                    </label>
+                  </label>
+                  <input type="number" value={formData.monto} onChange={(e) => setFormData({ ...formData, monto: e.target.value })} step="0.01" placeholder="Ej: 5000" />
+                  {pdfError && <div style={{ fontSize: '0.73rem', color: 'var(--danger)', marginTop: '0.25rem' }}>⚠️ {pdfError}</div>}
+                </div>
                 <div className="form-group"><label>Estado *</label><select value={formData.estado} onChange={(e) => setFormData({ ...formData, estado: e.target.value })} required>{['Cotizado','Notificado','Pagado','Facturado','Vencido','Suspendido','No Generaron'].map(e => <option key={e} value={e}>{e}</option>)}</select></div>
                 <div className="form-group"><label>Fecha de Cotización</label><input type="date" value={formData.fechaCotizacion} onChange={(e) => setFormData({ ...formData, fechaCotizacion: e.target.value })} /></div>
                 <div className="form-group"><label>Comentario</label><textarea value={formData.comentario} onChange={(e) => setFormData({ ...formData, comentario: e.target.value })} /></div>

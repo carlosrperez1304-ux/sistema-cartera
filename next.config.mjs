@@ -17,7 +17,10 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
-  turbopack: {},   // Next.js 16 usa Turbopack por defecto
+  turbopack: {},
+  // Evita que webpack intente bundlear pdfjs-dist en el servidor.
+  // Lo usa directamente como módulo nativo de Node.js (sin canvas, sin worker).
+  serverExternalPackages: ['pdfjs-dist'],
   async headers() {
     return [
       {
