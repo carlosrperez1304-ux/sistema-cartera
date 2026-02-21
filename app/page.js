@@ -56,6 +56,7 @@ export default function App() {
   // Sesión expirada — detectar cuando pasa de authenticated → unauthenticated
   const [sessionExpired, setSessionExpired] = useState(false);
   const [showNotifPanel, setShowNotifPanel] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const [nuevaVersion, setNuevaVersion] = useState(false);
   const prevSessionStatus = useRef(null);
   const versionRef = useRef(null);
@@ -623,9 +624,9 @@ export default function App() {
         const p = (c.pagosRealizados || []).reduce((s, x) => s + (parseFloat(x.monto) || 0), 0);
         return acc + Math.max(0, m - p);
       }, 0),
-      cotizadoPct:    total > 0 ? ((clientesConEstado('Cotizado')   / total) * 100).toFixed(1) : 0,
-      notificadoPct:  total > 0 ? ((clientesConEstado('Notificado') / total) * 100).toFixed(1) : 0,
-      pagadoPct:      total > 0 ? ((clientesConEstado('Pagado')     / total) * 100).toFixed(1) : 0,
+      cotizadoPct:    total > 0 ? ((clientesConEstado('Cotizado')   / total) * 100).toFixed(0) : 0,
+      notificadoPct:  total > 0 ? ((clientesConEstado('Notificado') / total) * 100).toFixed(0) : 0,
+      pagadoPct:      total > 0 ? ((clientesConEstado('Pagado')     / total) * 100).toFixed(0) : 0,
       facturadoPct:   total > 0 ? ((clientesConEstado('Facturado')  / total) * 100).toFixed(1) : 0,
       vencidoPct:     total > 0 ? ((clientesConEstado('Vencido')    / total) * 100).toFixed(1) : 0,
       suspendidoPct:  total > 0 ? ((suspendidos.length / total) * 100).toFixed(1) : 0,
@@ -1914,7 +1915,11 @@ export default function App() {
             <div className="sidebar-item" onClick={() => setShowPlantillasModal(true)}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span> Plantillas WA</div>
           </div>
           <div className="sidebar-section">
-            <div className="sidebar-label">Exportar</div>
+            <div className="sidebar-label" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer' }} onClick={() => setShowExportMenu(v => !v)}>
+              <span>Exportar</span>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showExportMenu ? 'rotate(180deg)' : 'rotate(0deg)', transition:'transform 0.2s' }}><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            {showExportMenu && (<>
             <div className="sidebar-item" onClick={exportarTodosExcel}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> Excel — Todos</div>
             <div className="sidebar-item" onClick={exportarNoGeneraron}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> No Generaron</div>
             <div className="sidebar-item" onClick={exportarFacturados}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> Facturados</div>
@@ -1922,6 +1927,7 @@ export default function App() {
             <div className="sidebar-item" onClick={generarResumenPDF}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span> Resumen PDF</div>
             <div className="sidebar-item" onClick={backupJSON}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> Backup JSON</div>
             <div className="sidebar-item" onClick={() => setShowImportModal(true)}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span> Importar Excel</div>
+            </>)}
           </div>
           <div className="sidebar-section">
             <div className="sidebar-label">Período</div>
@@ -1979,12 +1985,36 @@ export default function App() {
 
         {/* CONTENT */}
         <div className="content-area">
-          <div className="page-header">
-            <div>
-              <h1>👋 Bienvenido, {session?.user?.name || currentUser || 'Usuario'}</h1>
-              <p>Gestión de Cartera · {new Date().toLocaleDateString('es-DO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-
+          <div className="page-header" style={{ flexDirection:'column', alignItems:'stretch', gap:'1rem', padding:'1.25rem 1.5rem', background:'var(--surface)', borderRadius:'14px', border:'1px solid var(--border)', marginBottom:'0.5rem' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <div>
+                <h1 style={{ margin:0, fontSize:'1.3rem', fontWeight:700 }}>Bienvenido, {session?.user?.name || currentUser || 'Usuario'}</h1>
+                <p style={{ margin:'0.15rem 0 0', fontSize:'0.78rem', color:'var(--text-muted)' }}>Gestión de Cartera · {new Date().toLocaleDateString('es-DO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+              </div>
+              <div style={{ fontSize:'0.72rem', color:'var(--text-muted)', background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'20px', padding:'0.25rem 0.75rem', fontWeight:600 }}>Corte · día 15</div>
             </div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:'0.75rem' }}>
+              <div style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'10px', padding:'0.75rem 1rem' }}>
+                <div style={{ fontSize:'0.68rem', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--text-muted)', marginBottom:'0.3rem' }}>Por Cobrar</div>
+                <div style={{ fontSize:'1.25rem', fontWeight:800, color:'#ea580c', fontFamily:'var(--mono)' }}>${{((estadisticas.montoCotizado||0) + (estadisticas.montoNotificado||0)).toLocaleString('en-US', {{ maximumFractionDigits:0 }})}}</div>
+                <div style={{ fontSize:'0.7rem', color:'var(--text-muted)', marginTop:'0.2rem' }}>{(estadisticas.cotizado||0) + (estadisticas.notificado||0)} clientes pendientes</div>
+              </div>
+              <div style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'10px', padding:'0.75rem 1rem' }}>
+                <div style={{ fontSize:'0.68rem', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--text-muted)', marginBottom:'0.3rem' }}>Cobrado este mes</div>
+                <div style={{ fontSize:'1.25rem', fontWeight:800, color:'#059669', fontFamily:'var(--mono)' }}>${{(estadisticas.montoPagado||0).toLocaleString('en-US', {{ maximumFractionDigits:0 }})}}</div>
+                <div style={{ fontSize:'0.7rem', color:'var(--text-muted)', marginTop:'0.2rem' }}>{estadisticas.pagado||0} clientes pagados</div>
+              </div>
+              <div style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'10px', padding:'0.75rem 1rem' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.3rem' }}>
+                  <div style={{ fontSize:'0.68rem', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--text-muted)' }}>Meta mensual</div>
+                  <div style={{ fontSize:'0.7rem', fontWeight:700, color: metaMensual > 0 && (estadisticas.montoPagado||0) >= metaMensual ? '#059669' : 'var(--text-muted)' }}>{metaMensual > 0 ? `${{Math.min(100, Math.round(((estadisticas.montoPagado||0) / metaMensual) * 100))}}%` : '—'}</div>
+                </div>
+                <div style={{ fontSize:'1.25rem', fontWeight:800, color:'var(--brand)', fontFamily:'var(--mono)' }}>${{(metaMensual||0).toLocaleString('en-US', {{ maximumFractionDigits:0 }})}}</div>
+                {metaMensual > 0 && (<div style={{ marginTop:'0.5rem' }}><div style={{ height:'4px', borderRadius:'99px', background:'var(--border)', overflow:'hidden' }}><div style={{ height:'100%', borderRadius:'99px', background: (estadisticas.montoPagado||0) >= metaMensual ? '#059669' : 'var(--brand)', width:`${{Math.min(100, ((estadisticas.montoPagado||0) / metaMensual) * 100)}}%`, transition:'width 0.5s ease' }}></div></div></div>)}
+                {!metaMensual && <div style={{ fontSize:'0.7rem', color:'var(--text-muted)', marginTop:'0.2rem' }}>Configura en Preferencias</div>}
+              </div>
+            </div>
+          </div>
 
           </div>
 
