@@ -708,7 +708,12 @@ export default function App() {
       if (res.ok && data.monto != null) {
         setFormData(prev => ({ ...prev, monto: String(data.monto) }));
       } else {
-        setPdfError(data.error || 'No se pudo leer el PDF.');
+        // Mostrar error + preview del texto extraído si el backend lo devuelve
+        const msg = data.error || 'No se pudo leer el PDF.';
+        const preview = data.previewTexto
+          ? `\n\nTexto detectado:\n${data.previewTexto.slice(0, 300)}`
+          : '';
+        setPdfError(msg + preview);
       }
     } catch {
       setPdfError('Error de conexión al leer el PDF.');
@@ -3087,7 +3092,11 @@ export default function App() {
                     </label>
                   </label>
                   <input type="number" value={formData.monto} onChange={(e) => setFormData({ ...formData, monto: e.target.value })} step="0.01" placeholder="Ej: 5000" />
-                  {pdfError && <div style={{ fontSize: '0.73rem', color: 'var(--danger)', marginTop: '0.25rem' }}>⚠️ {pdfError}</div>}
+                  {pdfError && (
+                    <div style={{ fontSize: '0.73rem', color: 'var(--danger)', marginTop: '0.25rem', whiteSpace: 'pre-wrap', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '0.4rem 0.6rem', maxHeight: '120px', overflowY: 'auto' }}>
+                      ⚠️ {pdfError}
+                    </div>
+                  )}
                 </div>
                 <div className="form-group"><label>Estado *</label><select value={formData.estado} onChange={(e) => setFormData({ ...formData, estado: e.target.value })} required>{['Cotizado','Notificado','Pagado','Facturado','Vencido','Suspendido','No Generaron'].map(e => <option key={e} value={e}>{e}</option>)}</select></div>
                 <div className="form-group"><label>Fecha de Cotización</label><input type="date" value={formData.fechaCotizacion} onChange={(e) => setFormData({ ...formData, fechaCotizacion: e.target.value })} /></div>
