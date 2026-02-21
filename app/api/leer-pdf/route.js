@@ -30,9 +30,10 @@ const ALTA_PRIORIDAD = [
   'TOTAL RD$',
 ];
 
-// ── Extracción de texto agrupando por coordenada Y ───────────────
-// Usa el transform[5] (posición Y de cada item) para agrupar texto
-// que está en la misma línea visual, independientemente de hasEOL.
+// ── Extracción de texto agrupando por coordenada Y con tolerancia ─
+// Agrupa items cuya posición Y difiere en ≤2 px como la misma línea.
+// Esto evita que columnas de una tabla (etiqueta vs monto) queden
+// en líneas distintas por diferencias mínimas de alineación vertical.
 async function extraerTextoPDF(buffer) {
   const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
   pdfjsLib.GlobalWorkerOptions.workerSrc = '';
@@ -51,22 +52,31 @@ async function extraerTextoPDF(buffer) {
     const pagina  = await doc.getPage(p);
     const content = await pagina.getTextContent();
 
-    // Agrupar items por su posición Y redondeada
-    // Mismo Y ≈ misma línea visual en el PDF
-    const porY = new Map();
+    // Agrupar items por posición Y con tolerancia de ±2 px.
+    // Columnas de una tabla suelen tener Y idéntico, pero pequeñas
+    // diferencias de font baseline pueden separar etiqueta y monto.
+    const grupos = []; // [{ yRef, items: [{x, str}] }]
+
     for (const item of content.items) {
-      if (!item.str) continue;
-      const y = Math.round(item.transform[5]); // transform = [sx,ky,kx,sy, x, y]
-      if (!porY.has(y)) porY.set(y, []);
-      porY.get(y).push({ x: item.transform[4], str: item.str });
+      if (!item.str || !item.str.trim()) continue;
+      const rawY = item.transform[5]; // transform = [sx,ky,kx,sy, x, y]
+      const rawX = item.transform[4];
+
+      // Buscar un grupo existente cuyo Y de referencia esté a ≤2 px
+      const grupo = grupos.find(g => Math.abs(g.yRef - rawY) <= 2);
+      if (grupo) {
+        grupo.items.push({ x: rawX, str: item.str });
+      } else {
+        grupos.push({ yRef: rawY, items: [{ x: rawX, str: item.str }] });
+      }
     }
 
     // Ordenar de arriba a abajo (Y mayor = más arriba en coordenadas PDF)
-    const lineas = [...porY.entries()]
-      .sort(([ya], [yb]) => yb - ya)
-      .map(([, items]) =>
-        items
-          .sort((a, b) => a.x - b.x)    // de izquierda a derecha
+    const lineas = grupos
+      .sort((a, b) => b.yRef - a.yRef)
+      .map(g =>
+        g.items
+          .sort((a, b) => a.x - b.x)   // de izquierda a derecha
           .map(i => i.str)
           .join(' ')
           .trim()
@@ -80,6 +90,11 @@ async function extraerTextoPDF(buffer) {
 }
 
 // ── Extrae el monto TOTAL FINAL del texto ────────────────────────
+// Maneja dos layouts de factura:
+//   a) Todo en una línea:  "TOTAL RD$ 252,275.37"
+//   b) Etiqueta y monto en líneas consecutivas:
+//        línea i:   "TOTAL RD$"
+//        línea i+1: "252,275.37"
 function extraerTotal(texto) {
   const MONTO_RE = /((?:\d{1,3},)*\d{1,3}\.\d{2}|\d+\.\d{2})/g;
   const lineas   = texto.split(/[\r\n]+/);
@@ -88,8 +103,8 @@ function extraerTotal(texto) {
   let montoGenerico      = null; // líneas que solo dicen "TOTAL"
   const todosLosCandidatos = []; // todos los candidatos válidos
 
-  for (const linea of lineas) {
-    const limpia  = linea.trim();
+  for (let i = 0; i < lineas.length; i++) {
+    const limpia  = lineas[i].trim();
     const limpiaU = limpia.toUpperCase();
 
     // Solo líneas que comiencen con "TOTAL" (ignora SUBTOTAL, etc.)
@@ -98,11 +113,22 @@ function extraerTotal(texto) {
     // Descartar etiquetas que nunca son el total final
     if (EXCLUIR.some(ex => limpiaU.startsWith(ex))) continue;
 
-    // Buscar todos los montos numéricos válidos en la línea
-    const nums = [...limpia.matchAll(MONTO_RE)];
+    // Buscar montos numéricos en la línea actual
+    let nums = [...limpia.matchAll(MONTO_RE)];
+
+    // Layout b): la etiqueta TOTAL está sola y el monto viene en la
+    // siguiente línea (columnas separadas que no se agruparon por Y).
+    if (nums.length === 0 && i + 1 < lineas.length) {
+      const sigLinea = lineas[i + 1].trim();
+      // La siguiente línea debe ser solo un número, no otra etiqueta
+      if (!/^TOTAL/i.test(sigLinea.toUpperCase())) {
+        nums = [...sigLinea.matchAll(MONTO_RE)];
+      }
+    }
+
     if (nums.length === 0) continue;
 
-    // Tomar el ÚLTIMO número de la línea (columna de monto en facturas tabular)
+    // Tomar el ÚLTIMO número (columna de monto en tablas)
     const raw    = nums[nums.length - 1][1];
     const numero = parseFloat(raw.replace(/,/g, ''));
     if (isNaN(numero) || numero <= 0) continue;
@@ -118,7 +144,7 @@ function extraerTotal(texto) {
   }
 
   // Orden de prioridad:
-  // 1. Etiqueta prioritaria ("TOTAL A PAGAR", etc.)
+  // 1. Etiqueta prioritaria ("TOTAL A PAGAR", "TOTAL RD$", etc.)
   // 2. "TOTAL" genérico
   // 3. El mayor monto entre todos los candidatos (fallback)
   if (montoAltaPrioridad !== null) return montoAltaPrioridad;
