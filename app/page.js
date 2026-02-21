@@ -1286,12 +1286,16 @@ export default function App() {
       const montoDetectado = await extraerMontoPDF(base64);
       const nueva = { id: Date.now(), nombre: file.name, base64, fecha: new Date().toISOString(), monto: montoDetectado, tipo: 'subido', estado: 'Cotizado' };
       setCotizaciones(prev => ({ ...prev, [clienteId]: [...(prev[clienteId] || []), nueva] }));
+      const clienteActual = clientes.find(c => c.id === clienteId);
+      if (clienteActual) {
+        const updates = { ...clienteActual, estado: 'Cotizado', fechaCotizacion: clienteActual.fechaCotizacion || new Date().toISOString().split('T')[0] };
+        if (montoDetectado) updates.monto = montoDetectado.toString();
+        actualizarCliente(updates);
+      }
       if (montoDetectado) {
-        const clienteActual = clientes.find(c => c.id === clienteId);
-        if (clienteActual) actualizarCliente({ ...clienteActual, monto: montoDetectado.toString(), estado: 'Cotizado' });
         showToast(`Documento guardado · Monto detectado: RD$${montoDetectado.toLocaleString('en-US')}`, 'success');
       } else {
-        showToast('Documento guardado correctamente', 'success');
+        showToast('Documento guardado · Estado marcado como Cotizado', 'success');
       }
     };
     reader.readAsDataURL(file);
