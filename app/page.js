@@ -1220,36 +1220,16 @@ export default function App() {
   // ── Extrae el monto "Total RD$" del contenido de un PDF (base64) ──
   const extraerMontoPDF = async (base64) => {
     try {
-      const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
       const base64Data = base64.includes(',') ? base64.split(',')[1] : base64;
       const binary = atob(base64Data);
       const bytes = new Uint8Array(binary.length);
       for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-      const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
-      let texto = '';
-      for (let p = 1; p <= pdf.numPages; p++) {
-        const page = await pdf.getPage(p);
-        const content = await page.getTextContent();
-        texto += content.items.map(it => it.str).join(' ') + ' ';
-      }
-
-      // Helper: extrae el primer número que aparece después de una etiqueta
-      const extraer = (patron) => {
-        const m = texto.match(patron);
-        if (!m) return 0;
-        const val = parseFloat(m[1].replace(/,/g, ''));
-        return isNaN(val) ? 0 : val;
-      };
-
-      // Detectar los tres componentes del documento
-      const totalBruto = extraer(/total\s*bruto[^0-9]*([\d,\.]+)/i);
-      const subtotal   = extraer(/sub\s*total[^0-9]*([\d,\.]+)/i);
-      const itbis      = extraer(/itbis[^0-9]*([\d,\.]+)/i);
-
-      const suma = totalBruto + subtotal + itbis;
-      if (suma > 0) return suma;
-
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      const fd = new FormData();
+      fd.append('pdf', blob, 'documento.pdf');
+      const res = await fetch('/api/leer-pdf', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (res.ok && data.monto != null) return data.monto;
       return null;
     } catch { return null; }
   };
