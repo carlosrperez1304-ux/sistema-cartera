@@ -722,6 +722,17 @@ export default function App() {
   const esModoPasado = mesVisualizando !== obtenerMesActual();
   const esDespuesDel15 = new Date().getDate() >= 16;
 
+  // Toast de vencidos - aparece 2 segundos después de cargar
+  useEffect(() => {
+    if (!estadisticas || !esDespuesDel15) return;
+    if (estadisticas.vencido > 0) {
+      const timer = setTimeout(() => {
+        showToast(`⚠️ ${estadisticas.vencido} cliente(s) vencidos sin pago`, 'error');
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [estadisticas.vencido]);
+
   const abrirModal = (cliente = null) => {
     if (cliente) { setEditingCliente(cliente); setFormData(cliente); }
     else {
@@ -1931,14 +1942,7 @@ export default function App() {
             <div>
               <h1>Gestión de Cartera</h1>
               <p>Panel de control · CPEREZ · {new Date().toLocaleDateString('es-DO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-              <div className="estado-flow">
-                <span className="flow-step">Cotizado</span><span className="flow-arrow">→</span>
-                <span className="flow-step">Notificado</span><span className="flow-arrow">→</span>
-                <span className="flow-step">Pagado</span><span className="flow-arrow">→</span>
-                <span className="flow-step">Facturado</span><span className="flow-arrow">·</span>
-                <span className="flow-step">No Generaron</span>
-              </div>
-              {esDespuesDel15 && estadisticas.vencido > 0 && <div className="alert-banner" style={{ marginTop: '0.75rem' }}>Alerta: {estadisticas.vencido} cliente(s) vencidos sin pago antes del día 15</div>}
+
             </div>
             <div className="fecha-corte">Corte: Día 15 de cada mes</div>
           </div>
