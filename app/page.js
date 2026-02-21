@@ -1956,7 +1956,7 @@ export default function App() {
             </label>
           </div>
 
-          {/* ── User footer — Claude style ── */}
+          {/*  User footer — Claude style  */}
           <div className="sidebar-user-footer">
             <div className="sidebar-user-avatar">
               {(currentUser || session?.user?.name || 'U').charAt(0).toUpperCase()}
@@ -2205,7 +2205,7 @@ export default function App() {
               );
             })()}
 
-            {/* ── PANEL DE ALERTAS INTELIGENTES ── */}
+            {/*  PANEL DE ALERTAS INTELIGENTES  */}
             {(() => {
               const hoy = new Date();
               const sinContacto = clientes.filter(c => {
@@ -2248,7 +2248,7 @@ export default function App() {
               );
             })()}
 
-            {/* ── PROYECCIÓN DE COBROS ── */}
+            {/*  PROYECCIÓN DE COBROS  */}
             {(() => {
               const mCotizado = estadisticas.montoCotizado || 0;
               const mNotificado = estadisticas.montoNotificado || 0;
@@ -2840,7 +2840,7 @@ export default function App() {
               )}
             </div>
 
-            {/* ── BARRA WHATSAPP MASIVO ── */}
+            {/*  BARRA WHATSAPP MASIVO  */}
             {clientesSeleccionados.length > 0 && (
               <div style={{ position:'sticky', bottom:'1rem', left:0, right:0, zIndex:200, background:'#1e2d4a', borderRadius:'14px', padding:'0.85rem 1.25rem', display:'flex', alignItems:'center', gap:'1rem', boxShadow:'0 8px 30px rgba(0,0,0,0.25)', flexWrap:'wrap' }}>
                 <div style={{ color:'white', fontWeight:700, fontSize:'0.88rem' }}>
@@ -3481,7 +3481,7 @@ export default function App() {
 
           <div id="save-indicator" className="save-indicator" style={{ display: 'none' }}></div>
 
-          {/* ── Modal: Notificación de Delegación Pendiente ─────── */}
+          {/*  Modal: Notificación de Delegación Pendiente  */}
           {showPendienteModal && delegationsPendientes.length > 0 && (() => {
             const d = delegationsPendientes[pendienteIdx];
             if (!d) return null;
@@ -3529,7 +3529,7 @@ export default function App() {
             );
           })()}
 
-          {/* ── Modal: Crear Delegación (Wizard 3 pasos) ─────────── */}
+          {/*  Modal: Crear Delegación (Wizard 3 pasos)  */}
           {showCrearDelegacionModal && (
             <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowCrearDelegacionModal(false); }}>
               <div className="modal-content" style={{ maxWidth: '580px' }}>
@@ -3664,7 +3664,7 @@ export default function App() {
             </div>
           )}
 
-          {/* ── Modal de Confirmación ─────────────────────────── */}
+          {/*  Modal de Confirmación  */}
           {confirmModal.show && (
             <div className="modal show" style={{ zIndex: 99999 }}>
               <div className="modal-content" style={{ maxWidth: '420px' }}>
@@ -3688,7 +3688,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* ── Modal Documentos del Cliente ────────────────── */}
+      {/* Modal Documentos del Cliente */}
       {showDocsModal && docsClienteId && (() => {
         const cliente = clientes.find(c => c.id === docsClienteId);
         if (!cliente) return null;
@@ -3770,7 +3770,7 @@ export default function App() {
         );
       })()}
 
-      {/* ── Modal Generar Cotización ─────────────────────── */}
+      {/*  Modal Generar Cotización  */}
       {showGenCotModal && genCotCliente && (
         <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowGenCotModal(false); }}>
           <div className="modal-content" style={{ maxWidth: '600px' }}>
@@ -3834,7 +3834,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ── Modal Notificar con Documento ───────────────── */}
+      {/*  Modal Notificar con Documento  */}
       {showNotifDocModal && notifDocCliente && (
         <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowNotifDocModal(false); }}>
           <div className="modal-content" style={{ maxWidth: '500px' }}>
@@ -3923,7 +3923,7 @@ export default function App() {
       )}
 
       {/* Modal Configuración */}
-      {/* ── Settings Panel — Claude style ── */}
+      {/*  Settings Panel — Claude style  */}
       {showSettingsPanel && (
         <div className="settings-overlay" onClick={e => { if (e.target === e.currentTarget) setShowSettingsPanel(false); }}>
           <div className="settings-panel">
@@ -4076,7 +4076,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ── Modal Gestión de Usuarios ───────────────────── */}
+      {/*  Modal Gestión de Usuarios  */}
       {showUsuariosModal && esAdmin && (
         <div className="modal show" onClick={e => { if (e.target === e.currentTarget) { setShowUsuariosModal(false); setUsuarioEditando(null); setUsuarioForm({ username:'', nombre:'', pass:'', rol:'viewer' }); } }}>
           <div className="modal-content" style={{ maxWidth: '620px' }}>
@@ -4232,7 +4232,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ── Modal Auditoría de Seguridad ─────────────────── */}
+      {/*  Modal Auditoría de Seguridad  */}
       {showAuditModal && esAdmin && (
         <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowAuditModal(false); }}>
           <div className="modal-content" style={{ maxWidth: '820px' }}>
@@ -4298,7 +4298,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ── Modal Bitácora de Gestión ───────────────────── */}
+      {/*  Modal Bitácora de Gestión  */}
       {showGestionModal && gestionClienteId && (
         <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowGestionModal(false); }}>
           <div className="modal-content" style={{ maxWidth: '500px' }}>
@@ -4354,7 +4354,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ── Modal WhatsApp Masivo ────────────────────────── */}
+      {/*  Modal WhatsApp Masivo  */}
       {showWaMasivoModal && (
         <div className="modal show" onClick={e => { if (e.target === e.currentTarget && !waMasivoActivo) { setShowWaMasivoModal(false); } }}>
           <div className="modal-content" style={{ maxWidth: '560px' }}>
@@ -4414,7 +4414,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ── Modal Plantillas WhatsApp ────────────────────── */}
+      {/*  Modal Plantillas WhatsApp  */}
       {showPlantillasModal && (
         <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowPlantillasModal(false); }}>
           <div className="modal-content" style={{ maxWidth: '620px' }}>
@@ -4460,7 +4460,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ── Modal Carga Masiva ────────────────────────────── */}
+      {/*  Modal Carga Masiva  */}
       {showCargaMasivaModal && (
         <div className="modal show" onClick={e => { if (e.target === e.currentTarget) { setShowCargaMasivaModal(false); setArchivosEnProceso([]); } }}>
           <div className="modal-content" style={{ maxWidth: '780px' }}>
