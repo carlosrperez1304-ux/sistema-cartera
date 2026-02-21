@@ -1828,16 +1828,6 @@ export default function App() {
             <div className="dot">CM</div>
             <span className="logo-text">CartaMaster</span>
           </div>
-          <nav className="topbar-center-nav">
-            <button className={`topbar-nav-link ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>Inicio</button>
-            <button className={`topbar-nav-link ${activeTab === 'cartera' ? 'active' : ''}`} onClick={() => setActiveTab('cartera')}>Cartera</button>
-            <button className={`topbar-nav-link ${activeTab === 'credito' ? 'active' : ''}`} onClick={() => setActiveTab('credito')}>Crédito</button>
-            <button className={`topbar-nav-link ${activeTab === 'agenda' ? 'active' : ''}`} onClick={() => setActiveTab('agenda')}>Agenda</button>
-            <button className={`topbar-nav-link ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => setActiveTab('documentos')}>Documentos</button>
-            <button className={`topbar-nav-link ${activeTab === 'calendario' ? 'active' : ''}`} onClick={() => setActiveTab('calendario')}>Calendario</button>
-            {puedeVerTodo && <button className={`topbar-nav-link ${activeTab === 'carteras' ? 'active' : ''}`} onClick={() => setActiveTab('carteras')}>Carteras</button>}
-            {(esAdmin || esEditor) && <button className={`topbar-nav-link ${activeTab === 'delegations' ? 'active' : ''}`} onClick={() => { setActiveTab('delegations'); cargarDelegations(); }} style={{ position: 'relative' }}>Delegations{delegationsPendientes.length > 0 && <span style={{ position: 'absolute', top: '-2px', right: '-6px', width: '8px', height: '8px', background: '#f97316', borderRadius: '50%' }}></span>}</button>}
-          </nav>
         </div>
         <div className="topbar-right">
           {soloLectura && <span style={{ background: 'rgba(254,249,195,0.15)', color: '#fbbf24', fontSize: '0.67rem', padding: '0.2rem 0.55rem', borderRadius: '5px', fontWeight: 700, marginRight: '0.25rem', border: '1px solid rgba(251,191,36,0.25)' }}>Solo lectura</span>}
@@ -1905,6 +1895,8 @@ export default function App() {
         <div className={`sidebar${showMobileMenu ? ' mobile-open' : ''}`}>
           <div className="sidebar-section">
             <div className="sidebar-label">Gestión</div>
+            <div className={`sidebar-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span> Inicio</div>
+            <div className={`sidebar-item ${activeTab === 'calendario' ? 'active' : ''}`} onClick={() => setActiveTab('calendario')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> Calendario</div>
             <div className={`sidebar-item ${activeTab === 'cartera' ? 'active' : ''}`} onClick={() => setActiveTab('cartera')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="12" width="4" height="8" rx="1"/><rect x="10" y="8" width="4" height="12" rx="1"/><rect x="17" y="4" width="4" height="16" rx="1"/></svg></span> Cartera</div>
             <div className={`sidebar-item ${activeTab === 'credito' ? 'active' : ''}`} onClick={() => setActiveTab('credito')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></span> Crédito</div>
             <div className={`sidebar-item ${activeTab === 'agenda' ? 'active' : ''}`} onClick={() => setActiveTab('agenda')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> Agenda del Día</div>
@@ -2004,19 +1996,6 @@ export default function App() {
 
           </div>
 
-          <div className="tabs-nav">
-            <button className={`tab-btn ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>Inicio</button>
-            <button className={`tab-btn ${activeTab === 'agenda' ? 'active' : ''}`} onClick={() => setActiveTab('agenda')} style={{ position:'relative' }}>
-              Agenda
-              {(() => { const hoy = clientes.filter(c => tieneProximoSeguimiento(c.id)).length; return hoy > 0 ? <span style={{ position:'absolute', top:'6px', right:'2px', background:'#dc2626', color:'white', borderRadius:'50%', width:'16px', height:'16px', fontSize:'0.6rem', fontWeight:800, display:'flex', alignItems:'center', justifyContent:'center' }}>{hoy}</span> : null; })()}
-            </button>
-            <button className={`tab-btn ${activeTab === 'cartera' ? 'active' : ''}`} onClick={() => setActiveTab('cartera')}>Cartera</button>
-            <button className={`tab-btn ${activeTab === 'credito' ? 'active' : ''}`} onClick={() => setActiveTab('credito')}>Crédito</button>
-            <button className={`tab-btn ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => setActiveTab('documentos')}>Documentos</button>
-            <button className={`tab-btn ${activeTab === 'calendario' ? 'active' : ''}`} onClick={() => setActiveTab('calendario')}>Calendario</button>
-            {puedeVerTodo && <button className={`tab-btn ${activeTab === 'carteras' ? 'active' : ''}`} onClick={() => setActiveTab('carteras')}>Carteras</button>}
-            {(esAdmin || esEditor) && <button className={`tab-btn ${activeTab === 'delegations' ? 'active' : ''}`} onClick={() => { setActiveTab('delegations'); cargarDelegations(); }}>Delegations</button>}
-          </div>
 
           {/* TAB DASHBOARD */}
           <div className={`tab-content ${activeTab === 'dashboard' ? 'active' : ''}`}>
