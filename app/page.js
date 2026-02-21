@@ -2014,7 +2014,6 @@ export default function App() {
                 {!metaMensual && <div style={{ fontSize:'0.7rem', color:'var(--text-muted)', marginTop:'0.2rem' }}>Configura en Preferencias</div>}
               </div>
             </div>
-          </div>
 
           </div>
 
