@@ -1942,7 +1942,6 @@ export default function App() {
               )}
             </div>
           </div>
-          <div className="sidebar-section">
 
           {/*  User footer — Claude style  */}
           <div className="sidebar-user-footer">
