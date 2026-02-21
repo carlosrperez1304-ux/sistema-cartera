@@ -55,6 +55,7 @@ export default function App() {
 
   // Sesión expirada — detectar cuando pasa de authenticated → unauthenticated
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
   const [nuevaVersion, setNuevaVersion] = useState(false);
   const prevSessionStatus = useRef(null);
   const versionRef = useRef(null);
@@ -722,16 +723,7 @@ export default function App() {
   const esModoPasado = mesVisualizando !== obtenerMesActual();
   const esDespuesDel15 = new Date().getDate() >= 16;
 
-  // Toast de vencidos - aparece 2 segundos después de cargar
-  useEffect(() => {
-    if (!estadisticas || !esDespuesDel15) return;
-    if (estadisticas.vencido > 0) {
-      const timer = setTimeout(() => {
-        showToast(`⚠️ ${estadisticas.vencido} cliente(s) vencidos sin pago`, 'error');
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [estadisticas.vencido]);
+
 
   const abrirModal = (cliente = null) => {
     if (cliente) { setEditingCliente(cliente); setFormData(cliente); }
@@ -1500,6 +1492,10 @@ export default function App() {
       if (!arch.base64 || !arch.clienteAsignado) { errores++; return; }
       const nueva = { id: Date.now() + Math.random(), nombre: arch.nombre, base64: arch.base64, fecha: new Date().toISOString(), monto: arch.montoDetectado || null, tipo: 'subido', estado: 'Cotizado' };
       setCotizaciones(prev => ({ ...prev, [arch.clienteAsignado.id]: [...(prev[arch.clienteAsignado.id] || []), nueva] }));
+      if (arch.montoDetectado) {
+        const clienteActual = clientes.find(c => c.id === arch.clienteAsignado.id);
+        if (clienteActual) actualizarCliente({ ...clienteActual, monto: arch.montoDetectado.toString() });
+      }
       guardados++;
     });
     setShowCargaMasivaModal(false);
@@ -1854,6 +1850,47 @@ export default function App() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
             </button>
           )}
+          {/* CAMPANA DE NOTIFICACIONES */}
+          <div style={{ position: 'relative' }}>
+            <button className="topbar-icon-btn" onClick={() => setShowNotifPanel(v => !v)} title="Notificaciones" style={{ position: 'relative' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              {(estadisticas.vencido > 0 || esDespuesDel15) && (
+                <span style={{ position: 'absolute', top: '4px', right: '4px', width: '8px', height: '8px', background: '#ef4444', borderRadius: '50%', display: 'block' }} />
+              )}
+            </button>
+            {showNotifPanel && (
+              <>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 998 }} onClick={() => setShowNotifPanel(false)} />
+                <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', width: '300px', background: 'var(--bg-card, #1e293b)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', zIndex: 999, overflow: 'hidden' }}>
+                  <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.08)', fontWeight: 700, fontSize: '0.85rem', color: 'rgba(255,255,255,0.9)' }}>
+                    🔔 Notificaciones
+                  </div>
+                  {estadisticas.vencido > 0 ? (
+                    <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                        <span style={{ background: '#ef4444', borderRadius: '6px', padding: '0.15rem 0.5rem', fontSize: '0.7rem', fontWeight: 700, color: 'white' }}>VENCIDOS</span>
+                        <span style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>{estadisticas.vencido} cliente(s)</span>
+                      </div>
+                      {clientes.filter(c => c.estado === 'Vencido').slice(0, 4).map(c => (
+                        <div key={c.id} onClick={() => { setActiveTab('cartera'); setShowNotifPanel(false); }} style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', padding: '0.2rem 0', cursor: 'pointer', borderLeft: '2px solid #ef4444', paddingLeft: '0.5rem', marginBottom: '0.2rem' }}>
+                          {c.nombre} {c.monto ? <span style={{ color: '#ef4444', fontWeight: 600 }}>· ${parseFloat(c.monto).toLocaleString('en-US', { maximumFractionDigits: 0 })}</span> : ''}
+                        </div>
+                      ))}
+                      {estadisticas.vencido > 4 && <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.2rem' }}>+{estadisticas.vencido - 4} más...</div>}
+                    </div>
+                  ) : (
+                    <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>✅ Sin clientes vencidos</div>
+                  )}
+                  <div style={{ padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <span style={{ background: esDespuesDel15 ? 'rgba(249,115,22,0.2)' : 'rgba(100,116,139,0.2)', borderRadius: '6px', padding: '0.15rem 0.5rem', fontSize: '0.7rem', fontWeight: 700, color: esDespuesDel15 ? '#fb923c' : '#94a3b8' }}>CORTE</span>
+                    <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.6)' }}>
+                      {esDespuesDel15 ? '⚠️ Ya pasó el día 15 de este mes' : `Día 15 de cada mes · Faltan ${15 - new Date().getDate()} días`}
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1940,11 +1977,11 @@ export default function App() {
         <div className="content-area">
           <div className="page-header">
             <div>
-              <h1>Gestión de Cartera</h1>
-              <p>Panel de control · CPEREZ · {new Date().toLocaleDateString('es-DO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+              <h1>👋 Bienvenido, {session?.user?.name || currentUser || 'Usuario'}</h1>
+              <p>Gestión de Cartera · {new Date().toLocaleDateString('es-DO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
 
             </div>
-            <div className="fecha-corte">Corte: Día 15 de cada mes</div>
+
           </div>
 
           <div className="tabs-nav">
