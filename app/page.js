@@ -1996,21 +1996,21 @@ export default function App() {
             <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:'0.75rem' }}>
               <div style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'10px', padding:'0.75rem 1rem' }}>
                 <div style={{ fontSize:'0.68rem', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--text-muted)', marginBottom:'0.3rem' }}>Por Cobrar</div>
-                <div style={{ fontSize:'1.25rem', fontWeight:800, color:'#ea580c', fontFamily:'var(--mono)' }}>${{((estadisticas.montoCotizado||0) + (estadisticas.montoNotificado||0)).toLocaleString('en-US', { maximumFractionDigits:0 })}}</div>
+                <div style={{ fontSize:'1.25rem', fontWeight:800, color:'#ea580c', fontFamily:'var(--mono)' }}>${((estadisticas.montoCotizado||0) + (estadisticas.montoNotificado||0)).toLocaleString('en-US', { maximumFractionDigits:0 })}</div>
                 <div style={{ fontSize:'0.7rem', color:'var(--text-muted)', marginTop:'0.2rem' }}>{(estadisticas.cotizado||0) + (estadisticas.notificado||0)} clientes pendientes</div>
               </div>
               <div style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'10px', padding:'0.75rem 1rem' }}>
                 <div style={{ fontSize:'0.68rem', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--text-muted)', marginBottom:'0.3rem' }}>Cobrado este mes</div>
-                <div style={{ fontSize:'1.25rem', fontWeight:800, color:'#059669', fontFamily:'var(--mono)' }}>${{(estadisticas.montoPagado||0).toLocaleString('en-US', { maximumFractionDigits:0 })}}</div>
+                <div style={{ fontSize:'1.25rem', fontWeight:800, color:'#059669', fontFamily:'var(--mono)' }}>${(estadisticas.montoPagado||0).toLocaleString('en-US', { maximumFractionDigits:0 })}</div>
                 <div style={{ fontSize:'0.7rem', color:'var(--text-muted)', marginTop:'0.2rem' }}>{estadisticas.pagado||0} clientes pagados</div>
               </div>
               <div style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'10px', padding:'0.75rem 1rem' }}>
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.3rem' }}>
                   <div style={{ fontSize:'0.68rem', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--text-muted)' }}>Meta mensual</div>
-                  <div style={{ fontSize:'0.7rem', fontWeight:700, color: metaMensual > 0 && (estadisticas.montoPagado||0) >= metaMensual ? '#059669' : 'var(--text-muted)' }}>{metaMensual > 0 ? `${{Math.min(100, Math.round(((estadisticas.montoPagado||0) / metaMensual) * 100))}}%` : '—'}</div>
+                  <div style={{ fontSize:'0.7rem', fontWeight:700, color: metaMensual > 0 && (estadisticas.montoPagado||0) >= metaMensual ? '#059669' : 'var(--text-muted)' }}>{metaMensual > 0 ? `${Math.min(100, Math.round(((estadisticas.montoPagado||0) / metaMensual) * 100))}%` : '—'}</div>
                 </div>
-                <div style={{ fontSize:'1.25rem', fontWeight:800, color:'var(--brand)', fontFamily:'var(--mono)' }}>${{(metaMensual||0).toLocaleString('en-US', { maximumFractionDigits:0 })}}</div>
-                {metaMensual > 0 && (<div style={{ marginTop:'0.5rem' }}><div style={{ height:'4px', borderRadius:'99px', background:'var(--border)', overflow:'hidden' }}><div style={{ height:'100%', borderRadius:'99px', background: (estadisticas.montoPagado||0) >= metaMensual ? '#059669' : 'var(--brand)', width:`${{Math.min(100, ((estadisticas.montoPagado||0) / metaMensual) * 100)}}%`, transition:'width 0.5s ease' }}></div></div></div>)}
+                <div style={{ fontSize:'1.25rem', fontWeight:800, color:'var(--brand)', fontFamily:'var(--mono)' }}>${(metaMensual||0).toLocaleString('en-US', { maximumFractionDigits:0 })}</div>
+                {metaMensual > 0 && (<div style={{ marginTop:'0.5rem' }}><div style={{ height:'4px', borderRadius:'99px', background:'var(--border)', overflow:'hidden' }}><div style={{ height:'100%', borderRadius:'99px', background: (estadisticas.montoPagado||0) >= metaMensual ? '#059669' : 'var(--brand)', width:`${Math.min(100, ((estadisticas.montoPagado||0) / metaMensual) * 100)}%`, transition:'width 0.5s ease' }}></div></div></div>)}
                 {!metaMensual && <div style={{ fontSize:'0.7rem', color:'var(--text-muted)', marginTop:'0.2rem' }}>Configura en Preferencias</div>}
               </div>
             </div>
