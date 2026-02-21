@@ -1943,18 +1943,6 @@ export default function App() {
             </div>
           </div>
           <div className="sidebar-section">
-            <div className="sidebar-label">Sistema</div>
-            <div className="sidebar-item" onClick={exportarDatos}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span> Exportar JSON</div>
-            <label className="sidebar-item" style={{ cursor: 'pointer' }}>
-              <span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span> Importar JSON
-              <input type="file" accept=".json" style={{ display: 'none' }} onChange={(e) => {
-                const file = e.target.files[0]; if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (ev) => { try { const datos = JSON.parse(ev.target.result); if (datos.clientes) setClientes(datos.clientes); if (datos.creditos) setCreditos(datos.creditos); showToast('Datos importados correctamente', 'success'); } catch { showToast('Error al importar el archivo', 'error'); } };
-                reader.readAsText(file);
-              }} />
-            </label>
-          </div>
 
           {/*  User footer — Claude style  */}
           <div className="sidebar-user-footer">
