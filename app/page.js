@@ -4050,15 +4050,24 @@ export default function App() {
       {showUsuariosModal && esAdmin && (
         <div className="modal show" onClick={e => { if (e.target === e.currentTarget) { setShowUsuariosModal(false); setUsuarioEditando(null); setUsuarioForm({ username:'', nombre:'', pass:'', rol:'viewer' }); } }}>
           <div className="modal-content" style={{ maxWidth: '620px' }}>
-            <div className="modal-header">
-              <h2>👥 Gestión de Usuarios</h2>
+            <div className="modal-header" style={{ borderBottom:'1px solid var(--border)', paddingBottom:'1rem', marginBottom:'1.25rem' }}>
+              <div>
+                <h2 style={{ fontSize:'1.1rem', fontWeight:700, margin:0, display:'flex', alignItems:'center', gap:'0.6rem' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  Gestión de Usuarios
+                </h2>
+                <p style={{ margin:'0.2rem 0 0', fontSize:'0.75rem', color:'var(--text-muted)' }}>{Object.keys(usuarios).length} usuario{Object.keys(usuarios).length !== 1 ? 's' : ''} registrado{Object.keys(usuarios).length !== 1 ? 's' : ''}</p>
+              </div>
               <button className="close-btn" onClick={() => { setShowUsuariosModal(false); setUsuarioEditando(null); setUsuarioForm({ username:'', nombre:'', pass:'', rol:'viewer' }); }}>×</button>
             </div>
 
             {/* Formulario crear/editar */}
-            <div style={{ background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:'12px', padding:'1rem', marginBottom:'1.25rem' }}>
-              <div style={{ fontSize:'0.78rem', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', marginBottom:'0.75rem' }}>
-                {usuarioEditando ? `✏️ Editando: ${usuarioEditando}` : '➕ Nuevo usuario'}
+            <div style={{ background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:'12px', padding:'1.25rem', marginBottom:'1.25rem' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'1rem', paddingBottom:'0.75rem', borderBottom:'1px solid var(--border)' }}>
+                <div style={{ width:'6px', height:'6px', borderRadius:'50%', background: usuarioEditando ? '#f97316' : 'var(--brand)' }}></div>
+                <div style={{ fontSize:'0.72rem', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em' }}>
+                  {usuarioEditando ? `Editando · ${usuarioEditando}` : 'Nuevo usuario'}
+                </div>
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.6rem', marginBottom:'0.6rem' }}>
                 <div className="form-group" style={{ margin:0 }}>
@@ -4108,14 +4117,14 @@ export default function App() {
                 </div>
                 <div className="form-group" style={{ margin:0 }}>
                   <label>Rol</label>
-                  <select value={usuarioForm.rol} onChange={e => setUsuarioForm(p => ({ ...p, rol: e.target.value }))}>
-                    <option value="admin">Administrador — acceso total</option>
-                    <option value="editor">Editor — operativo, sin auditoría ni usuarios</option>
-                    <option value="agente_cobro">Agente de Cobro — operativo</option>
-                    <option value="contabilidad">Contabilidad — operativo</option>
-                    <option value="supervisor_cobro">Supervisor de Cobro — operativo</option>
-                    <option value="supervisor_contabilidad">Supervisor de Contabilidad — operativo</option>
-                    <option value="viewer">Viewer — solo lectura</option>
+                  <select value={usuarioForm.rol} onChange={e => setUsuarioForm(p => ({ ...p, rol: e.target.value }))} style={{ fontWeight:500 }}>
+                    <option value="admin">Administrador</option>
+                    <option value="editor">Editor</option>
+                    <option value="agente_cobro">Agente de Cobro</option>
+                    <option value="contabilidad">Contabilidad</option>
+                    <option value="supervisor_cobro">Supervisor de Cobro</option>
+                    <option value="supervisor_contabilidad">Supervisor de Contabilidad</option>
+                    <option value="viewer">Viewer</option>
                   </select>
                 </div>
               </div>
@@ -4138,8 +4147,14 @@ export default function App() {
             </div>
 
             {/* Lista de usuarios */}
-            <div style={{ fontSize:'0.78rem', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', marginBottom:'0.5rem' }}>
-              Usuarios registrados ({Object.keys(usuarios).length})
+            <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.75rem' }}>
+              <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:'var(--brand)' }}></div>
+              <div style={{ fontSize:'0.72rem', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em' }}>
+                Usuarios registrados
+              </div>
+              <div style={{ marginLeft:'auto', fontSize:'0.72rem', color:'var(--text-muted)', background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'20px', padding:'0.1rem 0.6rem', fontWeight:600 }}>
+                {Object.keys(usuarios).length}
+              </div>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:'0.45rem', maxHeight:'280px', overflowY:'auto' }}>
               {Object.entries(usuarios).map(([key, u]) => (
