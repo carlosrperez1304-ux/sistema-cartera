@@ -1140,13 +1140,13 @@ export default function App() {
   const exportarPDF = () => {
     if (!clientes.length) { showToast('No hay clientes', 'info'); return; }
     import('jspdf').then(({ default: jsPDF }) => {
-      import('jspdf-autotable').then(() => {
+      import('jspdf-autotable').then(({ default: autoTable }) => {
         const doc = new jsPDF({ orientation: 'landscape' });
         doc.setFontSize(16); doc.setFont(undefined, 'bold');
         doc.text('CartaMaster - Reporte de Cartera', 14, 15);
         doc.setFontSize(10); doc.setFont(undefined, 'normal');
         doc.text(`Generado: ${new Date().toLocaleDateString('es-DO')} | Total clientes: ${clientes.length}`, 14, 22);
-        doc.autoTable({
+        autoTable(doc, {
           startY: 28,
           head: [['ID', 'Cliente', 'Contacto', 'Estado', 'Mes/Año', 'Monto', 'Cotización', 'Pago']],
           body: clientes.map(c => [c.id, c.nombre, c.contacto || '-', c.estado, `${c.mes}/${c.año}`, `$${(parseFloat(c.monto) || 0).toLocaleString('en-US')}`, c.fechaCotizacion ? new Date(c.fechaCotizacion).toLocaleDateString('es-DO') : '-', c.fechaPago ? new Date(c.fechaPago).toLocaleDateString('es-DO') : '-']),
@@ -1162,13 +1162,13 @@ export default function App() {
   const exportarCreditosPDF = () => {
     if (!creditos.length) { showToast('No hay créditos', 'info'); return; }
     import('jspdf').then(({ default: jsPDF }) => {
-      import('jspdf-autotable').then(() => {
+      import('jspdf-autotable').then(({ default: autoTable }) => {
         const doc = new jsPDF({ orientation: 'landscape' });
         doc.setFontSize(16); doc.setFont(undefined, 'bold');
         doc.text('CartaMaster - Reporte de Créditos', 14, 15);
         doc.setFontSize(10); doc.setFont(undefined, 'normal');
         doc.text(`Generado: ${new Date().toLocaleDateString('es-DO')} | Total créditos: ${creditos.length}`, 14, 22);
-        doc.autoTable({
+        autoTable(doc, {
           startY: 28,
           head: [['ID', 'Nº Orden', 'Cliente', 'Monto', 'Inicio', 'Vencimiento', 'Días Rest.', 'Estado']],
           body: creditos.map(c => [c.id, c.numeroOrden, c.cliente, `$${(parseFloat(c.monto) || 0).toLocaleString('en-US')}`, new Date(c.fechaInicio).toLocaleDateString('es-DO'), new Date(c.fechaVencimiento).toLocaleDateString('es-DO'), getDiasRestantes(c.fechaVencimiento), c.estado]),
@@ -1300,7 +1300,7 @@ export default function App() {
   const generarCotizacionPDF = () => {
     if (!genCotCliente) return;
     import('jspdf').then(({ default: jsPDF }) => {
-      import('jspdf-autotable').then(() => {
+      import('jspdf-autotable').then(({ default: autoTable }) => {
         const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
         const fecha = new Date();
         const numCot = `COT-${genCotCliente.id}-${fecha.getFullYear()}${String(fecha.getMonth()+1).padStart(2,'0')}${String(fecha.getDate()).padStart(2,'0')}`;
@@ -1324,7 +1324,7 @@ export default function App() {
         const subtotal = cotItems.reduce((s, it) => s + (parseFloat(it.precio)||0) * (parseFloat(it.cantidad)||1), 0);
         const itax = subtotal * 0.18;
         const total = subtotal + itax;
-        doc.autoTable({
+        autoTable(doc, {
           startY: 90,
           head: [['#', 'Descripción', 'Cant.', 'Precio Unit.', 'Total']],
           body: cotItems.map((it, i) => {
@@ -1341,7 +1341,7 @@ export default function App() {
         let y = doc.lastAutoTable.finalY + 5;
         // Totales
         const totales = [['Subtotal', `$${subtotal.toLocaleString('en-US',{minimumFractionDigits:2})}`], ['ITBIS (18%)', `$${itax.toLocaleString('en-US',{minimumFractionDigits:2})}`], ['TOTAL', `$${total.toLocaleString('en-US',{minimumFractionDigits:2})}`]];
-        doc.autoTable({ startY: y, body: totales, styles: { fontSize: 9 }, columnStyles: { 0:{halign:'right',fontStyle:'bold',fillColor:[248,250,252]}, 1:{halign:'right',cellWidth:40} }, tableWidth: 100, margin: { left: 95 }, didParseCell: (d) => { if (d.row.index === 2) { d.cell.styles.fillColor = [15,28,63]; d.cell.styles.textColor = [255,255,255]; d.cell.styles.fontStyle = 'bold'; } } });
+        autoTable(doc, { startY: y, body: totales, styles: { fontSize: 9 }, columnStyles: { 0:{halign:'right',fontStyle:'bold',fillColor:[248,250,252]}, 1:{halign:'right',cellWidth:40} }, tableWidth: 100, margin: { left: 95 }, didParseCell: (d) => { if (d.row.index === 2) { d.cell.styles.fillColor = [15,28,63]; d.cell.styles.textColor = [255,255,255]; d.cell.styles.fontStyle = 'bold'; } } });
         // Nota
         if (cotNota) { y = doc.lastAutoTable.finalY + 8; doc.setFontSize(9); doc.setTextColor(100,116,139); doc.setFont(undefined,'italic'); doc.text(`Nota: ${cotNota}`, 15, y, { maxWidth: 180 }); }
         // Footer
@@ -1572,7 +1572,7 @@ export default function App() {
   // ─── ESTADO DE CUENTA PDF ─────────────────────────────────
   const generarEstadoCuentaPDF = (cliente) => {
     import('jspdf').then(({ default: jsPDF }) => {
-      import('jspdf-autotable').then(() => {
+      import('jspdf-autotable').then(({ default: autoTable }) => {
         const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
         const s = calcularSaldoCliente(cliente);
         // Header
@@ -1585,7 +1585,7 @@ export default function App() {
         // Cliente info
         doc.setTextColor(15,28,63); doc.setFontSize(13); doc.setFont(undefined,'bold');
         doc.text('Información del Cliente', 15, 55);
-        doc.autoTable({ startY: 60, body: [
+        autoTable(doc, { startY: 60, body: [
           ['Nombre', cliente.nombre], ['ID', cliente.id],
           ['Estado', cliente.estado], ['Teléfono', cliente.contacto || 'N/A'],
           ['Monto Total', `RD$${(s.monto).toLocaleString('en-US',{minimumFractionDigits:2})}`],
@@ -1598,7 +1598,7 @@ export default function App() {
         const pagos = (cliente.pagosRealizados || []).map(p => [
           new Date(p.fecha).toLocaleDateString('es-DO'), `RD$${parseFloat(p.monto).toLocaleString('en-US',{minimumFractionDigits:2})}`, p.nota || '-'
         ]);
-        doc.autoTable({ startY: y+5, head:[['Fecha','Monto','Nota']], body: pagos.length ? pagos : [['Sin pagos registrados','','']], styles:{fontSize:9}, headStyles:{fillColor:[99,91,255],textColor:255}, margin:{left:15,right:15} });
+        autoTable(doc, { startY: y+5, head:[['Fecha','Monto','Nota']], body: pagos.length ? pagos : [['Sin pagos registrados','','']], styles:{fontSize:9}, headStyles:{fillColor:[99,91,255],textColor:255}, margin:{left:15,right:15} });
         // Gestiones
         const gest = (gestiones[cliente.id] || []).slice(0,10).map(g => [
           new Date(g.fecha).toLocaleDateString('es-DO'), g.tipo, g.resultado, g.nota || '-'
@@ -1606,7 +1606,7 @@ export default function App() {
         if (gest.length > 0) {
           y = doc.lastAutoTable.finalY + 10;
           doc.setFontSize(13); doc.setFont(undefined,'bold'); doc.text('Bitácora de Gestiones', 15, y);
-          doc.autoTable({ startY: y+5, head:[['Fecha','Tipo','Resultado','Nota']], body: gest, styles:{fontSize:8}, headStyles:{fillColor:[15,28,63],textColor:255}, margin:{left:15,right:15} });
+          autoTable(doc, { startY: y+5, head:[['Fecha','Tipo','Resultado','Nota']], body: gest, styles:{fontSize:8}, headStyles:{fillColor:[15,28,63],textColor:255}, margin:{left:15,right:15} });
         }
         doc.save(`estado-cuenta-${cliente.nombre.replace(/\s/g,'-')}.pdf`);
         showToast('Estado de cuenta generado', 'success');
@@ -1637,7 +1637,7 @@ export default function App() {
   // ─── RESUMEN EJECUTIVO PDF ────────────────────────────────
   const generarResumenPDF = () => {
     import('jspdf').then(({ default: jsPDF }) => {
-      import('jspdf-autotable').then(() => {
+      import('jspdf-autotable').then(({ default: autoTable }) => {
         const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
         const mesNombre = obtenerNombreMes(mesVisualizando);
         // Header
@@ -1659,7 +1659,7 @@ export default function App() {
           ['Cotizados', estadisticas.cotizado],
           ['Notificados', estadisticas.notificado],
         ];
-        doc.autoTable({ startY: 63, head: [['Indicador','Valor']], body: kpis, styles: { fontSize: 9, cellPadding: 3 }, headStyles: { fillColor: [99,91,255], textColor: 255 }, columnStyles: { 0: { fontStyle:'bold' } }, margin: { left: 15, right: 15 } });
+        autoTable(doc, { startY: 63, head: [['Indicador','Valor']], body: kpis, styles: { fontSize: 9, cellPadding: 3 }, headStyles: { fillColor: [99,91,255], textColor: 255 }, columnStyles: { 0: { fontStyle:'bold' } }, margin: { left: 15, right: 15 } });
         // Montos
         let y = doc.lastAutoTable.finalY + 8;
         doc.setFontSize(13); doc.setFont(undefined,'bold'); doc.text('Resumen Financiero', 15, y);
@@ -1670,7 +1670,7 @@ export default function App() {
           ['Monto Facturado', `$${(estadisticas.montoFacturado||0).toLocaleString('en-US')}`],
           ['Monto Vencido', `$${(estadisticas.montoVencido||0).toLocaleString('en-US')}`],
         ];
-        doc.autoTable({ startY: y+5, head: [['Concepto','Monto']], body: montos, styles: { fontSize: 9, cellPadding: 3 }, headStyles: { fillColor: [15,28,63], textColor: 255 }, columnStyles: { 1: { fontStyle:'bold', halign:'right' } }, margin: { left: 15, right: 15 } });
+        autoTable(doc, { startY: y+5, head: [['Concepto','Monto']], body: montos, styles: { fontSize: 9, cellPadding: 3 }, headStyles: { fillColor: [15,28,63], textColor: 255 }, columnStyles: { 1: { fontStyle:'bold', halign:'right' } }, margin: { left: 15, right: 15 } });
         // Créditos
         y = doc.lastAutoTable.finalY + 8;
         doc.setFontSize(13); doc.setFont(undefined,'bold'); doc.text('Créditos', 15, y);
@@ -1679,14 +1679,14 @@ export default function App() {
           ['Vencidos', creditoStats.vencido], ['Pagados', creditoStats.pagado],
           ['Monto Total Activo', `$${creditoStats.totalMonto.toLocaleString('en-US',{minimumFractionDigits:2})}`],
         ];
-        doc.autoTable({ startY: y+5, head: [['Estado','Cantidad/Monto']], body: creditData, styles: { fontSize: 9, cellPadding: 3 }, headStyles: { fillColor: [99,91,255], textColor: 255 }, margin: { left: 15, right: 15 } });
+        autoTable(doc, { startY: y+5, head: [['Estado','Cantidad/Monto']], body: creditData, styles: { fontSize: 9, cellPadding: 3 }, headStyles: { fillColor: [99,91,255], textColor: 255 }, margin: { left: 15, right: 15 } });
         // Clientes vencidos
         const vencidos = clientes.filter(c => c.estado === 'Vencido');
         if (vencidos.length > 0) {
           y = doc.lastAutoTable.finalY + 8;
           if (y > 240) { doc.addPage(); y = 20; }
           doc.setFontSize(13); doc.setFont(undefined,'bold'); doc.text('Clientes Vencidos', 15, y);
-          doc.autoTable({ startY: y+5, head: [['ID','Nombre','Monto','Contacto']], body: vencidos.map(c => [c.id, c.nombre, `$${(parseFloat(c.monto)||0).toLocaleString('en-US')}`, c.contacto||'-']), styles: { fontSize: 8, cellPadding: 2 }, headStyles: { fillColor: [239,68,68], textColor: 255 }, margin: { left: 15, right: 15 } });
+          autoTable(doc, { startY: y+5, head: [['ID','Nombre','Monto','Contacto']], body: vencidos.map(c => [c.id, c.nombre, `$${(parseFloat(c.monto)||0).toLocaleString('en-US')}`, c.contacto||'-']), styles: { fontSize: 8, cellPadding: 2 }, headStyles: { fillColor: [239,68,68], textColor: 255 }, margin: { left: 15, right: 15 } });
         }
         // Footer
         const totalPages = doc.internal.getNumberOfPages();
