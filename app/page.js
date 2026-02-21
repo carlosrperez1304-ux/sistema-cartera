@@ -2266,17 +2266,24 @@ export default function App() {
             })()}
 
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.2rem' }}>
-              <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '1rem' }}>⚡ Accesos rápidos</div>
-              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                <button className="btn btn-primary" onClick={() => { setActiveTab('cartera'); abrirModal(); }}>+ Nuevo Cliente</button>
-                <button className="btn btn-success" onClick={() => setActiveTab('credito')}>+ Nuevo Crédito</button>
-                <button className="btn btn-primary" style={{ background: '#0369a1' }} onClick={() => { setArchivosEnProceso([]); setShowCargaMasivaModal(true); }}>📂 Carga Masiva PDF</button>
-                <button className="btn btn-primary" style={{ background: '#7c3aed' }} onClick={() => setShowPlantillasModal(true)}>💬 Plantillas WA</button>
-                <button className="btn btn-primary" style={{ background: '#059669' }} onClick={() => setActiveTab('agenda')}>📅 Agenda del Día</button>
-                <button className="btn btn-secondary" onClick={backupJSON}>💾 Backup</button>
-                <button className="btn btn-secondary" onClick={() => setShowImportModal(true)}>📥 Importar Excel</button>
-                <button className="btn btn-secondary" onClick={exportarPDF}>📄 Exportar PDF</button>
-                <button className="btn btn-secondary" onClick={() => setShowBusquedaGlobal(true)}>🔍 Buscar</button>
+              <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '1rem' }}>Accesos rápidos</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.5rem' }}>
+                {[
+                  { label: 'Nuevo Cliente', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>, action: () => { setActiveTab('cartera'); abrirModal(); }, primary: true },
+                  { label: 'Nuevo Crédito', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>, action: () => setActiveTab('credito'), primary: true },
+                  { label: 'Agenda del Día', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, action: () => setActiveTab('agenda') },
+                  { label: 'Carga Masiva PDF', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>, action: () => { setArchivosEnProceso([]); setShowCargaMasivaModal(true); } },
+                  { label: 'Plantillas WA', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>, action: () => setShowPlantillasModal(true) },
+                  { label: 'Importar Excel', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>, action: () => setShowImportModal(true) },
+                  { label: 'Exportar PDF', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>, action: exportarPDF },
+                  { label: 'Backup', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>, action: backupJSON },
+                ].map((a, i) => (
+                  <button key={i} onClick={a.action} style={{ display:'flex', alignItems:'center', gap:'0.5rem', padding:'0.6rem 0.9rem', background: a.primary ? 'var(--brand)' : 'var(--surface-2)', border: a.primary ? 'none' : '1px solid var(--border)', borderRadius:'9px', color: a.primary ? 'white' : 'var(--text)', fontSize:'0.82rem', fontWeight:600, cursor:'pointer', transition:'all 0.15s', textAlign:'left' }}
+                    onMouseEnter={e => e.currentTarget.style.opacity='0.85'}
+                    onMouseLeave={e => e.currentTarget.style.opacity='1'}>
+                    {a.icon}{a.label}
+                  </button>
+                ))}
               </div>
               <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--surface2)', borderRadius: '9px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                 <strong>Atajos de teclado:</strong> &nbsp;
