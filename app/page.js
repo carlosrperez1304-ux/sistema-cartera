@@ -3929,55 +3929,71 @@ export default function App() {
                   <div className="settings-content-title">Preferencias</div>
                   <button className="settings-close-btn" onClick={() => setShowSettingsPanel(false)}>×</button>
                 </div>
-                <div className="settings-row">
-                  <div>
-                    <div className="settings-row-label">Color de acento</div>
-                    <div className="settings-row-desc">Color principal de la interfaz</div>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.75rem' }}>
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '0.75rem', paddingBottom: '0.4rem', borderBottom: '1px solid var(--border)' }}>🎨 Apariencia</div>
+                  <div className="settings-row">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>🎨</div>
+                      <div><div className="settings-row-label">Color de acento</div><div className="settings-row-desc">Color principal de la interfaz</div></div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
                       {['#635bff','#0284c7','#059669','#dc2626','#f97316','#8b5cf6','#14b8a6','#e11d48','#0f172a'].map(c => (
-                        <div key={c} onClick={() => setColorAcento(c)} style={{ width: '28px', height: '28px', borderRadius: '50%', background: c, cursor: 'pointer', border: colorAcento === c ? '3px solid white' : '2px solid transparent', boxShadow: colorAcento === c ? `0 0 0 2px ${c}` : 'none', transition: 'all 0.15s' }}></div>
+                        <div key={c} onClick={() => setColorAcento(c)} style={{ width: '22px', height: '22px', borderRadius: '50%', background: c, cursor: 'pointer', border: colorAcento === c ? '3px solid white' : '2px solid transparent', boxShadow: colorAcento === c ? `0 0 0 2px ${c}` : 'none', transition: 'all 0.15s' }}></div>
                       ))}
-                      <input type="color" value={colorAcento} onChange={e => setColorAcento(e.target.value)} style={{ width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer', padding: 0 }} />
+                      <input type="color" value={colorAcento} onChange={e => setColorAcento(e.target.value)} style={{ width: '22px', height: '22px', borderRadius: '50%', border: 'none', cursor: 'pointer', padding: 0 }} title="Color personalizado" />
+                    </div>
+                  </div>
+                  <div className="settings-row">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>{darkMode ? '🌙' : '☀️'}</div>
+                      <div><div className="settings-row-label">Modo oscuro</div><div className="settings-row-desc">{darkMode ? 'Tema oscuro activo' : 'Tema claro activo'}</div></div>
+                    </div>
+                    <div className="settings-toggle" onClick={() => setDarkMode(m => !m)} style={{ background: darkMode ? 'var(--brand)' : 'var(--border-2)' }}>
+                      <div className="settings-toggle-thumb" style={{ left: darkMode ? '21px' : '3px' }}></div>
+                    </div>
+                  </div>
+                  <div className="settings-row">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>⊟</div>
+                      <div><div className="settings-row-label">Modo compacto</div><div className="settings-row-desc">Reduce el tamaño de filas en la tabla</div></div>
+                    </div>
+                    <div className="settings-toggle" onClick={() => setModoCompacto(m => !m)} style={{ background: modoCompacto ? 'var(--brand)' : 'var(--border-2)' }}>
+                      <div className="settings-toggle-thumb" style={{ left: modoCompacto ? '21px' : '3px' }}></div>
                     </div>
                   </div>
                 </div>
-                <div className="settings-row">
-                  <div>
-                    <div className="settings-row-label">Modo oscuro</div>
-                    <div className="settings-row-desc">Cambia el tema de la interfaz</div>
-                  </div>
-                  <div className="settings-toggle" onClick={() => setDarkMode(m => !m)} style={{ background: darkMode ? 'var(--brand)' : 'var(--border-2)' }}>
-                    <div className="settings-toggle-thumb" style={{ left: darkMode ? '21px' : '3px' }}></div>
-                  </div>
-                </div>
-                <div className="settings-row">
-                  <div>
-                    <div className="settings-row-label">Modo compacto</div>
-                    <div className="settings-row-desc">Reduce el tamaño de filas en la tabla</div>
-                  </div>
-                  <div className="settings-toggle" onClick={() => setModoCompacto(m => !m)} style={{ background: modoCompacto ? 'var(--brand)' : 'var(--border-2)' }}>
-                    <div className="settings-toggle-thumb" style={{ left: modoCompacto ? '21px' : '3px' }}></div>
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '0.75rem', paddingBottom: '0.4rem', borderBottom: '1px solid var(--border)' }}>🔔 Notificaciones</div>
+                  <div className="settings-row">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>⏰</div>
+                      <div><div className="settings-row-label">Alerta de créditos</div><div className="settings-row-desc">Alertar cuando falten N días o menos para vencer</div></div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <input type="number" value={recordatoriosDias} onChange={e => setRecordatoriosDias(parseInt(e.target.value) || 7)} min="1" max="30" style={{ width: '56px', padding: '0.35rem 0.5rem', border: '1px solid var(--border-2)', borderRadius: '7px', background: 'var(--surface-2)', color: 'var(--text)', fontSize: '0.85rem', fontFamily: 'var(--mono)', textAlign: 'center' }} />
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>días</span>
+                    </div>
                   </div>
                 </div>
-                <div className="settings-row">
-                  <div>
-                    <div className="settings-row-label">Alerta de créditos</div>
-                    <div className="settings-row-desc">Alertar cuando falten N días o menos</div>
-                  </div>
-                  <input type="number" value={recordatoriosDias} onChange={e => setRecordatoriosDias(parseInt(e.target.value) || 7)} min="1" max="30" style={{ width: '64px', padding: '0.35rem 0.5rem', border: '1px solid var(--border-2)', borderRadius: '7px', background: 'var(--surface-2)', color: 'var(--text)', fontSize: '0.85rem', fontFamily: 'var(--mono)', textAlign: 'center' }} />
-                </div>
-                <div className="settings-row">
-                  <div>
-                    <div className="settings-row-label">Meta mensual</div>
-                    <div className="settings-row-desc">Objetivo de cobros del mes</div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>$</span>
-                    <input type="number" value={metaMensual || ''} onChange={e => setMetaMensual(parseFloat(e.target.value) || 0)} placeholder="0" style={{ width: '110px', padding: '0.35rem 0.5rem', border: '1px solid var(--border-2)', borderRadius: '7px', background: 'var(--surface-2)', color: 'var(--text)', fontSize: '0.85rem', fontFamily: 'var(--mono)' }} />
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '0.75rem', paddingBottom: '0.4rem', borderBottom: '1px solid var(--border)' }}>🎯 Objetivos</div>
+                  <div className="settings-row">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>💰</div>
+                      <div><div className="settings-row-label">Meta mensual</div><div className="settings-row-desc">Objetivo de cobros del mes en curso</div></div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600 }}>RD$</span>
+                      <input type="number" value={metaMensual || ''} onChange={e => setMetaMensual(parseFloat(e.target.value) || 0)} placeholder="0" style={{ width: '100px', padding: '0.35rem 0.5rem', border: '1px solid var(--border-2)', borderRadius: '7px', background: 'var(--surface-2)', color: 'var(--text)', fontSize: '0.85rem', fontFamily: 'var(--mono)' }} />
+                    </div>
                   </div>
                 </div>
-                <div style={{ marginTop: '1.5rem' }}>
-                  <button className="btn btn-primary" onClick={() => { setShowSettingsPanel(false); showToast('Configuración guardada', 'success'); }}>Guardar cambios</button>
+
+                <div style={{ marginTop: '0.5rem' }}>
+                  <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => { setShowSettingsPanel(false); showToast('✅ Configuración guardada', 'success'); }}>Guardar cambios</button>
                 </div>
               </>)}
 
