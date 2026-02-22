@@ -60,6 +60,8 @@ export default function App() {
   const [bancoMovimientos, setBancoMovimientos] = useState([]);
   const [bancoArchivoNombre, setBancoArchivoNombre] = useState('');
   const [bancoFiltro, setBancoFiltro] = useState('todos');
+  const [bancoFechaDesde, setBancoFechaDesde] = useState('');
+  const [bancoFechaHasta, setBancoFechaHasta] = useState('');
   const [nuevaVersion, setNuevaVersion] = useState(false);
   const prevSessionStatus = useRef(null);
   const versionRef = useRef(null);
@@ -3103,9 +3105,14 @@ export default function App() {
               {/* Tabla de movimientos */}
               {bancoMovimientos.length > 0 ? (
                 <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'14px', overflow:'hidden' }}>
-                  <div style={{ padding:'1rem 1.25rem', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                  <div style={{ padding:'1rem 1.25rem', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'0.75rem' }}>
                     <div style={{ fontWeight:700, fontSize:'0.9rem' }}>Movimientos del Banco — {bancoArchivoNombre}</div>
-                    <div style={{ display:'flex', gap:'0.5rem' }}>
+                    <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap', alignItems:'center' }}>
+                      <input type="date" value={bancoFechaDesde} onChange={e => setBancoFechaDesde(e.target.value)} style={{ padding:'0.3rem 0.6rem', border:'1px solid var(--border)', borderRadius:'6px', fontSize:'0.75rem', background:'var(--surface-2)', color:'var(--text)' }} />
+                      <span style={{ fontSize:'0.75rem', color:'var(--text-muted)' }}>—</span>
+                      <input type="date" value={bancoFechaHasta} onChange={e => setBancoFechaHasta(e.target.value)} style={{ padding:'0.3rem 0.6rem', border:'1px solid var(--border)', borderRadius:'6px', fontSize:'0.75rem', background:'var(--surface-2)', color:'var(--text)' }} />
+                      {(bancoFechaDesde || bancoFechaHasta) && <button onClick={() => { setBancoFechaDesde(''); setBancoFechaHasta(''); }} style={{ padding:'0.3rem 0.5rem', borderRadius:'6px', fontSize:'0.72rem', fontWeight:700, cursor:'pointer', background:'rgba(220,38,38,0.1)', color:'#dc2626', border:'1px solid rgba(220,38,38,0.2)' }}>✕</button>}
+                      <div style={{ width:'1px', height:'20px', background:'var(--border)' }}></div>
                       {['todos','conciliado','pendiente'].map(f => (
                         <button key={f} onClick={() => setBancoFiltro(f)} style={{ padding:'0.3rem 0.75rem', borderRadius:'6px', fontSize:'0.75rem', fontWeight:600, cursor:'pointer', background: bancoFiltro === f ? 'var(--brand)' : 'var(--surface-2)', color: bancoFiltro === f ? 'white' : 'var(--text-muted)', border:'1px solid var(--border)' }}>
                           {f === 'todos' ? 'Todos' : f === 'conciliado' ? '✅ Conciliados' : '⚠️ Pendientes'}
@@ -3124,7 +3131,13 @@ export default function App() {
                       </thead>
                       <tbody>
                         {bancoMovimientos
-                          .filter(m => bancoFiltro === 'todos' ? true : bancoFiltro === 'conciliado' ? m.conciliado : !m.conciliado)
+                          .filter(m => {
+                            const estadoOk = bancoFiltro === 'todos' ? true : bancoFiltro === 'conciliado' ? m.conciliado : !m.conciliado;
+                            if (!estadoOk) return false;
+                            if (bancoFechaDesde && m.fecha < bancoFechaDesde.split('-').reverse().join('-')) return false;
+                            if (bancoFechaHasta && m.fecha > bancoFechaHasta.split('-').reverse().join('-')) return false;
+                            return true;
+                          })
                           .map((m, i) => (
                           <tr key={m.id} style={{ borderBottom:'1px solid var(--border)', background: m.conciliado ? 'rgba(5,150,105,0.03)' : 'transparent' }}>
                             <td style={{ padding:'0.6rem 0.9rem', color:'var(--text-muted)', whiteSpace:'nowrap' }}>{m.fecha}</td>
