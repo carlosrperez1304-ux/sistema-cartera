@@ -1468,7 +1468,7 @@ export default function App() {
     if (!files || files.length === 0) return;
     const validos = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.pdf'));
     if (validos.length === 0) { showToast('Selecciona archivos PDF', 'error'); return; }
-    if (validos.length > 50) { showToast('Máximo 50 archivos a la vez', 'error'); return; }
+    if (validos.length > 200) { showToast('Máximo 200 archivos a la vez', 'error'); return; }
     setCargaMasivaProcesando(true);
 
     const leerArchivo = (file) => new Promise((resolve) => {
@@ -4830,7 +4830,7 @@ export default function App() {
                 >
                   <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📁</div>
                   <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text)', marginBottom: '0.35rem' }}>Arrastra los PDFs aquí o haz clic para seleccionar</div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>Hasta 50 archivos · Máx. 3MB por archivo · Solo .pdf</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>Hasta 200 archivos · Máx. 3MB por archivo · Solo .pdf</div>
                   <input type="file" accept=".pdf" multiple style={{ display: 'none' }} onChange={e => { procesarArchivosMasivos(e.target.files); e.target.value = ''; }} />
                   <span className="btn btn-primary" style={{ pointerEvents: 'none', fontSize: '0.85rem' }}>Seleccionar archivos</span>
                 </label>
