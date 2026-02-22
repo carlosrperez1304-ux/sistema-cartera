@@ -3034,14 +3034,31 @@ export default function App() {
                                 clienteMatch: null,
                               });
                             }
-                            // Intentar match automático contra pagos del sistema
+                            // Match automático: por monto + por nombre en descripción
                             const movsConciliados = movimientos.map(mov => {
                               if (mov.tipo !== 'credito') return mov;
-                              const match = clientes.find(c => {
-                                const monto = parseFloat(c.monto) || 0;
-                                return Math.abs(monto - mov.monto) < 1;
+                              const descUpper = mov.descripcion.toUpperCase();
+                              // 1. Match por nombre del cliente en la descripción
+                              let match = clientes.find(c => {
+                                const palabras = c.nombre.toUpperCase().split(' ').filter(p => p.length > 3);
+                                return palabras.some(p => descUpper.includes(p));
                               });
-                              return { ...mov, conciliado: !!match, clienteMatch: match ? match.nombre : null };
+                              // 2. Si no hay match por nombre, buscar por monto exacto
+                              if (!match) {
+                                match = clientes.find(c => {
+                                  const monto = parseFloat(c.monto) || 0;
+                                  return Math.abs(monto - mov.monto) < 1;
+                                });
+                              }
+                              // 3. Match por referencia/contacto
+                              if (!match) {
+                                match = clientes.find(c => {
+                                  const contacto = (c.contacto || '').replace(/\D/g, '');
+                                  return contacto.length > 6 && descUpper.includes(contacto.slice(-7));
+                                });
+                              }
+                              const confianza = match ? (descUpper.includes(match.nombre.toUpperCase().split(' ')[0]) ? 'alto' : 'medio') : null;
+                              return { ...mov, conciliado: !!match, clienteMatch: match ? match.nombre : null, confianza };
                             });
                             setBancoMovimientos(movsConciliados);
                             showToast(`${movsConciliados.length} movimientos importados`, 'success');
@@ -3117,10 +3134,23 @@ export default function App() {
                             <td style={{ padding:'0.6rem 0.9rem', fontFamily:'var(--mono)', color:'#059669', fontWeight:600 }}>{m.credito > 0 ? `$${m.credito.toLocaleString('en-US', { maximumFractionDigits:0 })}` : ''}</td>
                             <td style={{ padding:'0.6rem 0.9rem' }}>
                               <span style={{ padding:'0.2rem 0.6rem', borderRadius:'5px', fontSize:'0.7rem', fontWeight:700, background: m.conciliado ? 'rgba(5,150,105,0.1)' : 'rgba(220,38,38,0.1)', color: m.conciliado ? '#059669' : '#dc2626' }}>
-                                {m.conciliado ? '✅ OK' : '⚠️ Pendiente'}
+                                {m.conciliado ? (m.confianza === 'alto' ? '✅ Alto' : '🔶 Medio') : '⚠️ Pendiente'}
                               </span>
                             </td>
-                            <td style={{ padding:'0.6rem 0.9rem', fontSize:'0.78rem', color:'var(--text-muted)' }}>{m.clienteMatch || '—'}</td>
+                            <td style={{ padding:'0.6rem 0.9rem', fontSize:'0.78rem', color:'var(--text-muted)' }}>
+                              {m.clienteMatch || '—'}
+                              {!m.conciliado && m.tipo === 'credito' && (
+                                <select style={{ marginLeft:'0.5rem', fontSize:'0.72rem', padding:'0.2rem 0.4rem', border:'1px solid var(--border)', borderRadius:'5px', background:'var(--surface-2)', color:'var(--text)', cursor:'pointer' }}
+                                  onChange={e => {
+                                    if (!e.target.value) return;
+                                    setBancoMovimientos(prev => prev.map(x => x.id === m.id ? { ...x, conciliado: true, clienteMatch: e.target.value, confianza: 'manual' } : x));
+                                  }}
+                                  defaultValue="">
+                                  <option value="">+ Asignar cliente</option>
+                                  {clientes.map(c => <option key={c.id} value={c.nombre}>{c.nombre}</option>)}
+                                </select>
+                              )}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
