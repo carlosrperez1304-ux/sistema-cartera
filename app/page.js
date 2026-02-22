@@ -3043,7 +3043,7 @@ export default function App() {
                               return { ...mov, conciliado: !!match, clienteMatch: match ? match.nombre : null };
                             });
                             setBancoMovimientos(movsConciliados);
-                            showToast(\`\${movsConciliados.length} movimientos importados\`, 'success');
+                            showToast(`${movsConciliados.length} movimientos importados`, 'success');
                           } else {
                             showToast('Error cargando librería Excel', 'error');
                           }
