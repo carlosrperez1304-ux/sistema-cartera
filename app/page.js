@@ -62,6 +62,7 @@ export default function App() {
   const [bancoFiltro, setBancoFiltro] = useState('todos');
   const [bancoFechaDesde, setBancoFechaDesde] = useState('');
   const [bancoFechaHasta, setBancoFechaHasta] = useState('');
+  const [historialConciliaciones, setHistorialConciliaciones] = useState([]);
   const [nuevaVersion, setNuevaVersion] = useState(false);
   const prevSessionStatus = useRef(null);
   const versionRef = useRef(null);
@@ -409,6 +410,8 @@ export default function App() {
       );
       setCotizaciones(migradas);
     }
+    const savedConciliaciones = localStorage.getItem('historial-conciliaciones-v1');
+    if (savedConciliaciones) setHistorialConciliaciones(JSON.parse(savedConciliaciones));
     const savedGestiones = localStorage.getItem('gestiones-v1');
     if (savedGestiones) setGestiones(JSON.parse(savedGestiones));
     const savedPlantillas = localStorage.getItem('plantillas-v1');
@@ -2984,6 +2987,27 @@ export default function App() {
                     <div style={{ fontWeight:800, fontSize:'1.05rem', color:'var(--text)' }}>Conciliación Bancaria</div>
                     <div style={{ fontSize:'0.78rem', color:'var(--text-muted)', marginTop:'0.2rem' }}>Compara los movimientos del banco contra los pagos registrados en el sistema</div>
                   </div>
+                  <div style={{ display:'flex', gap:'0.5rem' }}>
+                  {bancoMovimientos.length > 0 && (
+                    <button onClick={() => {
+                      const conciliacion = {
+                        id: Date.now(),
+                        fecha: new Date().toLocaleDateString('es-DO'),
+                        archivo: bancoArchivoNombre,
+                        total: bancoMovimientos.length,
+                        conciliados: bancoMovimientos.filter(m => m.conciliado).length,
+                        pendientes: bancoMovimientos.filter(m => !m.conciliado).length,
+                        movimientos: bancoMovimientos,
+                        usuario: currentUser || session?.user?.name || 'Usuario',
+                      };
+                      const nuevo = [conciliacion, ...historialConciliaciones].slice(0, 20);
+                      setHistorialConciliaciones(nuevo);
+                      localStorage.setItem('historial-conciliaciones-v1', JSON.stringify(nuevo));
+                      showToast('Conciliación guardada en historial', 'success');
+                    }} style={{ display:'flex', alignItems:'center', gap:'0.5rem', padding:'0.6rem 1rem', background:'#059669', color:'white', borderRadius:'9px', fontSize:'0.84rem', fontWeight:600, cursor:'pointer', border:'none' }}>
+                      💾 Guardar Conciliación
+                    </button>
+                  )}
                   <label style={{ display:'flex', alignItems:'center', gap:'0.6rem', padding:'0.6rem 1rem', background:'var(--brand)', color:'white', borderRadius:'9px', fontSize:'0.84rem', fontWeight:600, cursor:'pointer' }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                     Subir Excel del Banco
@@ -3074,6 +3098,7 @@ export default function App() {
                       reader.readAsArrayBuffer(file);
                     }} />
                   </label>
+                  </div>
                 </div>
               </div>
 
@@ -3175,6 +3200,44 @@ export default function App() {
                   <div style={{ fontSize:'2.5rem', marginBottom:'0.75rem' }}>🏦</div>
                   <div style={{ fontWeight:700, fontSize:'0.95rem', color:'var(--text)', marginBottom:'0.4rem' }}>Sube el estado de cuenta del banco</div>
                   <div style={{ fontSize:'0.82rem', color:'var(--text-muted)' }}>Compatible con BHD, Reservas y Popular · Formato Excel (.xlsx)</div>
+                </div>
+              )}
+
+              {/* Historial de Conciliaciones */}
+              {historialConciliaciones.length > 0 && (
+                <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'14px', overflow:'hidden', marginTop:'1rem' }}>
+                  <div style={{ padding:'1rem 1.25rem', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                    <div style={{ fontWeight:700, fontSize:'0.9rem' }}>📁 Historial de Conciliaciones</div>
+                    <button onClick={() => { setHistorialConciliaciones([]); localStorage.removeItem('historial-conciliaciones-v1'); }} style={{ fontSize:'0.72rem', color:'#dc2626', background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.2)', borderRadius:'6px', padding:'0.25rem 0.6rem', cursor:'pointer', fontWeight:600 }}>Limpiar historial</button>
+                  </div>
+                  <div style={{ overflowX:'auto' }}>
+                    <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.82rem' }}>
+                      <thead>
+                        <tr style={{ background:'var(--surface-2)' }}>
+                          {['Fecha','Archivo','Total Movs','Conciliados','Pendientes','Usuario','Acción'].map(h => (
+                            <th key={h} style={{ padding:'0.6rem 0.9rem', textAlign:'left', fontWeight:700, fontSize:'0.68rem', textTransform:'uppercase', letterSpacing:'0.05em', color:'var(--text-muted)', whiteSpace:'nowrap' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {historialConciliaciones.map((h, i) => (
+                          <tr key={h.id} style={{ borderBottom:'1px solid var(--border)' }}>
+                            <td style={{ padding:'0.6rem 0.9rem', whiteSpace:'nowrap', color:'var(--text-muted)' }}>{h.fecha}</td>
+                            <td style={{ padding:'0.6rem 0.9rem', fontSize:'0.78rem', color:'var(--text)' }}>{h.archivo}</td>
+                            <td style={{ padding:'0.6rem 0.9rem', fontFamily:'var(--mono)', fontWeight:600 }}>{h.total}</td>
+                            <td style={{ padding:'0.6rem 0.9rem', fontFamily:'var(--mono)', color:'#059669', fontWeight:700 }}>{h.conciliados}</td>
+                            <td style={{ padding:'0.6rem 0.9rem', fontFamily:'var(--mono)', color: h.pendientes > 0 ? '#dc2626' : '#059669', fontWeight:700 }}>{h.pendientes}</td>
+                            <td style={{ padding:'0.6rem 0.9rem', fontSize:'0.78rem', color:'var(--text-muted)' }}>{h.usuario}</td>
+                            <td style={{ padding:'0.6rem 0.9rem' }}>
+                              <button onClick={() => { setBancoMovimientos(h.movimientos); setBancoArchivoNombre(h.archivo); showToast('Conciliación restaurada', 'success'); }} style={{ fontSize:'0.72rem', padding:'0.25rem 0.6rem', borderRadius:'6px', border:'1px solid var(--border)', background:'var(--surface-2)', color:'var(--text)', cursor:'pointer', fontWeight:600 }}>
+                                Restaurar
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
 
