@@ -3067,10 +3067,10 @@ export default function App() {
                 return (
                   <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:'0.75rem' }}>
                     {[
-                      { label:'Total Créditos Banco', value:`$\${totalBanco.toLocaleString('en-US', { maximumFractionDigits:0 })}`, color:'#0284c7', sub:`\${creditos.length} movimientos` },
-                      { label:'Conciliados', value:`$\${totalConciliado.toLocaleString('en-US', { maximumFractionDigits:0 })}`, color:'#059669', sub:`\${conciliados.length} coinciden` },
-                      { label:'Sin conciliar', value:`$\${(totalBanco - totalConciliado).toLocaleString('en-US', { maximumFractionDigits:0 })}`, color:'#dc2626', sub:`\${noConciliados.length} pendientes` },
-                      { label:'Registrado en Sistema', value:`$\${(estadisticas.montoPagado||0).toLocaleString('en-US', { maximumFractionDigits:0 })}`, color:'#7c3aed', sub:'Pagados este mes' },
+                      { label:'Total Créditos Banco', value:`$${totalBanco.toLocaleString('en-US', { maximumFractionDigits:0 })}`, color:'#0284c7', sub:`${creditos.length} movimientos` },
+                      { label:'Conciliados', value:`$${totalConciliado.toLocaleString('en-US', { maximumFractionDigits:0 })}`, color:'#059669', sub:`${conciliados.length} coinciden` },
+                      { label:'Sin conciliar', value:`$${(totalBanco - totalConciliado).toLocaleString('en-US', { maximumFractionDigits:0 })}`, color:'#dc2626', sub:`${noConciliados.length} pendientes` },
+                      { label:'Registrado en Sistema', value:`$${(estadisticas.montoPagado||0).toLocaleString('en-US', { maximumFractionDigits:0 })}`, color:'#7c3aed', sub:'Pagados este mes' },
                     ].map((k, i) => (
                       <div key={i} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'12px', padding:'1rem 1.1rem' }}>
                         <div style={{ fontSize:'0.65rem', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--text-muted)', marginBottom:'0.3rem' }}>{k.label}</div>
@@ -3112,8 +3112,8 @@ export default function App() {
                             <td style={{ padding:'0.6rem 0.9rem', color:'var(--text-muted)', whiteSpace:'nowrap' }}>{m.fecha}</td>
                             <td style={{ padding:'0.6rem 0.9rem', fontFamily:'var(--mono)', fontSize:'0.75rem', color:'var(--text-muted)' }}>{m.referencia}</td>
                             <td style={{ padding:'0.6rem 0.9rem', color:'var(--text)', maxWidth:'200px' }}>{m.descripcion}</td>
-                            <td style={{ padding:'0.6rem 0.9rem', fontFamily:'var(--mono)', color:'#dc2626', fontWeight:600 }}>{m.debito > 0 ? `$\${m.debito.toLocaleString('en-US', { maximumFractionDigits:0 })}` : ''}</td>
-                            <td style={{ padding:'0.6rem 0.9rem', fontFamily:'var(--mono)', color:'#059669', fontWeight:600 }}>{m.credito > 0 ? `$\${m.credito.toLocaleString('en-US', { maximumFractionDigits:0 })}` : ''}</td>
+                            <td style={{ padding:'0.6rem 0.9rem', fontFamily:'var(--mono)', color:'#dc2626', fontWeight:600 }}>{m.debito > 0 ? `$${m.debito.toLocaleString('en-US', { maximumFractionDigits:0 })}` : ''}</td>
+                            <td style={{ padding:'0.6rem 0.9rem', fontFamily:'var(--mono)', color:'#059669', fontWeight:600 }}>{m.credito > 0 ? `$${m.credito.toLocaleString('en-US', { maximumFractionDigits:0 })}` : ''}</td>
                             <td style={{ padding:'0.6rem 0.9rem' }}>
                               <span style={{ padding:'0.2rem 0.6rem', borderRadius:'5px', fontSize:'0.7rem', fontWeight:700, background: m.conciliado ? 'rgba(5,150,105,0.1)' : 'rgba(220,38,38,0.1)', color: m.conciliado ? '#059669' : '#dc2626' }}>
                                 {m.conciliado ? '✅ OK' : '⚠️ Pendiente'}
