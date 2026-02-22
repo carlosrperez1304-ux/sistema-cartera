@@ -1999,37 +1999,100 @@ export default function App() {
 
           {/* TAB DASHBOARD */}
           <div className={`tab-content ${activeTab === 'dashboard' ? 'active' : ''}`}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+
+            {/* ALERTAS PRIORITARIAS */}
+            {(estadisticas.vencido > 0 || creditoStats.vencido > 0) && (
+              <div style={{ display:'flex', gap:'0.75rem', marginBottom:'1.25rem', flexWrap:'wrap' }}>
+                {estadisticas.vencido > 0 && (
+                  <div onClick={() => setActiveTab('cartera')} style={{ display:'flex', alignItems:'center', gap:'0.6rem', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:'10px', padding:'0.6rem 1rem', cursor:'pointer', flex:1, minWidth:'200px' }}>
+                    <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:'#ef4444', flexShrink:0 }}></div>
+                    <div>
+                      <div style={{ fontSize:'0.72rem', fontWeight:700, color:'#991b1b', textTransform:'uppercase', letterSpacing:'0.05em' }}>Clientes Vencidos</div>
+                      <div style={{ fontSize:'0.82rem', color:'#7f1d1d' }}>{estadisticas.vencido} cliente{estadisticas.vencido !== 1 ? 's' : ''} sin pago — Ver cartera →</div>
+                    </div>
+                  </div>
+                )}
+                {creditoStats.vencido > 0 && (
+                  <div onClick={() => setActiveTab('credito')} style={{ display:'flex', alignItems:'center', gap:'0.6rem', background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:'10px', padding:'0.6rem 1rem', cursor:'pointer', flex:1, minWidth:'200px' }}>
+                    <div style={{ width:'8px', height:'8px', borderRadius:'50%', background:'#f97316', flexShrink:0 }}></div>
+                    <div>
+                      <div style={{ fontSize:'0.72rem', fontWeight:700, color:'#9a3412', textTransform:'uppercase', letterSpacing:'0.05em' }}>Créditos Vencidos</div>
+                      <div style={{ fontSize:'0.82rem', color:'#7c2d12' }}>{creditoStats.vencido} crédito{creditoStats.vencido !== 1 ? 's' : ''} vencido{creditoStats.vencido !== 1 ? 's' : ''} — Ver crédito →</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* MÉTRICAS PRINCIPALES */}
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:'0.75rem', marginBottom:'1.25rem' }}>
               {[
-                { label: 'Total Clientes', value: clientes.length, color: '#0284c7' },
-                { label: 'Cobrado este mes', value: `$${(estadisticas.montoPagado||0).toLocaleString('en-US', { maximumFractionDigits: 0 })}`, color: '#059669' },
-                { label: 'Clientes Vencidos', value: estadisticas.vencido, color: '#dc2626' },
-                { label: 'Créditos Activos', value: creditoStats.activo + creditoStats.porVencer, color: '#7c3aed' },
-                { label: 'Por Cobrar', value: `$${(estadisticas.montoCotizado + estadisticas.montoNotificado||0).toLocaleString('en-US', { maximumFractionDigits: 0 })}`, color: '#ea580c' },
-                { label: 'Créditos Vencidos', value: creditoStats.vencido, color: '#dc2626' },
-              ].map((s, i) => (
-                <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.25rem 1.4rem', position: 'relative', overflow: 'hidden', boxShadow: '0 1px 2px rgba(20,22,37,0.04)' }}>
-                  <div style={{ width: '3px', position: 'absolute', left: 0, top: '18%', bottom: '18%', background: s.color, borderRadius: '0 2px 2px 0' }}></div>
-                  <div style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.45rem' }}>{s.label}</div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text)', fontFamily: 'var(--mono)', lineHeight: 1, letterSpacing: '-0.03em' }}>{s.value}</div>
+                { label:'Total Clientes', value: clientes.length, sub: `${estadisticas.cotizado + estadisticas.notificado} pendientes`, color:'#0284c7', tab:'cartera' },
+                { label:'Cobrado este mes', value: `$${(estadisticas.montoPagado||0).toLocaleString('en-US',{maximumFractionDigits:0})}`, sub:`${estadisticas.pagado} cliente${estadisticas.pagado!==1?'s':''} pagado${estadisticas.pagado!==1?'s':''}`, color:'#059669', tab:'cartera' },
+                { label:'Créditos Activos', value: creditoStats.activo + creditoStats.porVencer, sub:`${creditoStats.vencido} vencido${creditoStats.vencido!==1?'s':''}`, color:'#7c3aed', tab:'credito' },
+              ].map((s,i) => (
+                <div key={i} onClick={() => setActiveTab(s.tab)} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'12px', padding:'1rem 1.25rem', cursor:'pointer', position:'relative', overflow:'hidden', transition:'border-color 0.15s' }}
+                  onMouseOver={e => e.currentTarget.style.borderColor='var(--brand)'}
+                  onMouseOut={e => e.currentTarget.style.borderColor='var(--border)'}>
+                  <div style={{ width:'3px', position:'absolute', left:0, top:'15%', bottom:'15%', background:s.color, borderRadius:'0 2px 2px 0' }}></div>
+                  <div style={{ fontSize:'0.65rem', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'0.35rem' }}>{s.label}</div>
+                  <div style={{ fontSize:'1.7rem', fontWeight:800, color:'var(--text)', fontFamily:'var(--mono)', lineHeight:1, letterSpacing:'-0.02em' }}>{s.value}</div>
+                  <div style={{ fontSize:'0.7rem', color:'var(--text-muted)', marginTop:'0.3rem' }}>{s.sub}</div>
                 </div>
               ))}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.2rem' }}>
-                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '1rem' }}>Créditos por Vencer — 7 días</div>
-                {creditosAlerta.length === 0 ? <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>No hay créditos próximos a vencer.</p> :
-                  creditosAlerta.map(c => <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.6rem 0', borderBottom: '1px solid var(--border)' }}>
-                    <div><strong>{c.cliente}</strong><div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Orden: {c.numeroOrden}</div></div>
-                    <span className={`dias-restantes ${getDiasRestantes(c.fechaVencimiento) <= 3 ? 'critico' : 'advertencia'}`}>{getDiasRestantes(c.fechaVencimiento)} días</span>
-                  </div>)}
+
+            {/* ACCESOS RÁPIDOS */}
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:'0.6rem', marginBottom:'1.25rem' }}>
+              {[
+                { label:'Nueva Cotización', icon:'📋', action:() => { setActiveTab('cartera'); abrirModal(); } },
+                { label:'Ver Agenda', icon:'📅', action:() => setActiveTab('agenda') },
+                { label:'Carga Masiva PDF', icon:'📂', action:() => { setArchivosEnProceso([]); setShowCargaMasivaModal(true); } },
+                { label:'Exportar Excel', icon:'📊', action:exportarTodosExcel },
+              ].map((a,i) => (
+                <button key={i} onClick={a.action} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'0.4rem', padding:'0.75rem', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'10px', cursor:'pointer', color:'var(--text)', fontSize:'0.75rem', fontWeight:600, transition:'all 0.15s' }}
+                  onMouseOver={e => { e.currentTarget.style.borderColor='var(--brand)'; e.currentTarget.style.background='var(--brand-bg)'; }}
+                  onMouseOut={e => { e.currentTarget.style.borderColor='var(--border)'; e.currentTarget.style.background='var(--surface)'; }}>
+                  <span style={{ fontSize:'1.3rem' }}>{a.icon}</span>
+                  {a.label}
+                </button>
+              ))}
+            </div>
+
+            {/* PANEL INFERIOR: alertas + recientes */}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem', marginBottom:'1.25rem' }}>
+              <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'12px', padding:'1rem' }}>
+                <div style={{ fontSize:'0.72rem', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-muted)', marginBottom:'0.75rem', display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                  <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:'#f59e0b' }}></div>
+                  Créditos por vencer
+                </div>
+                {creditosAlerta.length === 0
+                  ? <p style={{ color:'var(--text-muted)', fontSize:'0.82rem', margin:0 }}>Sin créditos próximos a vencer.</p>
+                  : creditosAlerta.slice(0,5).map(c => (
+                    <div key={c.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.5rem 0', borderBottom:'1px solid var(--border)' }}>
+                      <div>
+                        <div style={{ fontWeight:600, fontSize:'0.82rem' }}>{c.cliente}</div>
+                        <div style={{ fontSize:'0.7rem', color:'var(--text-muted)' }}>Orden: {c.numeroOrden}</div>
+                      </div>
+                      <span className={`dias-restantes ${getDiasRestantes(c.fechaVencimiento) <= 3 ? 'critico' : 'advertencia'}`}>{getDiasRestantes(c.fechaVencimiento)}d</span>
+                    </div>
+                  ))
+                }
               </div>
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.2rem' }}>
-                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '1rem' }}>Últimos clientes agregados</div>
-                {[...clientes].reverse().slice(0, 5).map(c => <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid var(--border)' }}>
-                  <span style={{ fontWeight: 600, fontSize: '0.88rem' }}>{c.nombre}</span>
-                  <span className={`badge badge-${c.estado.toLowerCase().replace(/ /g,'-')}`}>{c.estado}</span>
-                </div>)}
+              <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'12px', padding:'1rem' }}>
+                <div style={{ fontSize:'0.72rem', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-muted)', marginBottom:'0.75rem', display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                  <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:'var(--brand)' }}></div>
+                  Últimos clientes
+                </div>
+                {[...clientes].reverse().slice(0,5).map(c => (
+                  <div key={c.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.5rem 0', borderBottom:'1px solid var(--border)' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                      {(() => { const av = getAvatar(c.nombre); return <div className="avatar avatar-sm" style={{ background:av.color, width:'24px', height:'24px', fontSize:'0.65rem' }}>{av.letra}</div>; })()}
+                      <span style={{ fontWeight:600, fontSize:'0.82rem' }}>{c.nombre}</span>
+                    </div>
+                    <span className={`badge badge-${c.estado.toLowerCase().replace(/ /g,'-')}`}>{c.estado}</span>
+                  </div>
+                ))}
               </div>
             </div>
             {/* Aging Report */}
