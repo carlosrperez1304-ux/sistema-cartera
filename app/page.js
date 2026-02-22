@@ -3251,7 +3251,42 @@ export default function App() {
                 <div className="form-group"><label>Estado *</label><select value={formData.estado} onChange={(e) => setFormData({ ...formData, estado: e.target.value })} required>{['Cotizado','Notificado','Pagado','Facturado','Vencido','Suspendido','No Generaron'].map(e => <option key={e} value={e}>{e}</option>)}</select></div>
                 <div className="form-group"><label>Fecha de Cotización</label><input type="date" value={formData.fechaCotizacion} onChange={(e) => setFormData({ ...formData, fechaCotizacion: e.target.value })} /></div>
                 <div className="form-group"><label>Comentario</label><textarea value={formData.comentario} onChange={(e) => setFormData({ ...formData, comentario: e.target.value })} /></div>
-                {editingCliente && formData.historial && formData.historial.length > 0 && <div className="historial"><strong>Historial:</strong>{formData.historial.slice(-5).reverse().map((h, idx) => <div key={idx} className="historial-item">{new Date(h.fecha).toLocaleString('es-DO')} - {h.accion}</div>)}</div>}
+                {editingCliente && formData.historial && formData.historial.length > 0 && (
+                  <div style={{ marginTop:'1rem' }}>
+                    <div style={{ fontSize:'0.72rem', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-muted)', marginBottom:'0.75rem', display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                      <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:'var(--brand)' }}></div>
+                      Historial de cambios ({formData.historial.length})
+                    </div>
+                    <div style={{ maxHeight:'200px', overflowY:'auto', display:'flex', flexDirection:'column', gap:'0', paddingRight:'0.25rem' }}>
+                      {[...formData.historial].reverse().map((h, idx) => {
+                        const esReciente = idx === 0;
+                        const accion = h.accion || '';
+                        const color = accion.toLowerCase().includes('pagado') ? '#059669'
+                          : accion.toLowerCase().includes('cotizado') ? '#ea580c'
+                          : accion.toLowerCase().includes('notificado') ? '#0284c7'
+                          : accion.toLowerCase().includes('facturado') ? '#16a34a'
+                          : accion.toLowerCase().includes('vencido') ? '#dc2626'
+                          : accion.toLowerCase().includes('eliminado') ? '#dc2626'
+                          : 'var(--brand)';
+                        return (
+                          <div key={idx} style={{ display:'flex', gap:'0.75rem', paddingBottom:'0.6rem', position:'relative' }}>
+                            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', flexShrink:0 }}>
+                              <div style={{ width:'8px', height:'8px', borderRadius:'50%', background: esReciente ? color : 'var(--border-2)', border:`2px solid ${esReciente ? color : 'var(--border)'}`, marginTop:'3px', flexShrink:0 }}></div>
+                              {idx < formData.historial.length - 1 && <div style={{ width:'1px', flex:1, background:'var(--border)', marginTop:'3px' }}></div>}
+                            </div>
+                            <div style={{ flex:1, paddingBottom:'0.1rem' }}>
+                              <div style={{ fontSize:'0.78rem', fontWeight: esReciente ? 600 : 400, color: esReciente ? 'var(--text)' : 'var(--text-muted)' }}>{h.accion}</div>
+                              <div style={{ display:'flex', gap:'0.5rem', alignItems:'center', marginTop:'0.15rem' }}>
+                                {h.usuario && <span style={{ fontSize:'0.65rem', fontWeight:700, color:'var(--brand)', background:'var(--brand-bg)', padding:'0.05rem 0.4rem', borderRadius:'9px' }}>{h.usuario}</span>}
+                                <span style={{ fontSize:'0.65rem', color:'var(--text-muted)' }}>{new Date(h.fecha).toLocaleString('es-DO', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
                 <div className="form-actions"><button type="button" className="btn btn-secondary" onClick={cerrarModal}>Cancelar</button><button type="submit" className="btn btn-primary">{editingCliente ? 'Actualizar' : 'Guardar'}</button></div>
               </form>
             </div>
