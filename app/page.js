@@ -57,6 +57,9 @@ export default function App() {
   const [sessionExpired, setSessionExpired] = useState(false);
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [bancoMovimientos, setBancoMovimientos] = useState([]);
+  const [bancoArchivoNombre, setBancoArchivoNombre] = useState('');
+  const [bancoFiltro, setBancoFiltro] = useState('todos');
   const [nuevaVersion, setNuevaVersion] = useState(false);
   const prevSessionStatus = useRef(null);
   const versionRef = useRef(null);
@@ -1903,6 +1906,7 @@ export default function App() {
             <div className={`sidebar-item ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => setActiveTab('documentos')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span> Documentos</div>
             {puedeVerTodo && <div className={`sidebar-item ${activeTab === 'carteras' ? 'active' : ''}`} onClick={() => setActiveTab('carteras')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Carteras por Agente</div>}
             {(esAdmin || esEditor) && <div className={`sidebar-item ${activeTab === 'delegations' ? 'active' : ''}`} onClick={() => { setActiveTab('delegations'); cargarDelegations(); }} style={{ position: 'relative' }}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span> Delegations{delegationsPendientes.length > 0 && <span style={{ position: 'absolute', top: '6px', right: '8px', width: '8px', height: '8px', background: '#f97316', borderRadius: '50%' }}></span>}</div>}
+            <div className={`sidebar-item ${activeTab === 'conciliacion' ? 'active' : ''}`} onClick={() => setActiveTab('conciliacion')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span> Conciliación</div>
             <div className="sidebar-item" onClick={() => { setArchivosEnProceso([]); setShowCargaMasivaModal(true); }}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span> Carga Masiva PDF</div>
             <div className="sidebar-item" onClick={() => setShowPlantillasModal(true)}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span> Plantillas WA</div>
           </div>
@@ -2963,6 +2967,173 @@ export default function App() {
                   </tbody>
                 </table>
               )}
+            </div>
+          </div>
+
+          {/* TAB CONCILIACION */}
+          <div className={`tab-content ${activeTab === 'conciliacion' ? 'active' : ''}`}>
+            <div style={{ display:'flex', flexDirection:'column', gap:'1rem' }}>
+
+              {/* Header */}
+              <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'14px', padding:'1.25rem 1.5rem' }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'1rem' }}>
+                  <div>
+                    <div style={{ fontWeight:800, fontSize:'1.05rem', color:'var(--text)' }}>Conciliación Bancaria</div>
+                    <div style={{ fontSize:'0.78rem', color:'var(--text-muted)', marginTop:'0.2rem' }}>Compara los movimientos del banco contra los pagos registrados en el sistema</div>
+                  </div>
+                  <label style={{ display:'flex', alignItems:'center', gap:'0.6rem', padding:'0.6rem 1rem', background:'var(--brand)', color:'white', borderRadius:'9px', fontSize:'0.84rem', fontWeight:600, cursor:'pointer' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Subir Excel del Banco
+                    <input type="file" accept=".xlsx,.csv" style={{ display:'none' }} onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        try {
+                          // Parsear xlsx en el browser usando SheetJS
+                          const data = new Uint8Array(ev.target.result);
+                          // Guardamos el archivo para procesarlo
+                          setBancoArchivoNombre(file.name);
+                          // Leer con SheetJS (cargado via CDN en el layout)
+                          if (typeof XLSX !== 'undefined') {
+                            const wb = XLSX.read(data, { type: 'array', cellDates: false });
+                            const ws = wb.Sheets[wb.SheetNames[0]];
+                            const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true });
+                            // Detectar fila de encabezado (buscar "Fecha")
+                            let headerRow = -1;
+                            for (let i = 0; i < rows.length; i++) {
+                              if (rows[i].some(c => String(c||'').toLowerCase().includes('fecha'))) {
+                                headerRow = i; break;
+                              }
+                            }
+                            if (headerRow === -1) { showToast('No se pudo detectar el formato del banco', 'error'); return; }
+                            const headers = rows[headerRow];
+                            const fechaIdx = headers.findIndex(h => String(h||'').toLowerCase().includes('fecha'));
+                            const refIdx = headers.findIndex(h => String(h||'').toLowerCase().includes('referencia') || String(h||'').toLowerCase().includes('ref'));
+                            const descIdx = headers.findIndex(h => String(h||'').toLowerCase().includes('descripci'));
+                            const debitoIdx = headers.findIndex(h => String(h||'').toLowerCase().includes('d\u00e9bito') || String(h||'').toLowerCase().includes('debito'));
+                            const creditoIdx = headers.findIndex(h => String(h||'').toLowerCase().includes('cr\u00e9dito') || String(h||'').toLowerCase().includes('credito'));
+                            const movimientos = [];
+                            for (let i = headerRow + 1; i < rows.length; i++) {
+                              const row = rows[i];
+                              if (!row[fechaIdx]) continue;
+                              const debito = parseFloat(row[debitoIdx]) || 0;
+                              const credito = parseFloat(row[creditoIdx]) || 0;
+                              if (debito === 0 && credito === 0) continue;
+                              movimientos.push({
+                                id: i,
+                                fecha: String(row[fechaIdx] || ''),
+                                referencia: String(row[refIdx] || ''),
+                                descripcion: String(row[descIdx] || ''),
+                                debito,
+                                credito,
+                                tipo: credito > 0 ? 'credito' : 'debito',
+                                monto: credito > 0 ? credito : debito,
+                                conciliado: false,
+                                clienteMatch: null,
+                              });
+                            }
+                            // Intentar match automático contra pagos del sistema
+                            const movsConciliados = movimientos.map(mov => {
+                              if (mov.tipo !== 'credito') return mov;
+                              const match = clientes.find(c => {
+                                const monto = parseFloat(c.monto) || 0;
+                                return Math.abs(monto - mov.monto) < 1;
+                              });
+                              return { ...mov, conciliado: !!match, clienteMatch: match ? match.nombre : null };
+                            });
+                            setBancoMovimientos(movsConciliados);
+                            showToast(\`\${movsConciliados.length} movimientos importados\`, 'success');
+                          } else {
+                            showToast('Error cargando librería Excel', 'error');
+                          }
+                        } catch(err) {
+                          showToast('Error al leer el archivo: ' + err.message, 'error');
+                        }
+                      };
+                      reader.readAsArrayBuffer(file);
+                    }} />
+                  </label>
+                </div>
+              </div>
+
+              {/* Resumen */}
+              {bancoMovimientos.length > 0 && (() => {
+                const creditos = bancoMovimientos.filter(m => m.tipo === 'credito');
+                const conciliados = creditos.filter(m => m.conciliado);
+                const noConciliados = creditos.filter(m => !m.conciliado);
+                const totalBanco = creditos.reduce((s, m) => s + m.monto, 0);
+                const totalConciliado = conciliados.reduce((s, m) => s + m.monto, 0);
+                return (
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:'0.75rem' }}>
+                    {[
+                      { label:'Total Créditos Banco', value:\`$\${totalBanco.toLocaleString('en-US', { maximumFractionDigits:0 })}\`, color:'#0284c7', sub:\`\${creditos.length} movimientos\` },
+                      { label:'Conciliados', value:\`$\${totalConciliado.toLocaleString('en-US', { maximumFractionDigits:0 })}\`, color:'#059669', sub:\`\${conciliados.length} coinciden\` },
+                      { label:'Sin conciliar', value:\`$\${(totalBanco - totalConciliado).toLocaleString('en-US', { maximumFractionDigits:0 })}\`, color:'#dc2626', sub:\`\${noConciliados.length} pendientes\` },
+                      { label:'Registrado en Sistema', value:\`$\${(estadisticas.montoPagado||0).toLocaleString('en-US', { maximumFractionDigits:0 })}\`, color:'#7c3aed', sub:'Pagados este mes' },
+                    ].map((k, i) => (
+                      <div key={i} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'12px', padding:'1rem 1.1rem' }}>
+                        <div style={{ fontSize:'0.65rem', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--text-muted)', marginBottom:'0.3rem' }}>{k.label}</div>
+                        <div style={{ fontSize:'1.4rem', fontWeight:800, color:k.color, fontFamily:'var(--mono)' }}>{k.value}</div>
+                        <div style={{ fontSize:'0.7rem', color:'var(--text-muted)', marginTop:'0.15rem' }}>{k.sub}</div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {/* Tabla de movimientos */}
+              {bancoMovimientos.length > 0 ? (
+                <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'14px', overflow:'hidden' }}>
+                  <div style={{ padding:'1rem 1.25rem', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                    <div style={{ fontWeight:700, fontSize:'0.9rem' }}>Movimientos del Banco — {bancoArchivoNombre}</div>
+                    <div style={{ display:'flex', gap:'0.5rem' }}>
+                      {['todos','conciliado','pendiente'].map(f => (
+                        <button key={f} onClick={() => setBancoFiltro(f)} style={{ padding:'0.3rem 0.75rem', borderRadius:'6px', fontSize:'0.75rem', fontWeight:600, cursor:'pointer', background: bancoFiltro === f ? 'var(--brand)' : 'var(--surface-2)', color: bancoFiltro === f ? 'white' : 'var(--text-muted)', border:'1px solid var(--border)' }}>
+                          {f === 'todos' ? 'Todos' : f === 'conciliado' ? '✅ Conciliados' : '⚠️ Pendientes'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ overflowX:'auto' }}>
+                    <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.82rem' }}>
+                      <thead>
+                        <tr style={{ background:'var(--surface-2)' }}>
+                          {['Fecha','Referencia','Descripción','Débito','Crédito','Estado','Cliente Match'].map(h => (
+                            <th key={h} style={{ padding:'0.6rem 0.9rem', textAlign:'left', fontWeight:700, fontSize:'0.68rem', textTransform:'uppercase', letterSpacing:'0.05em', color:'var(--text-muted)', whiteSpace:'nowrap' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {bancoMovimientos
+                          .filter(m => bancoFiltro === 'todos' ? true : bancoFiltro === 'conciliado' ? m.conciliado : !m.conciliado)
+                          .map((m, i) => (
+                          <tr key={m.id} style={{ borderBottom:'1px solid var(--border)', background: m.conciliado ? 'rgba(5,150,105,0.03)' : 'transparent' }}>
+                            <td style={{ padding:'0.6rem 0.9rem', color:'var(--text-muted)', whiteSpace:'nowrap' }}>{m.fecha}</td>
+                            <td style={{ padding:'0.6rem 0.9rem', fontFamily:'var(--mono)', fontSize:'0.75rem', color:'var(--text-muted)' }}>{m.referencia}</td>
+                            <td style={{ padding:'0.6rem 0.9rem', color:'var(--text)', maxWidth:'200px' }}>{m.descripcion}</td>
+                            <td style={{ padding:'0.6rem 0.9rem', fontFamily:'var(--mono)', color:'#dc2626', fontWeight:600 }}>{m.debito > 0 ? \`$\${m.debito.toLocaleString('en-US', { maximumFractionDigits:0 })}\` : ''}</td>
+                            <td style={{ padding:'0.6rem 0.9rem', fontFamily:'var(--mono)', color:'#059669', fontWeight:600 }}>{m.credito > 0 ? \`$\${m.credito.toLocaleString('en-US', { maximumFractionDigits:0 })}\` : ''}</td>
+                            <td style={{ padding:'0.6rem 0.9rem' }}>
+                              <span style={{ padding:'0.2rem 0.6rem', borderRadius:'5px', fontSize:'0.7rem', fontWeight:700, background: m.conciliado ? 'rgba(5,150,105,0.1)' : 'rgba(220,38,38,0.1)', color: m.conciliado ? '#059669' : '#dc2626' }}>
+                                {m.conciliado ? '✅ OK' : '⚠️ Pendiente'}
+                              </span>
+                            </td>
+                            <td style={{ padding:'0.6rem 0.9rem', fontSize:'0.78rem', color:'var(--text-muted)' }}>{m.clienteMatch || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ background:'var(--surface)', border:'2px dashed var(--border)', borderRadius:'14px', padding:'3rem', textAlign:'center' }}>
+                  <div style={{ fontSize:'2.5rem', marginBottom:'0.75rem' }}>🏦</div>
+                  <div style={{ fontWeight:700, fontSize:'0.95rem', color:'var(--text)', marginBottom:'0.4rem' }}>Sube el estado de cuenta del banco</div>
+                  <div style={{ fontSize:'0.82rem', color:'var(--text-muted)' }}>Compatible con BHD, Reservas y Popular · Formato Excel (.xlsx)</div>
+                </div>
+              )}
+
             </div>
           </div>
 
