@@ -1447,11 +1447,11 @@ export default function App() {
       if (cliente) return { cliente, confianza: 'alta', razon: `ID ${id} encontrado en el nombre` };
     }
     // 2. Buscar por nombre del cliente (coincidencia completa)
-    const match = clientes.find(c => nombre.includes(c.nombre.toLowerCase().replace(/[-_]/g, ' ')));
+    const match = clientes.find(c => c.nombre && nombre.includes(c.nombre.toLowerCase().replace(/[-_]/g, ' ')));
     if (match) return { cliente: match, confianza: 'alta', razon: `Nombre "${match.nombre}" en el archivo` };
     // 3. Buscar por primera palabra del nombre del cliente
     const matchParcial = clientes.find(c => {
-      const palabras = c.nombre.toLowerCase().split(' ');
+      const palabras = (c.nombre || '').toLowerCase().split(' ');
       return palabras.some(p => p.length > 3 && nombre.includes(p));
     });
     if (matchParcial) return { cliente: matchParcial, confianza: 'media', razon: `Coincidencia parcial con "${matchParcial.nombre}"` };
@@ -2119,7 +2119,7 @@ export default function App() {
                       {(() => { const av = getAvatar(c.nombre); return <div className="avatar avatar-sm" style={{ background:av.color, width:'24px', height:'24px', fontSize:'0.65rem' }}>{av.letra}</div>; })()}
                       <span style={{ fontWeight:600, fontSize:'0.82rem' }}>{c.nombre}</span>
                     </div>
-                    <span className={`badge badge-${c.estado.toLowerCase().replace(/ /g,'-')}`}>{c.estado}</span>
+                    <span className={`badge badge-${(c.estado||'').toLowerCase().replace(/ /g,'-')}`}>{c.estado}</span>
                   </div>
                 ))}
               </div>
@@ -2468,7 +2468,7 @@ export default function App() {
                               <div style={{ minWidth:0 }}>
                                 <div style={{ fontWeight:700, fontSize:'0.88rem', color:'var(--text)' }}>{c.nombre}</div>
                                 <div style={{ fontSize:'0.72rem', color:'var(--text-muted)', display:'flex', gap:'0.5rem', flexWrap:'wrap', marginTop:'0.15rem' }}>
-                                  <span className={`badge badge-${c.estado.toLowerCase().replace(/ /g,'-')}`}>{c.estado}</span>
+                                  <span className={`badge badge-${(c.estado||'').toLowerCase().replace(/ /g,'-')}`}>{c.estado}</span>
                                   {c.monto && <span style={{ fontWeight:700, color:'#059669' }}>RD${parseFloat(c.monto).toLocaleString('en-US')}</span>}
                                   {ug && <span>Última gestión: {new Date(ug.fecha).toLocaleDateString('es-DO')} · {ug.resultado}</span>}
                                   {ug?.proximaFecha && <span style={{ color:sec.color, fontWeight:700 }}>Seguimiento: {new Date(ug.proximaFecha).toLocaleDateString('es-DO')}</span>}
@@ -2978,7 +2978,7 @@ export default function App() {
                           <td>{credito.plazoMeses} {credito.plazoMeses === '1' ? 'mes' : 'meses'}</td>
                           <td>{new Date(credito.fechaVencimiento).toLocaleDateString('es-DO')}</td>
                           <td>{credito.estado !== 'Pagado' && <span className={`dias-restantes ${diasRestantes < 0 ? 'critico' : diasRestantes <= 3 ? 'critico' : diasRestantes <= 7 ? 'advertencia' : ''}`}>{diasRestantes < 0 ? `${Math.abs(diasRestantes)} días vencido` : `${diasRestantes} días`}</span>}</td>
-                          <td><span className={`badge badge-${credito.estado.toLowerCase().replace(/ /g, '-')}`}>{credito.estado}</span></td>
+                          <td><span className={`badge badge-${(credito.estado||'').toLowerCase().replace(/ /g, '-')}`}>{credito.estado}</span></td>
                           <td>
                             <div className="action-btns">
                               {credito.estado !== 'Pagado' && <button className="btn-icon" onClick={() => { const a = { ...credito, estado: 'Pagado', historial: [...(credito.historial || []), { fecha: new Date().toISOString(), accion: 'Marcado como Pagado' }] }; actualizarCredito(a); }} title="Marcar Pagado">✅</button>}
@@ -3644,14 +3644,14 @@ export default function App() {
                         <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '0.5rem' }}>📊 Cartera ({resClientes.length})</div>
                         {resClientes.map(c => <div key={c.id} onClick={() => { setActiveTab('cartera'); setSearchTerm(c.nombre); setShowBusquedaGlobal(false); setBusquedaGlobal(''); }} style={{ padding: '0.65rem 0.9rem', background: 'var(--surface2)', borderRadius: '8px', marginBottom: '0.35rem', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div><strong>{c.nombre}</strong> <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>#{c.id}</span></div>
-                          <span className={`badge badge-${c.estado.toLowerCase().replace(/ /g,'-')}`}>{c.estado}</span>
+                          <span className={`badge badge-${(c.estado||'').toLowerCase().replace(/ /g,'-')}`}>{c.estado}</span>
                         </div>)}
                       </>}
                       {resCreditos.length > 0 && <>
                         <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0.75rem 0 0.5rem' }}>💳 Créditos ({resCreditos.length})</div>
                         {resCreditos.map(c => <div key={c.id} onClick={() => { setActiveTab('credito'); setShowBusquedaGlobal(false); setBusquedaGlobal(''); }} style={{ padding: '0.65rem 0.9rem', background: 'var(--surface2)', borderRadius: '8px', marginBottom: '0.35rem', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div><strong>{c.cliente}</strong> <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Orden: {c.numeroOrden}</span></div>
-                          <span className={`badge badge-${c.estado.toLowerCase().replace(/ /g,'-')}`}>{c.estado}</span>
+                          <span className={`badge badge-${(c.estado||'').toLowerCase().replace(/ /g,'-')}`}>{c.estado}</span>
                         </div>)}
                       </>}
                       {resClientes.length === 0 && resCreditos.length === 0 && <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No se encontraron resultados para "{busquedaGlobal}"</div>}

@@ -1,26 +1,20 @@
 import { db } from '../../../lib/supabase.js';
-import { requireAuth, requireAdmin, checkCsrf } from '../../../lib/security.js';
+import { requireAuth, checkCsrf } from '../../../lib/security.js';
 
 const CLAVES_PERMITIDAS = ['meta_mensual', 'color_acento', 'recordatorio_dias', 'modo_compacto'];
 
-// GET — leer toda la configuración del sistema
 export async function GET(req) {
   const auth = await requireAuth(req);
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
 
-  const empresa_id = auth?.session?.user?.empresa_id || null;
-  const baseQ = db().from('config');
-  const { data, error } = await (empresa_id ? baseQ.eq('empresa_id', empresa_id) : baseQ).select('clave, valor');
+  const { data, error } = await db().from('config').select('clave, valor');
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
   const cfg = {};
-  for (const { clave, valor } of (data || [])) {
-    cfg[clave] = valor;
-  }
+  for (const { clave, valor } of (data || [])) cfg[clave] = valor;
   return Response.json(cfg);
 }
 
-// POST — actualizar una clave de configuración
 export async function POST(req) {
   const csrf = checkCsrf(req);
   if (csrf) return Response.json({ error: csrf.error }, { status: csrf.status });
@@ -38,6 +32,5 @@ export async function POST(req) {
     { onConflict: 'clave' }
   );
   if (error) return Response.json({ error: error.message }, { status: 500 });
-
   return Response.json({ ok: true });
 }

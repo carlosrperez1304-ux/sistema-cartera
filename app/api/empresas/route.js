@@ -9,16 +9,19 @@ async function requireAdmin(req) {
   return auth;
 }
 
-// GET — listar empresas
+// GET — listar empresas (admin ve todas, usuario normal ve solo la suya)
 export async function GET(req) {
-  const auth = await requireAdmin(req);
+  const auth = await requireAuth(req);
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
 
-  const { data, error } = await db()
-    .from('empresas')
-    .select('*')
-    .order('id');
+  const esAdmin = auth.session.user.rol === 'admin';
+  const empresa_id = auth.session.user.empresa_id || null;
 
+  let query = db().from('empresas').select('*').order('id');
+  if (!esAdmin && empresa_id) query = query.eq('id', empresa_id);
+  else if (!esAdmin && !empresa_id) return Response.json([]);
+
+  const { data, error } = await query;
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json(data || []);
 }
