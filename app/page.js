@@ -451,6 +451,21 @@ export default function App() {
     return () => document.removeEventListener('keydown', handleKey);
   }, []);
 
+  // ── Cargar empresa actual del usuario ──────────────────────
+  useEffect(() => {
+    const empresaId = session?.user?.empresa_id;
+    if (!empresaId) return;
+    fetch('/api/empresas')
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          const emp = data.find(e => e.id === empresaId);
+          if (emp) setEmpresaActual(emp);
+        }
+      })
+      .catch(() => {});
+  }, [session]);
+
   // ── Auto-logout por inactividad (30 minutos) ──────────────
   useEffect(() => {
     if (!isAuthenticated && !session) return;
