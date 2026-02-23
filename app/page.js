@@ -1955,7 +1955,7 @@ export default function App() {
             </div>
             <div className="sidebar-user-info">
               <div className="sidebar-user-name">{currentUser || session?.user?.name || 'Usuario'}</div>
-              <div className="sidebar-user-role">{esAdmin ? 'Administrador' : esEditor ? 'Editor' : 'Viewer'}</div>
+              <div className="sidebar-user-role">{esAdmin ? 'Administrador' : esEditor ? 'Editor' : 'Viewer'}{empresaActual ? ` · ${empresaActual.nombre}` : ''}</div>
             </div>
             <div className="sidebar-user-actions">
               <button className="sidebar-icon-btn" onClick={() => { setSettingsSection('config'); setShowSettingsPanel(true); }} title="Configuración">
@@ -4449,12 +4449,32 @@ export default function App() {
                       }} style={{ fontWeight:700, fontSize:'0.88rem', background:'transparent', border:'1px solid transparent', borderRadius:'5px', padding:'0.2rem 0.4rem', color:'var(--text)', width:'100%', cursor:'text' }} onFocus={e => e.target.style.borderColor='var(--brand)'} />
                       <div style={{ fontSize:'0.72rem', color:'var(--text-muted)', paddingLeft:'0.4rem' }}>/{emp.slug} · ID: {emp.id} · {emp.activa ? '✅ Activa' : '⛔ Inactiva'}</div>
                     </div>
-                    <button onClick={async () => {
-                      const r = await fetch('/api/empresas', { method:'PATCH', headers:{ 'Content-Type':'application/json', 'x-csrf-token': document.cookie.match(/csrf-token=([^;]+)/)?.[1] || '' }, body: JSON.stringify({ id: emp.id, nombre: emp.nombre, activa: !emp.activa }) });
-                      if (r.ok) { setEmpresas(prev => prev.map(e => e.id === emp.id ? { ...e, activa: !e.activa } : e)); showToast('Estado actualizado', 'success'); }
-                    }} style={{ fontSize:'0.72rem', padding:'0.25rem 0.6rem', borderRadius:'6px', border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-muted)', cursor:'pointer', whiteSpace:'nowrap' }}>
-                      {emp.activa ? 'Desactivar' : 'Activar'}
-                    </button>
+                    <div style={{ display:'flex', flexDirection:'column', gap:'0.4rem', alignItems:'flex-end' }}>
+                      {emp.config?.logoUrl && <img src={emp.config.logoUrl} alt="logo" style={{ height:'32px', objectFit:'contain', borderRadius:'4px', marginBottom:'0.25rem' }} />}
+                      <label style={{ fontSize:'0.72rem', padding:'0.25rem 0.6rem', borderRadius:'6px', border:'1px solid var(--brand)', background:'rgba(99,91,255,0.08)', color:'var(--brand)', cursor:'pointer', whiteSpace:'nowrap', fontWeight:600 }}>
+                        {emp.config?.logoUrl ? '🔄 Cambiar logo' : '🖼️ Subir logo'}
+                        <input type="file" accept="image/*" style={{ display:'none' }} onChange={async e => {
+                          const file = e.target.files[0];
+                          if (!file) return;
+                          const fd = new FormData();
+                          fd.append('logo', file);
+                          fd.append('empresa_id', emp.id);
+                          const r = await fetch('/api/empresas/logo', { method:'POST', body: fd });
+                          if (r.ok) {
+                            const { logoUrl } = await r.json();
+                            setEmpresas(prev => prev.map(e => e.id === emp.id ? { ...e, config: { ...e.config, logoUrl } } : e));
+                            if (empresaActual?.id === emp.id) setEmpresaActual(prev => ({ ...prev, config: { ...prev.config, logoUrl } }));
+                            showToast('Logo actualizado', 'success');
+                          } else showToast('Error subiendo logo', 'error');
+                        }} />
+                      </label>
+                      <button onClick={async () => {
+                        const r = await fetch('/api/empresas', { method:'PATCH', headers:{ 'Content-Type':'application/json', 'x-csrf-token': document.cookie.match(/csrf-token=([^;]+)/)?.[1] || '' }, body: JSON.stringify({ id: emp.id, nombre: emp.nombre, activa: !emp.activa }) });
+                        if (r.ok) { setEmpresas(prev => prev.map(e => e.id === emp.id ? { ...e, activa: !e.activa } : e)); showToast('Estado actualizado', 'success'); }
+                      }} style={{ fontSize:'0.72rem', padding:'0.25rem 0.6rem', borderRadius:'6px', border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-muted)', cursor:'pointer', whiteSpace:'nowrap' }}>
+                        {emp.activa ? 'Desactivar' : 'Activar'}
+                      </button>
+                    </div>
                   </div>
                 ))}
                 {/* Asignar usuario a empresa */}
