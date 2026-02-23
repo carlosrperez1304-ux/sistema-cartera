@@ -335,6 +335,7 @@ export default function App() {
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const [empresas, setEmpresas] = useState([]);
+  const [empresaActual, setEmpresaActual] = useState(null);
   const [empresaForm, setEmpresaForm] = useState({ nombre: '', slug: '' });
   const [settingsSection, setSettingsSection] = useState('config');
   const [colorAcento, setColorAcento] = useState('#635bff');
