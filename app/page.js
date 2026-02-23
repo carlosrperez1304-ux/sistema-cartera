@@ -3085,6 +3085,7 @@ export default function App() {
                               const descUpper = mov.descripcion.toUpperCase();
                               // 1. Match por nombre del cliente en la descripción
                               let match = clientes.find(c => {
+                                if (!c.nombre) return false;
                                 const palabras = c.nombre.toUpperCase().split(' ').filter(p => p.length > 3);
                                 return palabras.some(p => descUpper.includes(p));
                               });
