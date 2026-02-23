@@ -4438,11 +4438,23 @@ export default function App() {
                 {/* Lista de empresas */}
                 <div style={{ fontWeight:700, fontSize:'0.85rem', marginBottom:'0.5rem' }}>Empresas registradas</div>
                 {empresas.map(emp => (
-                  <div key={emp.id} style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'9px', padding:'0.75rem 1rem', marginBottom:'0.5rem', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                    <div>
-                      <div style={{ fontWeight:700, fontSize:'0.88rem' }}>{emp.nombre}</div>
-                      <div style={{ fontSize:'0.72rem', color:'var(--text-muted)' }}>/{emp.slug} · ID: {emp.id} · {emp.activa ? '✅ Activa' : '⛔ Inactiva'}</div>
+                  <div key={emp.id} style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'9px', padding:'0.75rem 1rem', marginBottom:'0.5rem', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'0.5rem' }}>
+                    <div style={{ flex:1 }}>
+                      <input defaultValue={emp.nombre} onBlur={async e => {
+                        const nuevoNombre = e.target.value.trim();
+                        if (!nuevoNombre || nuevoNombre === emp.nombre) return;
+                        const r = await fetch('/api/empresas', { method:'PATCH', headers:{ 'Content-Type':'application/json', 'x-csrf-token': document.cookie.match(/csrf-token=([^;]+)/)?.[1] || '' }, body: JSON.stringify({ id: emp.id, nombre: nuevoNombre, activa: emp.activa }) });
+                        if (r.ok) { setEmpresas(prev => prev.map(e => e.id === emp.id ? { ...e, nombre: nuevoNombre } : e)); showToast('Nombre actualizado', 'success'); }
+                        else showToast('Error actualizando', 'error');
+                      }} style={{ fontWeight:700, fontSize:'0.88rem', background:'transparent', border:'1px solid transparent', borderRadius:'5px', padding:'0.2rem 0.4rem', color:'var(--text)', width:'100%', cursor:'text' }} onFocus={e => e.target.style.borderColor='var(--brand)'} />
+                      <div style={{ fontSize:'0.72rem', color:'var(--text-muted)', paddingLeft:'0.4rem' }}>/{emp.slug} · ID: {emp.id} · {emp.activa ? '✅ Activa' : '⛔ Inactiva'}</div>
                     </div>
+                    <button onClick={async () => {
+                      const r = await fetch('/api/empresas', { method:'PATCH', headers:{ 'Content-Type':'application/json', 'x-csrf-token': document.cookie.match(/csrf-token=([^;]+)/)?.[1] || '' }, body: JSON.stringify({ id: emp.id, nombre: emp.nombre, activa: !emp.activa }) });
+                      if (r.ok) { setEmpresas(prev => prev.map(e => e.id === emp.id ? { ...e, activa: !e.activa } : e)); showToast('Estado actualizado', 'success'); }
+                    }} style={{ fontSize:'0.72rem', padding:'0.25rem 0.6rem', borderRadius:'6px', border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-muted)', cursor:'pointer', whiteSpace:'nowrap' }}>
+                      {emp.activa ? 'Desactivar' : 'Activar'}
+                    </button>
                   </div>
                 ))}
                 {/* Asignar usuario a empresa */}
