@@ -33,8 +33,9 @@ export async function GET(req) {
     return Response.json({ error: auth.error }, { status: auth.status });
   }
 
-  const userRol = auth.session.user.rol || '';
-  const username = auth.session.user.username || '';
+  const userRol    = auth.session.user.rol || '';
+  const username   = auth.session.user.username || '';
+  const empresa_id = auth.session.user.empresa_id || null;
   const puedeVerTodo = ROLES_VER_TODO.includes(userRol);
 
   let query = db()
@@ -42,8 +43,8 @@ export async function GET(req) {
     .select('*, abonos(*)')
     .order('id');
 
+  if (empresa_id) query = query.eq('empresa_id', empresa_id);
   if (!puedeVerTodo) {
-    // Cartera propia: solo créditos creados por el usuario actual
     query = query.eq('creado_por', username);
   }
 

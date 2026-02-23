@@ -146,25 +146,21 @@ export default function App() {
     setPassword('');
   };
 
-  const cargarDatos = () => {
-    if (typeof window === 'undefined') return [];
-    const datosGuardados = localStorage.getItem('cartera-clientes-v2');
-    if (datosGuardados) {
-      const parsed = JSON.parse(datosGuardados);
-      return parsed.map(c => ({ ...c, monto: c.monto !== undefined ? c.monto : '', pagosRealizados: c.pagosRealizados || [] }));
-    }
-    return [];
-  };
-
   const [clientes, setClientes] = useState([]);
   const [creditos, setCreditos] = useState([]);
   const [historialMeses, setHistorialMeses] = useState({});
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    const savedHistorial = localStorage.getItem('historial-meses-v1');
-    setHistorialMeses(savedHistorial ? JSON.parse(savedHistorial) : {});
-    setHydrated(true);
+    fetch('/api/historial-meses')
+      .then(r => r.ok ? r.json() : [])
+      .then(data => {
+        const mapa = {};
+        (data || []).forEach(r => { mapa[r.mes_key] = r.datos; });
+        setHistorialMeses(mapa);
+      })
+      .catch(() => {})
+      .finally(() => setHydrated(true));
   }, []);
 
   // — Funciones de carga separadas (estables con useCallback) —
@@ -179,7 +175,11 @@ export default function App() {
       const mapa = new Map();
       [...(Array.isArray(propios)   ? propios   : []),
        ...(Array.isArray(delegados) ? delegados : [])].forEach(c => mapa.set(c.id, c));
-      setClientes([...mapa.values()]);
+      const todos = [...mapa.values()];
+      setClientes(todos);
+      const tagsMapa = {};
+      todos.forEach(c => { if (c.tags?.length > 0) tagsMapa[c.id] = c.tags; });
+      setTags(prev => ({ ...tagsMapa, ...prev }));
     } catch { /* offline — mantener datos en pantalla */ }
   }, []);
 
@@ -334,6 +334,8 @@ export default function App() {
   const [metaMensual, setMetaMensual] = useState(0);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
+  const [empresas, setEmpresas] = useState([]);
+  const [empresaForm, setEmpresaForm] = useState({ nombre: '', slug: '' });
   const [settingsSection, setSettingsSection] = useState('config');
   const [colorAcento, setColorAcento] = useState('#635bff');
   const [tags, setTags] = useState({});
@@ -388,68 +390,27 @@ export default function App() {
   const [waMasivoIndex, setWaMasivoIndex] = useState(0);
   const [waMasivoActivo, setWaMasivoActivo] = useState(false);
 
-  // Cargar preferencias guardadas
+  // Cargar preferencias y datos desde API
   useEffect(() => {
-    const savedMeta = localStorage.getItem('meta-mensual');
-    const savedColor = localStorage.getItem('color-acento');
-    const savedTags = localStorage.getItem('cliente-tags');
-    const savedRecordatorio = localStorage.getItem('recordatorio-dias');
-    const savedCompacto = localStorage.getItem('modo-compacto');
-    const savedCots = localStorage.getItem('cotizaciones-v2') || localStorage.getItem('cotizaciones-v1');
-    if (savedMeta) setMetaMensual(parseFloat(savedMeta) || 0);
-    if (savedColor) setColorAcento(savedColor);
-    if (savedTags) setTags(JSON.parse(savedTags));
-    if (savedRecordatorio) setRecordatoriosDias(parseInt(savedRecordatorio) || 7);
-    if (savedCompacto) setModoCompacto(savedCompacto === 'true');
-    if (savedCots) {
-      const parsed = JSON.parse(savedCots);
-      const migradas = Object.fromEntries(
-        Object.entries(parsed).map(([cid, docs]) => [
-          cid, docs.map(d => ({ ...d, estado: d.estado || 'Cotizado' }))
-        ])
-      );
-      setCotizaciones(migradas);
-    }
-    const savedConciliaciones = localStorage.getItem('historial-conciliaciones-v1');
-    if (savedConciliaciones) setHistorialConciliaciones(JSON.parse(savedConciliaciones));
-    const savedGestiones = localStorage.getItem('gestiones-v1');
-    if (savedGestiones) setGestiones(JSON.parse(savedGestiones));
-    const savedPlantillas = localStorage.getItem('plantillas-v1');
-    if (savedPlantillas) setPlantillas(JSON.parse(savedPlantillas));
-    else setPlantillas([
-      { id: 1, nombre: 'Primer Aviso', texto: 'Estimado/a {nombre}, le recordamos que tiene una factura pendiente por RD${monto}. Por favor comuníquese con nosotros. Gracias.' },
-      { id: 2, nombre: 'Recordatorio', texto: 'Estimado/a {nombre}, su cuenta por RD${monto} sigue pendiente. Le agradecemos se ponga en contacto a la brevedad.' },
-      { id: 3, nombre: 'Aviso de Vencimiento', texto: '⚠️ Estimado/a {nombre}, su factura por RD${monto} está próxima a vencer. Realice el pago antes de la fecha límite.' },
-      { id: 4, nombre: 'Aviso Final', texto: '🔴 AVISO FINAL — Estimado/a {nombre}, su deuda de RD${monto} requiere atención inmediata. Contáctenos en los próximos 3 días.' },
-      { id: 5, nombre: 'Confirmación de Pago', texto: '✅ Estimado/a {nombre}, confirmamos recibo de su pago. Muchas gracias por su pronta respuesta.' },
-    ]);
+    fetch('/api/config')
+      .then(r => r.ok ? r.json() : {})
+      .then(cfg => {
+        if (cfg.meta_mensual   != null) setMetaMensual(parseFloat(cfg.meta_mensual) || 0);
+        if (cfg.color_acento)           setColorAcento(cfg.color_acento);
+        if (cfg.recordatorio_dias)      setRecordatoriosDias(parseInt(cfg.recordatorio_dias) || 7);
+        if (cfg.modo_compacto  != null) setModoCompacto(cfg.modo_compacto === 'true');
+      })
+      .catch(() => {});
+    fetch('/api/plantillas')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (Array.isArray(data) && data.length > 0) setPlantillas(data); })
+      .catch(() => {});
+    fetch('/api/historial-conciliaciones')
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { if (Array.isArray(data)) setHistorialConciliaciones(data); })
+      .catch(() => {});
   }, []);
 
-  useEffect(() => { if (Object.keys(gestiones).length >= 0) localStorage.setItem('gestiones-v1', JSON.stringify(gestiones)); }, [gestiones]);
-  useEffect(() => { if (plantillas.length > 0) localStorage.setItem('plantillas-v1', JSON.stringify(plantillas)); }, [plantillas]);
-
-  // Migración legacy: crear cotizacion para clientes con monto pero sin docs
-  useEffect(() => {
-    if (!clientes.length) return;
-    setCotizaciones(prev => {
-      let changed = false;
-      const result = { ...prev };
-      clientes.forEach(c => {
-        if (parseFloat(c.monto) > 0 && !(result[c.id]?.length > 0)) {
-          const estadoValido = ['Cotizado','Notificado','Pagado','Facturado','Vencido'].includes(c.estado) ? c.estado : 'Cotizado';
-          result[c.id] = [{ id: Date.now() + Math.random(), nombre: null, base64: null, fecha: new Date().toISOString(), monto: parseFloat(c.monto), tipo: 'legacy', estado: estadoValido }];
-          changed = true;
-        }
-      });
-      return changed ? result : prev;
-    });
-  }, [clientes]);
-
-  useEffect(() => {
-    if (Object.keys(cotizaciones).length >= 0) {
-      try { localStorage.setItem('cotizaciones-v2', JSON.stringify(cotizaciones)); } catch { showToast('Almacenamiento lleno. Elimina documentos antiguos.', 'error'); }
-    }
-  }, [cotizaciones]);
 
   // Aplicar color de acento como variable CSS
   useEffect(() => {
@@ -457,14 +418,12 @@ export default function App() {
     const hex = colorAcento.replace('#','');
     const r = parseInt(hex.substring(0,2),16), g = parseInt(hex.substring(2,4),16), b = parseInt(hex.substring(4,6),16);
     document.documentElement.style.setProperty('--accent-glow', `rgba(${r},${g},${b},0.15)`);
-    localStorage.setItem('color-acento', colorAcento);
+    if (hydrated) fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ clave:'color_acento', valor: colorAcento }) }).catch(()=>{});
   }, [colorAcento]);
 
-  useEffect(() => { localStorage.setItem('meta-mensual', metaMensual); }, [metaMensual]);
-  useEffect(() => { if (Object.keys(tags).length > 0) localStorage.setItem('cliente-tags', JSON.stringify(tags)); }, [tags]);
-  useEffect(() => { localStorage.setItem('recordatorio-dias', recordatoriosDias); }, [recordatoriosDias]);
-  useEffect(() => { localStorage.setItem('modo-compacto', modoCompacto); }, [modoCompacto]);
-  useEffect(() => { localStorage.setItem('usuarios-v1', JSON.stringify(usuarios)); }, [usuarios]);
+  useEffect(() => { if (hydrated) fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ clave:'meta_mensual', valor: String(metaMensual) }) }).catch(()=>{}); }, [metaMensual]);
+  useEffect(() => { if (hydrated) fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ clave:'recordatorio_dias', valor: String(recordatoriosDias) }) }).catch(()=>{}); }, [recordatoriosDias]);
+  useEffect(() => { if (hydrated) fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ clave:'modo_compacto', valor: String(modoCompacto) }) }).catch(()=>{}); }, [modoCompacto]);
 
   const obtenerMesActual = () => {
     const hoy = new Date();
@@ -476,9 +435,6 @@ export default function App() {
     return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
   });
 
-  useEffect(() => {
-    if (hydrated) localStorage.setItem('historial-meses-v1', JSON.stringify(historialMeses));
-  }, [historialMeses, hydrated]);
 
   useEffect(() => {
     const handleKey = (e) => {
@@ -1256,7 +1212,9 @@ export default function App() {
   const descargarMesExcel = () => {
     const mesActual = obtenerMesActual();
     const mesNombre = obtenerNombreMes(mesActual);
-    setHistorialMeses({ ...historialMeses, [mesActual]: { clientes: JSON.parse(JSON.stringify(clientes)), creditos: JSON.parse(JSON.stringify(creditos)), fechaGuardado: new Date().toISOString() } });
+    const snapshotDatos = { clientes: JSON.parse(JSON.stringify(clientes)), creditos: JSON.parse(JSON.stringify(creditos)), fechaGuardado: new Date().toISOString() };
+    setHistorialMeses({ ...historialMeses, [mesActual]: snapshotDatos });
+    fetch('/api/historial-meses', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ mes_key: mesActual, datos: snapshotDatos }) }).catch(() => {});
     const datosCartera = clientes.map(c => ({ 'ID': c.id, 'Cliente': c.nombre, 'Contacto': c.contacto || '', 'Estado': c.estado, 'Monto': parseFloat(c.monto || 0), 'Mes': c.mes + '/' + c.año, 'Fecha Cotización': c.fechaCotizacion || '', 'Fecha Notificación': c.fechaNotificacion || '', 'Fecha Pago': c.fechaPago || '', 'Fecha Facturación': c.fechaFacturacion || '', 'Suspendido': c.suspendido ? 'Sí' : 'No', 'Comentario': c.comentario || '' }));
     const datosCreditos2 = creditos.map(c => ({ 'ID': c.id, 'Nº Orden': c.numeroOrden, 'Cliente': c.cliente, 'Monto': parseFloat(c.monto || 0), 'Fecha Inicio': c.fechaInicio, 'Plazo (meses)': c.plazoMeses, 'Fecha Vencimiento': c.fechaVencimiento, 'Estado': c.estado, 'Comentario': c.comentario || '' }));
     const wb = XLSX.utils.book_new();
@@ -1268,7 +1226,16 @@ export default function App() {
   };
 
   // ─── DOCUMENTOS / COTIZACIONES ───────────────────────────
-  const abrirDocsModal = (cliente) => { setDocsClienteId(cliente.id); setShowDocsModal(true); };
+  const abrirDocsModal = (cliente) => {
+    setDocsClienteId(cliente.id);
+    setShowDocsModal(true);
+    if (!cotizaciones[cliente.id]) {
+      fetch(`/api/cotizaciones/${cliente.id}`)
+        .then(r => r.ok ? r.json() : [])
+        .then(docs => setCotizaciones(prev => ({ ...prev, [cliente.id]: docs })))
+        .catch(() => {});
+    }
+  };
 
   // ── Extrae el monto "Total RD$" del contenido de un PDF (base64) ──
   const extraerMontoPDF = async (base64) => {
@@ -1296,6 +1263,10 @@ export default function App() {
       const montoDetectado = await extraerMontoPDF(base64);
       const nueva = { id: Date.now(), nombre: file.name, base64, fecha: new Date().toISOString(), monto: montoDetectado, tipo: 'subido', estado: 'Cotizado' };
       setCotizaciones(prev => ({ ...prev, [clienteId]: [...(prev[clienteId] || []), nueva] }));
+      fetch(`/api/cotizaciones/${clienteId}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ nombre: file.name, base64, monto: montoDetectado, fecha: nueva.fecha, estado: 'Cotizado', tipo: 'subido' }) })
+        .then(r => r.ok ? r.json() : null)
+        .then(saved => { if (saved) setCotizaciones(prev => ({ ...prev, [clienteId]: (prev[clienteId]||[]).map(d => d.id === nueva.id ? { ...d, id: saved.id } : d) })); })
+        .catch(() => {});
       const clienteActual = clientes.find(c => c.id === clienteId);
       if (clienteActual) {
         const updates = { ...clienteActual, estado: 'Cotizado', fechaCotizacion: clienteActual.fechaCotizacion || new Date().toISOString().split('T')[0] };
@@ -1313,6 +1284,7 @@ export default function App() {
 
   const eliminarDocumento = (clienteId, docId) => {
     setCotizaciones(prev => ({ ...prev, [clienteId]: (prev[clienteId] || []).filter(d => d.id !== docId) }));
+    fetch(`/api/cotizaciones/${clienteId}/${docId}`, { method:'DELETE' }).catch(() => {});
     showToast('Documento eliminado', 'info');
   };
 
@@ -1321,12 +1293,17 @@ export default function App() {
       ...prev,
       [clienteId]: (prev[clienteId] || []).map(d => d.id === docId ? { ...d, estado: nuevoEstado } : d)
     }));
+    fetch(`/api/cotizaciones/${clienteId}/${docId}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ estado: nuevoEstado }) }).catch(() => {});
   };
 
-  const crearCotizacionManual = (clienteId, monto, estado = 'Cotizado') => {
+  const crearCotizacionManual = async (clienteId, monto, estado = 'Cotizado') => {
     const nueva = { id: Date.now(), nombre: null, base64: null, fecha: new Date().toISOString(), monto: parseFloat(monto), tipo: 'manual', estado };
     setCotizaciones(prev => ({ ...prev, [clienteId]: [...(prev[clienteId] || []), nueva] }));
     showToast(`Cotización creada · RD$${parseFloat(monto).toLocaleString('en-US')} · ${estado}`, 'success');
+    try {
+      const res = await fetch(`/api/cotizaciones/${clienteId}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ nombre: null, base64: null, monto: parseFloat(monto), fecha: nueva.fecha, estado, tipo: 'manual' }) });
+      if (res.ok) { const saved = await res.json(); setCotizaciones(prev => ({ ...prev, [clienteId]: (prev[clienteId]||[]).map(d => d.id === nueva.id ? { ...d, id: saved.id } : d) })); }
+    } catch { /* fire and forget */ }
   };
 
   // Sincroniza el estado de la cotización más reciente con el estado del cliente
@@ -1335,8 +1312,9 @@ export default function App() {
     setCotizaciones(prev => {
       const docs = prev[clienteId] || [];
       if (!docs.length) return prev;
-      const ultimaId = docs.reduce((a, b) => (a.id > b.id ? a : b)).id;
-      return { ...prev, [clienteId]: docs.map(d => d.id === ultimaId ? { ...d, estado: nuevoEstado } : d) };
+      const ultima = docs.reduce((a, b) => (a.id > b.id ? a : b));
+      fetch(`/api/cotizaciones/${clienteId}/${ultima.id}`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ estado: nuevoEstado }) }).catch(() => {});
+      return { ...prev, [clienteId]: docs.map(d => d.id === ultima.id ? { ...d, estado: nuevoEstado } : d) };
     });
   };
 
@@ -1589,13 +1567,23 @@ export default function App() {
     setGestionTipo('Llamada'); setGestionResultado('Contestó');
     setGestionNota(''); setGestionProximaFecha('');
     setShowGestionModal(true);
+    if (!gestiones[cliente.id]) {
+      fetch(`/api/gestiones/${cliente.id}`)
+        .then(r => r.ok ? r.json() : [])
+        .then(data => setGestiones(prev => ({ ...prev, [cliente.id]: data })))
+        .catch(() => {});
+    }
   };
-  const guardarGestion = () => {
+  const guardarGestion = async () => {
     if (!gestionClienteId) return;
-    const nueva = { id: Date.now(), fecha: new Date().toISOString(), tipo: gestionTipo, resultado: gestionResultado, nota: gestionNota, proximaFecha: gestionProximaFecha, usuario: currentUser || 'CPEREZ' };
+    const nueva = { id: Date.now(), fecha: new Date().toISOString(), tipo: gestionTipo, resultado: gestionResultado, nota: gestionNota, proximaFecha: gestionProximaFecha, usuario: currentUser || session?.user?.username || 'Usuario' };
     setGestiones(prev => ({ ...prev, [gestionClienteId]: [nueva, ...(prev[gestionClienteId] || [])] }));
     setShowGestionModal(false);
     showToast(`Gestión registrada: ${gestionResultado}`, 'success');
+    try {
+      const res = await fetch(`/api/gestiones/${gestionClienteId}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ fecha: nueva.fecha, tipo: gestionTipo, resultado: gestionResultado, nota: gestionNota, proximaFecha: gestionProximaFecha }) });
+      if (res.ok) { const saved = await res.json(); setGestiones(prev => ({ ...prev, [gestionClienteId]: (prev[gestionClienteId]||[]).map(g => g.id === nueva.id ? { ...g, id: saved.id } : g) })); }
+    } catch { /* fire and forget */ }
   };
   const ultimaGestion = (clienteId) => (gestiones[clienteId] || [])[0] || null;
   const tieneProximoSeguimiento = (clienteId) => {
@@ -1611,17 +1599,26 @@ export default function App() {
     .replace(/{estado}/g, cliente.estado)
     .replace(/{id}/g, cliente.id);
 
-  const guardarPlantilla = () => {
+  const guardarPlantilla = async () => {
     if (!plantillaForm.nombre.trim() || !plantillaForm.texto.trim()) return;
     if (plantillaEditando) {
       setPlantillas(prev => prev.map(p => p.id === plantillaEditando ? { ...p, ...plantillaForm } : p));
+      fetch(`/api/plantillas/${plantillaEditando}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(plantillaForm) }).catch(() => {});
     } else {
-      setPlantillas(prev => [...prev, { id: Date.now(), ...plantillaForm }]);
+      const temp = { id: Date.now(), ...plantillaForm };
+      setPlantillas(prev => [...prev, temp]);
+      try {
+        const res = await fetch('/api/plantillas', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(plantillaForm) });
+        if (res.ok) { const saved = await res.json(); setPlantillas(prev => prev.map(p => p.id === temp.id ? saved : p)); }
+      } catch { /* fire and forget */ }
     }
     setPlantillaEditando(null); setPlantillaForm({ nombre: '', texto: '' });
     showToast('Plantilla guardada', 'success');
   };
-  const eliminarPlantilla = (id) => setPlantillas(prev => prev.filter(p => p.id !== id));
+  const eliminarPlantilla = (id) => {
+    setPlantillas(prev => prev.filter(p => p.id !== id));
+    fetch(`/api/plantillas/${id}`, { method:'DELETE' }).catch(() => {});
+  };
 
   // ─── WHATSAPP MASIVO ──────────────────────────────────────
   const toggleSeleccion = (id) => setClientesSeleccionados(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -1705,12 +1702,18 @@ export default function App() {
   const TAG_CLASSES = { 'VIP': 'vip', 'Prioritario': 'prioritario', 'Nuevo': 'nuevo', 'Problema': 'problema' };
   const agregarTag = (clienteId, tag) => {
     if (!tag.trim()) return;
-    const actuales = tags[clienteId] || [];
+    const actuales = tags[clienteId] || clientes.find(c => c.id === clienteId)?.tags || [];
     if (actuales.includes(tag)) return;
-    setTags(t => ({ ...t, [clienteId]: [...actuales, tag.trim()] }));
+    const nuevos = [...actuales, tag.trim()];
+    setTags(t => ({ ...t, [clienteId]: nuevos }));
+    const cliente = clientes.find(c => c.id === clienteId);
+    if (cliente) actualizarCliente({ ...cliente, tags: nuevos });
   };
   const eliminarTag = (clienteId, tag) => {
-    setTags(t => ({ ...t, [clienteId]: (t[clienteId] || []).filter(x => x !== tag) }));
+    const nuevos = (tags[clienteId] || []).filter(x => x !== tag);
+    setTags(t => ({ ...t, [clienteId]: nuevos }));
+    const cliente = clientes.find(c => c.id === clienteId);
+    if (cliente) actualizarCliente({ ...cliente, tags: nuevos });
   };
 
   // ─── RESUMEN EJECUTIVO PDF ────────────────────────────────
@@ -3002,7 +3005,7 @@ export default function App() {
                       };
                       const nuevo = [conciliacion, ...historialConciliaciones].slice(0, 20);
                       setHistorialConciliaciones(nuevo);
-                      localStorage.setItem('historial-conciliaciones-v1', JSON.stringify(nuevo));
+                      fetch('/api/historial-conciliaciones', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ mes_key: new Date().toISOString().slice(0,7), datos: conciliacion }) }).catch(()=>{});
                       showToast('Conciliación guardada en historial', 'success');
                     }} style={{ display:'flex', alignItems:'center', gap:'0.5rem', padding:'0.6rem 1rem', background:'#059669', color:'white', borderRadius:'9px', fontSize:'0.84rem', fontWeight:600, cursor:'pointer', border:'none' }}>
                       💾 Guardar Conciliación
@@ -3208,7 +3211,7 @@ export default function App() {
                 <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'14px', overflow:'hidden', marginTop:'1rem' }}>
                   <div style={{ padding:'1rem 1.25rem', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                     <div style={{ fontWeight:700, fontSize:'0.9rem' }}>📁 Historial de Conciliaciones</div>
-                    <button onClick={() => { setHistorialConciliaciones([]); localStorage.removeItem('historial-conciliaciones-v1'); }} style={{ fontSize:'0.72rem', color:'#dc2626', background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.2)', borderRadius:'6px', padding:'0.25rem 0.6rem', cursor:'pointer', fontWeight:600 }}>Limpiar historial</button>
+                    <button onClick={() => { setHistorialConciliaciones([]); fetch('/api/historial-conciliaciones', { method:'DELETE' }).catch(()=>{}); }} style={{ fontSize:'0.72rem', color:'#dc2626', background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.2)', borderRadius:'6px', padding:'0.25rem 0.6rem', cursor:'pointer', fontWeight:600 }}>Limpiar historial</button>
                   </div>
                   <div style={{ overflowX:'auto' }}>
                     <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.82rem' }}>
@@ -4291,6 +4294,12 @@ export default function App() {
                 </button>
               )}
               {esAdmin && (
+                <button className={`settings-nav-item ${settingsSection === 'empresas' ? 'active' : ''}`} onClick={() => { setSettingsSection('empresas'); fetch('/api/empresas').then(r=>r.json()).then(setEmpresas); }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+                  Empresas
+                </button>
+              )}
+              {esAdmin && (
                 <button className={`settings-nav-item ${settingsSection === 'auditoria' ? 'active' : ''}`} onClick={() => setSettingsSection('auditoria')}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                   Auditoría
@@ -4405,6 +4414,53 @@ export default function App() {
                 <div style={{ textAlign: 'center', padding: '2rem 0' }}>
                   <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>Ver el registro completo de actividad del sistema</div>
                   <button className="btn btn-primary" onClick={() => { setShowSettingsPanel(false); abrirAuditLog(); }}>Abrir bitácora de auditoría</button>
+                </div>
+              </>)}
+              {settingsSection === 'empresas' && esAdmin && (<>
+                <div className="settings-content-header">
+                  <div className="settings-content-title">Gestión de Empresas</div>
+                  <button className="settings-close-btn" onClick={() => setShowSettingsPanel(false)}>×</button>
+                </div>
+                {/* Crear empresa */}
+                <div style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'10px', padding:'1rem', marginBottom:'1rem' }}>
+                  <div style={{ fontWeight:700, fontSize:'0.85rem', marginBottom:'0.75rem' }}>Nueva Empresa</div>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.5rem', marginBottom:'0.5rem' }}>
+                    <input placeholder="Nombre (ej: Empresa A)" value={empresaForm.nombre} onChange={e => setEmpresaForm(f => ({ ...f, nombre: e.target.value }))} style={{ padding:'0.5rem 0.75rem', border:'1px solid var(--border)', borderRadius:'7px', fontSize:'0.83rem', background:'var(--surface)', color:'var(--text)' }} />
+                    <input placeholder="Slug (ej: empresa-a)" value={empresaForm.slug} onChange={e => setEmpresaForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/\s+/g,'-') }))} style={{ padding:'0.5rem 0.75rem', border:'1px solid var(--border)', borderRadius:'7px', fontSize:'0.83rem', background:'var(--surface)', color:'var(--text)' }} />
+                  </div>
+                  <button className="btn btn-primary" style={{ width:'100%' }} onClick={async () => {
+                    if (!empresaForm.nombre || !empresaForm.slug) return showToast('Completa los campos', 'error');
+                    const r = await fetch('/api/empresas', { method:'POST', headers:{ 'Content-Type':'application/json', 'x-csrf-token': document.cookie.match(/csrf-token=([^;]+)/)?.[1] || '' }, body: JSON.stringify(empresaForm) });
+                    if (r.ok) { const d = await r.json(); setEmpresas(prev => [...prev, d]); setEmpresaForm({ nombre:'', slug:'' }); showToast('Empresa creada', 'success'); }
+                    else showToast('Error creando empresa', 'error');
+                  }}>Crear Empresa</button>
+                </div>
+                {/* Lista de empresas */}
+                <div style={{ fontWeight:700, fontSize:'0.85rem', marginBottom:'0.5rem' }}>Empresas registradas</div>
+                {empresas.map(emp => (
+                  <div key={emp.id} style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'9px', padding:'0.75rem 1rem', marginBottom:'0.5rem', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                    <div>
+                      <div style={{ fontWeight:700, fontSize:'0.88rem' }}>{emp.nombre}</div>
+                      <div style={{ fontSize:'0.72rem', color:'var(--text-muted)' }}>/{emp.slug} · ID: {emp.id} · {emp.activa ? '✅ Activa' : '⛔ Inactiva'}</div>
+                    </div>
+                  </div>
+                ))}
+                {/* Asignar usuario a empresa */}
+                <div style={{ marginTop:'1rem', fontWeight:700, fontSize:'0.85rem', marginBottom:'0.5rem' }}>Asignar usuario a empresa</div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr auto', gap:'0.5rem' }}>
+                  <select id="emp-user-select" style={{ padding:'0.5rem', border:'1px solid var(--border)', borderRadius:'7px', fontSize:'0.83rem', background:'var(--surface)', color:'var(--text)' }}>
+                    {Object.keys(usuariosList || {}).map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                  <select id="emp-empresa-select" style={{ padding:'0.5rem', border:'1px solid var(--border)', borderRadius:'7px', fontSize:'0.83rem', background:'var(--surface)', color:'var(--text)' }}>
+                    {empresas.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+                  </select>
+                  <button className="btn btn-primary" onClick={async () => {
+                    const username = document.getElementById('emp-user-select').value;
+                    const empresa_id = parseInt(document.getElementById('emp-empresa-select').value);
+                    const r = await fetch('/api/empresas', { method:'PATCH', headers:{ 'Content-Type':'application/json', 'x-csrf-token': document.cookie.match(/csrf-token=([^;]+)/)?.[1] || '' }, body: JSON.stringify({ username, empresa_id }) });
+                    if (r.ok) showToast(`${username} asignado a empresa`, 'success');
+                    else showToast('Error', 'error');
+                  }}>Asignar</button>
                 </div>
               </>)}
             </div>

@@ -73,11 +73,13 @@ export async function GET(req) {
 
   const userRol      = auth.session.user.rol || '';
   const username     = auth.session.user.username || '';
+  const empresa_id   = auth.session.user.empresa_id || null;
   const puedeVerTodo = ROLES_VER_TODO.includes(userRol);
 
   let query = db().from('clientes').select('*, pagos(*)').order('id');
+  // Filtrar por empresa si el usuario tiene empresa asignada
+  if (empresa_id) query = query.eq('empresa_id', empresa_id);
   if (!puedeVerTodo) {
-    // Cartera propia: solo registros creados por el usuario actual
     query = query.or(`creado_por.eq.${username},assigned_to.eq.${username}`);
   }
 
@@ -101,7 +103,8 @@ export async function POST(req) {
   }
 
   const row = toRow(body);
-  row.creado_por = auth.session.user.username;
+  row.creado_por  = auth.session.user.username;
+  row.empresa_id  = auth.session.user.empresa_id || null;
 
   const { data, error } = await db().from('clientes').insert(row).select().single();
   if (error) return Response.json({ error: error.message }, { status: 500 });

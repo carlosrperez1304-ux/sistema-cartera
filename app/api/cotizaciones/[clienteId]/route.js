@@ -22,6 +22,8 @@ export async function GET(req, { params }) {
     base64: c.datos,
     fecha:  c.fecha,
     monto:  c.monto ? parseFloat(c.monto) : null,
+    estado: c.estado || 'Cotizado',
+    tipo:   c.tipo   || 'subido',
   })));
 }
 
@@ -39,13 +41,23 @@ export async function POST(req, { params }) {
 
   const { data, error } = await db().from('cotizaciones').insert({
     cliente_id: clienteId,
-    nombre:     body.nombre,
-    datos:      body.base64 || null,
-    monto:      body.monto ? parseFloat(body.monto) : null,
-    fecha:      body.fecha || new Date().toISOString(),
+    nombre:     body.nombre   || null,
+    datos:      body.base64   || null,
+    monto:      body.monto    ? parseFloat(body.monto) : null,
+    fecha:      body.fecha    || new Date().toISOString(),
+    estado:     body.estado   || 'Cotizado',
+    tipo:       body.tipo     || 'subido',
   }).select().single();
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
-  return Response.json({ id: data.id, nombre: data.nombre, base64: data.datos, fecha: data.fecha, monto: data.monto ? parseFloat(data.monto) : null }, { status: 201 });
+  return Response.json({
+    id:     data.id,
+    nombre: data.nombre,
+    base64: data.datos,
+    fecha:  data.fecha,
+    monto:  data.monto ? parseFloat(data.monto) : null,
+    estado: data.estado || 'Cotizado',
+    tipo:   data.tipo   || 'subido',
+  }, { status: 201 });
 }
