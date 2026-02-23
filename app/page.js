@@ -1193,7 +1193,7 @@ export default function App() {
   const exportarPDF = () => {
     if (!clientes.length) { showToast('No hay clientes', 'info'); return; }
     import('jspdf').then(({ default: jsPDF }) => {
-      import('jspdf-autotable').then(({ default: autoTable }) => {
+      import('jspdf-autotable').then((autotableModule) => { const autoTable = autotableModule.default || autotableModule;
         const doc = new jsPDF({ orientation: 'landscape' });
         doc.setFontSize(16); doc.setFont(undefined, 'bold');
         doc.text('CartaMaster - Reporte de Cartera', 14, 15);
@@ -1215,7 +1215,7 @@ export default function App() {
   const exportarCreditosPDF = () => {
     if (!creditos.length) { showToast('No hay créditos', 'info'); return; }
     import('jspdf').then(({ default: jsPDF }) => {
-      import('jspdf-autotable').then(({ default: autoTable }) => {
+      import('jspdf-autotable').then((autotableModule) => { const autoTable = autotableModule.default || autotableModule;
         const doc = new jsPDF({ orientation: 'landscape' });
         doc.setFontSize(16); doc.setFont(undefined, 'bold');
         doc.text('CartaMaster - Reporte de Créditos', 14, 15);
@@ -1382,7 +1382,7 @@ export default function App() {
   const generarCotizacionPDF = () => {
     if (!genCotCliente) return;
     import('jspdf').then(({ default: jsPDF }) => {
-      import('jspdf-autotable').then(({ default: autoTable }) => {
+      import('jspdf-autotable').then((autotableModule) => { const autoTable = autotableModule.default || autotableModule;
         const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
         const fecha = new Date();
         const numCot = `COT-${genCotCliente.id}-${fecha.getFullYear()}${String(fecha.getMonth()+1).padStart(2,'0')}${String(fecha.getDate()).padStart(2,'0')}`;
@@ -1651,7 +1651,7 @@ export default function App() {
   // ─── ESTADO DE CUENTA PDF ─────────────────────────────────
   const generarEstadoCuentaPDF = (cliente) => {
     import('jspdf').then(({ default: jsPDF }) => {
-      import('jspdf-autotable').then(({ default: autoTable }) => {
+      import('jspdf-autotable').then((autotableModule) => { const autoTable = autotableModule.default || autotableModule;
         const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
         const s = calcularSaldoCliente(cliente);
         // Header
@@ -1716,7 +1716,7 @@ export default function App() {
   // ─── RESUMEN EJECUTIVO PDF ────────────────────────────────
   const generarResumenPDF = () => {
     import('jspdf').then(({ default: jsPDF }) => {
-      import('jspdf-autotable').then(({ default: autoTable }) => {
+      import('jspdf-autotable').then((autotableModule) => { const autoTable = autotableModule.default || autotableModule;
         const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
         const mesNombre = obtenerNombreMes(mesVisualizando);
         // Header
