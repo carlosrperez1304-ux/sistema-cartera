@@ -4449,7 +4449,7 @@ export default function App() {
                 <div style={{ marginTop:'1rem', fontWeight:700, fontSize:'0.85rem', marginBottom:'0.5rem' }}>Asignar usuario a empresa</div>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr auto', gap:'0.5rem' }}>
                   <select id="emp-user-select" style={{ padding:'0.5rem', border:'1px solid var(--border)', borderRadius:'7px', fontSize:'0.83rem', background:'var(--surface)', color:'var(--text)' }}>
-                    {Object.keys(usuariosList || {}).map(u => <option key={u} value={u}>{u}</option>)}
+                    {Object.keys(usuarios || {}).map(u => <option key={u} value={u}>{u}</option>)}
                   </select>
                   <select id="emp-empresa-select" style={{ padding:'0.5rem', border:'1px solid var(--border)', borderRadius:'7px', fontSize:'0.83rem', background:'var(--surface)', color:'var(--text)' }}>
                     {empresas.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
