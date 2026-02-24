@@ -54,3 +54,13 @@ export async function PUT(req) {
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json(data);
 }
+
+export async function DELETE(req) {
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get("id");
+  if (!id) return Response.json({ error: "Falta id" }, { status: 400 });
+
+  const { error } = await db().from("pagos").delete().eq("id", parseInt(id));
+  if (error) return Response.json({ error: error.message }, { status: 500 });
+  return Response.json({ ok: true });
+}

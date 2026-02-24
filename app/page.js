@@ -3141,6 +3141,7 @@ export default function App() {
                               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                                 <button onClick={() => validarPago(pago.id, 'aprobar')} style={{ padding: '0.35rem 0.8rem', borderRadius: '6px', border: 'none', background: '#059669', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '0.78rem' }}>✅ Aprobar</button>
                                 <button onClick={() => setPagoRechazandoId(pago.id)} style={{ padding: '0.35rem 0.8rem', borderRadius: '6px', border: 'none', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '0.78rem' }}>❌ Rechazar</button>
+                                {esAdmin && <button onClick={async () => { if (!confirm('¿Eliminar este pago?')) return; await fetch(`/api/pagos?id=${pago.id}`, { method: 'DELETE' }); cargarPagosPendientes(); showToast('Pago eliminado', 'success'); }} style={{ padding: '0.35rem 0.8rem', borderRadius: '6px', border: 'none', background: '#64748b', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '0.78rem' }}>🗑️</button>}
                               </div>
                             )}
                           </td>
