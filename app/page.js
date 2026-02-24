@@ -3777,14 +3777,15 @@ export default function App() {
             const total = parseFloat(historialPagosCliente.monto) || 0;
             const totalPagado = pagos.reduce((s, p) => s + (parseFloat(p.monto) || 0), 0);
             const pendiente = Math.max(total - totalPagado, 0);
+            let balance = 0;
             return (
               <div className="modal show">
-                <div className="modal-content" style={{ maxWidth: '480px' }}>
-                  <div className="modal-header">
-                    <h2>📋 Historial de Pagos — {historialPagosCliente.nombre}</h2>
-                    <button className="close-btn" onClick={() => setShowHistorialPagosModal(false)}>×</button>
+                <div className="modal-content" style={{ maxWidth: '780px', width: '95vw', padding: 0, borderRadius: '12px', overflow: 'hidden' }}>
+                  <div className="modal-header" style={{ background: '#1e2d4a', color: '#fff', padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>Balance {historialPagosCliente.nombre}</h2>
+                    <button className="close-btn" style={{ color: '#fff', fontSize: '1.4rem', background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setShowHistorialPagosModal(false)}>×</button>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '0.6rem', marginBottom: '1.2rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '0.6rem', padding: '1rem 1.5rem 0.5rem' }}>
                     <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '8px', padding: '0.7rem', textAlign: 'center' }}>
                       <div style={{ fontSize: '0.65rem', color: '#0369a1', fontWeight: 700, textTransform: 'uppercase' }}>Total</div>
                       <div style={{ fontWeight: 800, fontFamily: 'monospace', color: '#0284c7' }}>${total.toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
@@ -3798,30 +3799,50 @@ export default function App() {
                       <div style={{ fontWeight: 800, fontFamily: 'monospace', color: '#ea580c' }}>${pendiente.toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
                     </div>
                   </div>
-                  {pagos.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
-                      <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>💸</div>
-                      <p>No hay pagos registrados aún.</p>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '320px', overflowY: 'auto' }}>
-                      {pagos.map((pago, i) => (
-                        <div key={pago.id || i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.7rem 1rem' }}>
-                          <div>
-                            <div style={{ fontWeight: 700, color: '#1e2d4a', fontSize: '0.85rem' }}>Pago #{i + 1}</div>
-                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{pago.fechaFormato || new Date(pago.fecha).toLocaleDateString('es-DO')}</div>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <div style={{ fontWeight: 800, color: '#059669', fontSize: '1rem', fontFamily: 'monospace' }}>+${parseFloat(pago.monto).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                            <button onClick={() => generarReciboPDF(historialPagosCliente, pago)} title="Descargar recibo" style={{ padding: '0.25rem 0.55rem', borderRadius: '6px', border: '1px solid #bae6fd', background: '#f0f9ff', color: '#0284c7', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700 }}>📄 Recibo</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <div style={{ marginTop: '1rem', textAlign: 'right' }}>
-                    <button className="btn btn-success" style={{ marginRight: "0.5rem" }} onClick={() => { setShowHistorialPagosModal(false); setPagoClienteTarget(historialPagosCliente); setShowPagoModal(true); }}>+ Agregar Pago</button>
-                    <button className="btn btn-primary" onClick={() => setShowHistorialPagosModal(false)}>Cerrar</button>
+                  <div style={{ padding: '0.75rem 1.5rem', overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                      <thead>
+                        <tr style={{ background: '#1e2d4a', color: '#fff' }}>
+                          <th style={{ padding: '0.6rem 0.8rem', textAlign: 'left', fontWeight: 600 }}>Fecha</th>
+                          <th style={{ padding: '0.6rem 0.8rem', textAlign: 'left', fontWeight: 600 }}>Género</th>
+                          <th style={{ padding: '0.6rem 0.8rem', textAlign: 'left', fontWeight: 600 }}>Concepto</th>
+                          <th style={{ padding: '0.6rem 0.8rem', textAlign: 'center', fontWeight: 600 }}>Cantidad</th>
+                          <th style={{ padding: '0.6rem 0.8rem', textAlign: 'right', fontWeight: 600 }}>Monto</th>
+                          <th style={{ padding: '0.6rem 0.8rem', textAlign: 'right', fontWeight: 600 }}>Balance</th>
+                          <th style={{ padding: '0.6rem 0.8rem', textAlign: 'center', fontWeight: 600 }}>Recibo</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pagos.length === 0 ? (
+                          <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2.5rem', color: '#94a3b8' }}>
+                            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>💸</div>
+                            <p>No hay pagos registrados aún.</p>
+                          </td></tr>
+                        ) : (
+                          pagos.map((pago, i) => {
+                            const monto = parseFloat(pago.monto) || 0;
+                            balance -= monto;
+                            return (
+                              <tr key={pago.id || i} style={{ background: i % 2 === 0 ? '#fff' : '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                                <td style={{ padding: '0.6rem 0.8rem', color: '#64748b' }}>{pago.fechaFormato || new Date(pago.fecha).toLocaleDateString('es-DO')}</td>
+                                <td style={{ padding: '0.6rem 0.8rem', color: '#059669', fontWeight: 600 }}>Pago</td>
+                                <td style={{ padding: '0.6rem 0.8rem', color: '#1e2d4a' }}>{pago.descripcion || pago.concepto || `Pago #${i + 1}`}</td>
+                                <td style={{ padding: '0.6rem 0.8rem', textAlign: 'center', color: '#1e2d4a' }}>1</td>
+                                <td style={{ padding: '0.6rem 0.8rem', textAlign: 'right', color: '#059669', fontWeight: 700, fontFamily: 'monospace' }}>-${monto.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                                <td style={{ padding: '0.6rem 0.8rem', textAlign: 'right', fontWeight: 700, fontFamily: 'monospace', color: balance < 0 ? '#dc2626' : '#059669' }}>${balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                                <td style={{ padding: '0.6rem 0.8rem', textAlign: 'center' }}>
+                                  <button onClick={() => generarReciboPDF(historialPagosCliente, pago)} title="Descargar recibo" style={{ padding: '0.2rem 0.5rem', borderRadius: '6px', border: '1px solid #bae6fd', background: '#f0f9ff', color: '#0284c7', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>📄</button>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', background: '#f8fafc' }}>
+                    <button className="btn btn-secondary" onClick={() => setShowHistorialPagosModal(false)}>Cerrar</button>
+                    <button className="btn btn-success" onClick={() => { setShowHistorialPagosModal(false); setPagoClienteTarget(historialPagosCliente); setShowPagoModal(true); }}>💰 Agregar Pago</button>
                   </div>
                 </div>
               </div>
