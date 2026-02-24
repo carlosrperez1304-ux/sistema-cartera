@@ -3820,6 +3820,7 @@ export default function App() {
                     </div>
                   )}
                   <div style={{ marginTop: '1rem', textAlign: 'right' }}>
+                    <button className="btn btn-success" style={{ marginRight: "0.5rem" }} onClick={() => { setShowHistorialPagosModal(false); setPagoClienteTarget(historialPagosCliente); setShowPagoModal(true); }}>+ Agregar Pago</button>
                     <button className="btn btn-primary" onClick={() => setShowHistorialPagosModal(false)}>Cerrar</button>
                   </div>
                 </div>
