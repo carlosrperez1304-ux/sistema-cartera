@@ -2041,9 +2041,9 @@ export default function App() {
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
               <div>
                 <h1 style={{ margin:0, fontSize:'1.3rem', fontWeight:700 }}>Bienvenido, {session?.user?.name || currentUser || 'Usuario'}</h1>
-                <p style={{ margin:'0.15rem 0 0', fontSize:'0.78rem', color:'var(--text-muted)' }}>Gestión de Cartera · {new Date().toLocaleDateString('es-DO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                <p style={{ margin:'0.15rem 0 0', fontSize:'0.78rem', color:'var(--text-muted)' }}>{empresaActual?.subtitulo || empresaActual?.descripcion || (esAdmin ? 'Administrador' : rolActual === 'agente_cobro' ? 'Agente de Cobro' : rolActual === 'contabilidad' ? 'Contabilidad' : rolActual === 'supervisor_cobro' ? 'Supervisor de Cobro' : rolActual === 'supervisor_contabilidad' ? 'Supervisor de Contabilidad' : rolActual === 'editor' ? 'Editor' : rolActual === 'viewer' ? 'Visualizador' : 'Gestión de Cartera')} · {new Date().toLocaleDateString('es-DO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
               </div>
-              <div style={{ fontSize:'0.72rem', color:'var(--text-muted)', background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'20px', padding:'0.25rem 0.75rem', fontWeight:600 }}>Corte · día 15</div>
+              {(empresaActual?.mostrarCorte !== false) && <div style={{ fontSize:'0.72rem', color:'var(--text-muted)', background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'20px', padding:'0.25rem 0.75rem', fontWeight:600 }}>Corte · día 15</div>}
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:'0.75rem' }}>
               <div style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'10px', padding:'0.75rem 1rem' }}>
