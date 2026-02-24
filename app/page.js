@@ -63,6 +63,10 @@ export default function App() {
   const [bancoFechaDesde, setBancoFechaDesde] = useState('');
   const [bancoFechaHasta, setBancoFechaHasta] = useState('');
   const [historialConciliaciones, setHistorialConciliaciones] = useState([]);
+  const [pagosPendientes, setPagosPendientes] = useState([]);
+  const [pagosPendientesCount, setPagosPendientesCount] = useState(0);
+  const [motivoRechazo, setMotivoRechazo] = useState('');
+  const [pagoRechazandoId, setPagoRechazandoId] = useState(null);
   const [nuevaVersion, setNuevaVersion] = useState(false);
   const prevSessionStatus = useRef(null);
   const versionRef = useRef(null);
@@ -904,6 +908,30 @@ export default function App() {
   const cancelarEdicionCreditoMonto = () => { setEditingCreditoMontoId(null); setTempCreditoMonto(''); };
 
   const abrirPagoModal = (cliente) => { setPagoClienteTarget(cliente); setPagoMonto(''); setShowPagoModal(true); };
+  const cargarPagosPendientes = async () => {
+    try {
+      const res = await fetch('/api/pagos?estado=pendiente');
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setPagosPendientes(data);
+        setPagosPendientesCount(data.length);
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  const validarPago = async (id, accion, motivo) => {
+    try {
+      const res = await fetch('/api/pagos', { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, estado: accion === 'aprobar' ? 'aprobado' : 'rechazado', motivo_rechazo: motivo || '', validado_por: currentUser || 'SISTEMA' }) });
+      if (res.ok) {
+        showToast(accion === 'aprobar' ? 'Pago aprobado' : 'Pago rechazado', accion === 'aprobar' ? 'success' : 'error');
+        setPagoRechazandoId(null);
+        setMotivoRechazo('');
+        cargarPagosPendientes();
+      }
+    } catch (e) { showToast('Error al validar pago', 'error'); }
+  };
+
   const confirmarPago = () => {
     if (!pagoClienteTarget) return;
     const montoPagado = parseFloat(pagoMonto);
@@ -919,7 +947,20 @@ export default function App() {
     setClientes(prev => prev.map(c => c.id === pagoClienteTarget.id ? clienteActualizado : c));
     if (pagadoCompleto) sincronizarEstadoCotizacion(pagoClienteTarget.id, 'Pagado');
     setShowPagoModal(false); setPagoClienteTarget(null); setPagoMonto(''); setPagoBanco(''); setPagoFecha(''); setPagoReferencia(''); setPagoTipoNegocio('Servicio y Repuestos');
-    fetch(`/api/clientes/${clienteActualizado.id}/pagos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(nuevoPago) }).catch(() => null);
+    fetch('/api/pagos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+      cliente_id: pagoClienteTarget.id,
+      cliente_nombre: pagoClienteTarget.nombre,
+      monto: montoPagado,
+      fecha: new Date().toISOString(),
+      fecha_formato: new Date().toLocaleDateString('es-DO'),
+      fecha_pago: pagoFecha || new Date().toISOString().split('T')[0],
+      banco: pagoBanco,
+      referencia: pagoReferencia,
+      tipo_negocio: pagoTipoNegocio,
+      nota: pagoReferencia,
+      estado: 'pendiente',
+      creado_por: currentUser || 'SISTEMA',
+    }) }).catch(() => null);
     fetch(`/api/clientes/${clienteActualizado.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(clienteActualizado) }).catch(() => null);
   };
 
@@ -1980,6 +2021,7 @@ export default function App() {
             {puedeVerTodo && <div className={`sidebar-item ${activeTab === 'carteras' ? 'active' : ''}`} onClick={() => setActiveTab('carteras')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Carteras por Agente</div>}
             {tienePermiso('acceder_delegaciones') && <div className={`sidebar-item ${activeTab === 'delegations' ? 'active' : ''}`} onClick={() => { setActiveTab('delegations'); cargarDelegations(); }} style={{ position: 'relative' }}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span> Delegations{delegationsPendientes.length > 0 && <span style={{ position: 'absolute', top: '6px', right: '8px', width: '8px', height: '8px', background: '#f97316', borderRadius: '50%' }}></span>}</div>}
             {esContabilidad && tienePermiso('ver_conciliacion') && <div className={`sidebar-item ${activeTab === 'conciliacion' ? 'active' : ''}`} onClick={() => setActiveTab('conciliacion')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span> Conciliación</div>}
+            {esContabilidad && <div className={`sidebar-item ${activeTab === 'validar_pagos' ? 'active' : ''}`} onClick={() => { setActiveTab('validar_pagos'); cargarPagosPendientes(); }}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Validar Pagos{pagosPendientesCount > 0 && <span style={{ marginLeft:'6px', background:'#f97316', color:'#fff', borderRadius:'10px', padding:'0 6px', fontSize:'0.7rem', fontWeight:700 }}>{pagosPendientesCount}</span>}</div>}
             <div className="sidebar-item" onClick={() => { setArchivosEnProceso([]); setShowCargaMasivaModal(true); }}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span> Carga Masiva PDF</div>
             <div className="sidebar-item" onClick={() => setShowPlantillasModal(true)}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span> Plantillas WA</div>
           </div>
@@ -3044,6 +3086,72 @@ export default function App() {
               )}
             </div>
           </div>
+
+          {/* TAB VALIDAR PAGOS */}
+          {esContabilidad && <div className={`tab-content ${activeTab === 'validar_pagos' ? 'active' : ''}`}>
+            <div style={{ padding: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '1.2rem', color: 'var(--text)' }}>✅ Validar Pagos</div>
+                  <div style={{ fontSize: '0.82rem', color: '#64748b' }}>{pagosPendientes.length} pago(s) pendiente(s) de validación</div>
+                </div>
+                <button onClick={cargarPagosPendientes} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}>🔄 Actualizar</button>
+              </div>
+              {pagosPendientes.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
+                  <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✅</div>
+                  <div style={{ fontWeight: 700, fontSize: '1rem' }}>No hay pagos pendientes</div>
+                  <div style={{ fontSize: '0.85rem' }}>Todos los pagos han sido validados</div>
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                    <thead>
+                      <tr style={{ background: '#1e2d4a', color: '#fff' }}>
+                        <th style={{ padding: '0.7rem 1rem', textAlign: 'left' }}>Cliente</th>
+                        <th style={{ padding: '0.7rem 1rem', textAlign: 'left' }}>Banco</th>
+                        <th style={{ padding: '0.7rem 1rem', textAlign: 'left' }}>Referencia</th>
+                        <th style={{ padding: '0.7rem 1rem', textAlign: 'left' }}>Tipo</th>
+                        <th style={{ padding: '0.7rem 1rem', textAlign: 'left' }}>Fecha</th>
+                        <th style={{ padding: '0.7rem 1rem', textAlign: 'right' }}>Monto</th>
+                        <th style={{ padding: '0.7rem 1rem', textAlign: 'center' }}>Registrado por</th>
+                        <th style={{ padding: '0.7rem 1rem', textAlign: 'center' }}>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pagosPendientes.map((pago, i) => (
+                        <tr key={pago.id} style={{ background: i % 2 === 0 ? '#fff' : '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                          <td style={{ padding: '0.7rem 1rem', fontWeight: 600, color: '#1e2d4a' }}>{pago.cliente_nombre || '-'}</td>
+                          <td style={{ padding: '0.7rem 1rem', color: '#64748b' }}>{pago.banco || '-'}</td>
+                          <td style={{ padding: '0.7rem 1rem', color: '#64748b' }}>{pago.referencia || '-'}</td>
+                          <td style={{ padding: '0.7rem 1rem', color: '#64748b' }}>{pago.tipo_negocio || '-'}</td>
+                          <td style={{ padding: '0.7rem 1rem', color: '#64748b' }}>{pago.fecha_pago || '-'}</td>
+                          <td style={{ padding: '0.7rem 1rem', textAlign: 'right', fontWeight: 700, color: '#059669', fontFamily: 'monospace' }}>${parseFloat(pago.monto).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                          <td style={{ padding: '0.7rem 1rem', textAlign: 'center', color: '#64748b' }}>{pago.creado_por || '-'}</td>
+                          <td style={{ padding: '0.7rem 1rem', textAlign: 'center' }}>
+                            {pagoRechazandoId === pago.id ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', minWidth: '180px' }}>
+                                <input value={motivoRechazo} onChange={e => setMotivoRechazo(e.target.value)} placeholder="Motivo de rechazo..." style={{ padding: '0.3rem 0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.8rem' }} />
+                                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                  <button onClick={() => validarPago(pago.id, 'rechazar', motivoRechazo)} style={{ flex: 1, padding: '0.3rem', borderRadius: '6px', border: 'none', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '0.78rem' }}>Confirmar</button>
+                                  <button onClick={() => { setPagoRechazandoId(null); setMotivoRechazo(''); }} style={{ flex: 1, padding: '0.3rem', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f8fafc', cursor: 'pointer', fontSize: '0.78rem' }}>Cancelar</button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                                <button onClick={() => validarPago(pago.id, 'aprobar')} style={{ padding: '0.35rem 0.8rem', borderRadius: '6px', border: 'none', background: '#059669', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '0.78rem' }}>✅ Aprobar</button>
+                                <button onClick={() => setPagoRechazandoId(pago.id)} style={{ padding: '0.35rem 0.8rem', borderRadius: '6px', border: 'none', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '0.78rem' }}>❌ Rechazar</button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>}
 
           {/* TAB CONCILIACION */}
           {esContabilidad && <div className={`tab-content ${activeTab === 'conciliacion' ? 'active' : ''}`}>
