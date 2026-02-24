@@ -324,6 +324,10 @@ export default function App() {
   const [showHistorialPagosModal, setShowHistorialPagosModal] = useState(false);
   const [historialPagosCliente, setHistorialPagosCliente] = useState(null);
   const [pagoMonto, setPagoMonto] = useState('');
+  const [pagoBanco, setPagoBanco] = useState('');
+  const [pagoFecha, setPagoFecha] = useState('');
+  const [pagoReferencia, setPagoReferencia] = useState('');
+  const [pagoTipoNegocio, setPagoTipoNegocio] = useState('Servicio y Repuestos');
   const [showPagoCreditoModal, setShowPagoCreditoModal] = useState(false);
   const [pagoCreditoTarget, setPagoCreditoTarget] = useState(null);
   const [pagoCreditoMonto, setPagoCreditoMonto] = useState('');
@@ -906,7 +910,7 @@ export default function App() {
     if (!montoPagado || montoPagado <= 0) { showToast('Monto inválido', 'error'); return; }
     const saldo = calcularSaldoCliente(pagoClienteTarget);
     if (montoPagado > saldo.pendiente + 0.001) { alert('El monto supera el saldo pendiente'); return; }
-    const nuevoPago = { id: Date.now(), monto: montoPagado, fecha: new Date().toISOString(), fechaFormato: new Date().toLocaleDateString('es-DO') };
+    const nuevoPago = { id: Date.now(), monto: montoPagado, fecha: new Date().toISOString(), fechaFormato: new Date().toLocaleDateString('es-DO'), banco: pagoBanco, tipoNegocio: pagoTipoNegocio, referencia: pagoReferencia, fechaPago: pagoFecha || new Date().toISOString().split('T')[0] };
     const pagosActualizados = [...(pagoClienteTarget.pagosRealizados || []), nuevoPago];
     const totalPagado = pagosActualizados.reduce((s, p) => s + (parseFloat(p.monto) || 0), 0);
     const montoTotal = parseFloat(pagoClienteTarget.monto) || 0;
@@ -914,7 +918,7 @@ export default function App() {
     const clienteActualizado = { ...pagoClienteTarget, pagosRealizados: pagosActualizados, estado: pagadoCompleto ? 'Pagado' : pagoClienteTarget.estado, fechaPago: pagadoCompleto ? new Date().toISOString().split('T')[0] : pagoClienteTarget.fechaPago, historial: [...(pagoClienteTarget.historial || []), { fecha: new Date().toISOString(), accion: `Pago registrado: ${montoPagado.toLocaleString()} / Total: ${totalPagado.toLocaleString()} de ${montoTotal.toLocaleString()}`, usuario: currentUser || 'SISTEMA' }] };
     setClientes(prev => prev.map(c => c.id === pagoClienteTarget.id ? clienteActualizado : c));
     if (pagadoCompleto) sincronizarEstadoCotizacion(pagoClienteTarget.id, 'Pagado');
-    setShowPagoModal(false); setPagoClienteTarget(null); setPagoMonto('');
+    setShowPagoModal(false); setPagoClienteTarget(null); setPagoMonto(''); setPagoBanco(''); setPagoFecha(''); setPagoReferencia(''); setPagoTipoNegocio('Servicio y Repuestos');
     fetch(`/api/clientes/${clienteActualizado.id}/pagos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(nuevoPago) }).catch(() => null);
     fetch(`/api/clientes/${clienteActualizado.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(clienteActualizado) }).catch(() => null);
   };
@@ -3852,22 +3856,59 @@ export default function App() {
           {/* Modal Pago Cliente */}
           {showPagoModal && pagoClienteTarget && (() => { const s = calcularSaldoCliente(pagoClienteTarget); return (
             <div className="modal show">
-              <div className="modal-content" style={{ maxWidth: '420px' }}>
-                <div className="modal-header"><h2>Pago - {pagoClienteTarget.nombre}</h2><button className="close-btn" onClick={() => setShowPagoModal(false)}>×</button></div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '0.6rem', marginBottom: '1rem' }}>
-                  <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '8px', padding: '0.6rem', textAlign: 'center' }}><div style={{ fontSize: '0.65rem', color: '#0369a1', fontWeight: 700, textTransform: 'uppercase' }}>Total</div><div style={{ fontWeight: 800, fontFamily: 'monospace', color: '#0284c7' }}>${s.monto.toLocaleString('en-US', { maximumFractionDigits: 0 })}</div></div>
-                  <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '8px', padding: '0.6rem', textAlign: 'center' }}><div style={{ fontSize: '0.65rem', color: '#065f46', fontWeight: 700, textTransform: 'uppercase' }}>Pagado</div><div style={{ fontWeight: 800, fontFamily: 'monospace', color: '#059669' }}>${s.pagado.toLocaleString('en-US', { maximumFractionDigits: 0 })}</div></div>
-                  <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '8px', padding: '0.6rem', textAlign: 'center' }}><div style={{ fontSize: '0.65rem', color: '#c2410c', fontWeight: 700, textTransform: 'uppercase' }}>Pendiente</div><div style={{ fontWeight: 800, fontFamily: 'monospace', color: '#ea580c' }}>${s.pendiente.toLocaleString('en-US', { maximumFractionDigits: 0 })}</div></div>
+              <div className="modal-content" style={{ maxWidth: '560px', width: '95vw', padding: 0, borderRadius: '12px', overflow: 'hidden' }}>
+                <div className="modal-header" style={{ background: '#1e2d4a', color: '#fff', padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>Agregar Pago <span style={{ color: '#60a5fa' }}>{pagoClienteTarget.nombre}</span></h2>
+                  <button className="close-btn" style={{ color: '#fff', fontSize: '1.4rem', background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setShowPagoModal(false)}>×</button>
                 </div>
-                <div className="form-group">
-                  <label>Monto del Pago</label>
-                  <input type="number" value={pagoMonto} onChange={e => setPagoMonto(e.target.value)} placeholder={`Max: $${s.pendiente.toLocaleString('en-US', { maximumFractionDigits: 0 })}`} step="0.01" min="0.01" autoFocus onKeyDown={e => { if (e.key === 'Enter') confirmarPago(); }} />
-                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
-                    <button type="button" style={{ fontSize: '0.73rem', padding: '0.25rem 0.6rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '5px', cursor: 'pointer', color: '#0284c7', fontWeight: 600 }} onClick={() => setPagoMonto(s.pendiente.toFixed(2))}>Pago total (${s.pendiente.toLocaleString('en-US', { maximumFractionDigits: 0 })})</button>
-                    {s.pendiente > 0 && <button type="button" style={{ fontSize: '0.73rem', padding: '0.25rem 0.6rem', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '5px', cursor: 'pointer', color: '#15803d', fontWeight: 600 }} onClick={() => setPagoMonto((s.pendiente / 2).toFixed(2))}>50% (${(s.pendiente / 2).toLocaleString('en-US', { maximumFractionDigits: 0 })})</button>}
+                <div style={{ padding: '1.2rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontWeight: 700, fontSize: '0.82rem', color: '#1e2d4a' }}>* Cuenta de Banco</label>
+                      <select value={pagoBanco || ''} onChange={e => setPagoBanco(e.target.value)} style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: '7px', border: '1px solid #cbd5e1', fontSize: '0.9rem', background: '#fff' }}>
+                        <option value="">Seleccione</option>
+                        <option value="BanReservas">BanReservas</option>
+                        <option value="Popular">Popular</option>
+                        <option value="BHD">BHD</option>
+                        <option value="Scotiabank">Scotiabank</option>
+                        <option value="Efectivo">Efectivo</option>
+                        <option value="Transferencia">Transferencia</option>
+                        <option value="Otro">Otro</option>
+                      </select>
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontWeight: 700, fontSize: '0.82rem', color: '#1e2d4a' }}>* Monto</label>
+                      <input type="number" value={pagoMonto} onChange={e => setPagoMonto(e.target.value)} placeholder={`Max: $${s.pendiente.toLocaleString('en-US', { maximumFractionDigits: 0 })}`} step="0.01" min="0.01" autoFocus style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: '7px', border: '1px solid #cbd5e1', fontSize: '0.9rem', boxSizing: 'border-box' }} onKeyDown={e => { if (e.key === 'Enter') confirmarPago(); }} />
+                      <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
+                        <button type="button" style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '5px', cursor: 'pointer', color: '#0284c7', fontWeight: 600 }} onClick={() => setPagoMonto(s.pendiente.toFixed(2))}>Total (${s.pendiente.toLocaleString('en-US', { maximumFractionDigits: 0 })})</button>
+                        {s.pendiente > 0 && <button type="button" style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '5px', cursor: 'pointer', color: '#15803d', fontWeight: 600 }} onClick={() => setPagoMonto((s.pendiente / 2).toFixed(2))}>50%</button>}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontWeight: 700, fontSize: '0.82rem', color: '#1e2d4a' }}>Tipo de Negocio</label>
+                      <select value={pagoTipoNegocio || 'Servicio y Repuestos'} onChange={e => setPagoTipoNegocio(e.target.value)} style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: '7px', border: '1px solid #cbd5e1', fontSize: '0.9rem', background: '#fff' }}>
+                        <option value="Servicio y Repuestos">Servicio y Repuestos</option>
+                        <option value="Venta">Venta</option>
+                        <option value="Arriendo">Arriendo</option>
+                        <option value="Consultoría">Consultoría</option>
+                        <option value="Otro">Otro</option>
+                      </select>
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontWeight: 700, fontSize: '0.82rem', color: '#1e2d4a' }}>* Pagado el</label>
+                      <input type="date" value={pagoFecha || new Date().toISOString().split('T')[0]} onChange={e => setPagoFecha(e.target.value)} style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: '7px', border: '1px solid #cbd5e1', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+                    </div>
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontWeight: 700, fontSize: '0.82rem', color: '#1e2d4a' }}>Referencia</label>
+                    <textarea value={pagoReferencia || ''} onChange={e => setPagoReferencia(e.target.value)} placeholder="Número de referencia, descripción del pago..." rows={3} style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: '7px', border: '1px solid #cbd5e1', fontSize: '0.9rem', resize: 'vertical', boxSizing: 'border-box' }} />
                   </div>
                 </div>
-                <div className="form-actions"><button className="btn btn-secondary" onClick={() => setShowPagoModal(false)}>Cancelar</button><button className="btn btn-success" onClick={confirmarPago}>Confirmar Pago</button></div>
+                <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'center', background: '#f8fafc' }}>
+                  <button className="btn btn-success" style={{ padding: '0.6rem 2.5rem', fontSize: '1rem', fontWeight: 700 }} onClick={confirmarPago}>Crear Pago</button>
+                </div>
               </div>
             </div>
           ); })()}
