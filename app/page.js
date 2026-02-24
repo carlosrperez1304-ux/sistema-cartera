@@ -599,23 +599,32 @@ export default function App() {
   const estadisticas = useMemo(() => {
     const clientesData = datosActuales.clientes;
     const total = clientesData.length;
-    // Aplanar todas las cotizaciones con su clienteId
-    const todasCots = Object.entries(cotizaciones).flatMap(([cid, docs]) =>
-      (docs || []).map(d => ({ ...d, clienteId: cid }))
-    );
-    const sumMonto = (arr) => arr.reduce((s, d) => s + (parseFloat(d.monto) || 0), 0);
-    const clientesConEstado = (est) => new Set(todasCots.filter(d => d.estado === est).map(d => d.clienteId)).size;
-    const cotizados   = todasCots.filter(d => d.estado === 'Cotizado');
-    const notificados = todasCots.filter(d => d.estado === 'Notificado');
-    const pagados     = todasCots.filter(d => d.estado === 'Pagado');
-    const facturados  = todasCots.filter(d => d.estado === 'Facturado');
-    const vencidos    = todasCots.filter(d => d.estado === 'Vencido');
+
+    // Combinar estado directo del cliente con cotizaciones cargadas
+    const obtenerEstadoFinal = (c) => {
+      const docs = cotizaciones[c.id] || [];
+      if (docs.length === 0) return c.estado;
+      return docs.reduce((a, b) => (a.id > b.id ? a : b)).estado || c.estado;
+    };
+    const obtenerMontoFinal = (c) => {
+      const docs = cotizaciones[c.id] || [];
+      const montoCots = docs.reduce((s, d) => s + (parseFloat(d.monto) || 0), 0);
+      return montoCots > 0 ? montoCots : (parseFloat(c.monto) || 0);
+    };
+
+    const clientesEnriquecidos = clientesData.map(c => ({ ...c, _estado: obtenerEstadoFinal(c), _monto: obtenerMontoFinal(c) }));
+    const sumMonto = (arr) => arr.reduce((s, c) => s + (c._monto || 0), 0);
+    const cotizados   = clientesEnriquecidos.filter(c => c._estado === 'Cotizado');
+    const notificados = clientesEnriquecidos.filter(c => c._estado === 'Notificado');
+    const pagados     = clientesEnriquecidos.filter(c => c._estado === 'Pagado');
+    const facturados  = clientesEnriquecidos.filter(c => c._estado === 'Facturado');
+    const vencidos    = clientesEnriquecidos.filter(c => c._estado === 'Vencido');
     const suspendidos = clientesData.filter(c => c.suspendido === true);
     const noGeneraron = clientesData.filter(c => c.estado === 'No Generaron');
     return {
-      cotizado: clientesConEstado('Cotizado'), notificado: clientesConEstado('Notificado'),
-      pagado: clientesConEstado('Pagado'), facturado: clientesConEstado('Facturado'),
-      vencido: clientesConEstado('Vencido'), suspendido: suspendidos.length,
+      cotizado: cotizados.length, notificado: notificados.length,
+      pagado: pagados.length, facturado: facturados.length,
+      vencido: vencidos.length, suspendido: suspendidos.length,
       noGeneraron: noGeneraron.length, total,
       montoCotizado: sumMonto(cotizados), montoNotificado: sumMonto(notificados),
       montoPagado: sumMonto(pagados), montoFacturado: sumMonto(facturados),
@@ -625,11 +634,11 @@ export default function App() {
         const p = (c.pagosRealizados || []).reduce((s, x) => s + (parseFloat(x.monto) || 0), 0);
         return acc + Math.max(0, m - p);
       }, 0),
-      cotizadoPct:    total > 0 ? ((clientesConEstado('Cotizado')   / total) * 100).toFixed(0) : 0,
-      notificadoPct:  total > 0 ? ((clientesConEstado('Notificado') / total) * 100).toFixed(0) : 0,
-      pagadoPct:      total > 0 ? ((clientesConEstado('Pagado')     / total) * 100).toFixed(0) : 0,
-      facturadoPct:   total > 0 ? ((clientesConEstado('Facturado')  / total) * 100).toFixed(1) : 0,
-      vencidoPct:     total > 0 ? ((clientesConEstado('Vencido')    / total) * 100).toFixed(1) : 0,
+      cotizadoPct:    total > 0 ? ((cotizados.length   / total) * 100).toFixed(0) : 0,
+      notificadoPct:  total > 0 ? ((notificados.length / total) * 100).toFixed(0) : 0,
+      pagadoPct:      total > 0 ? ((pagados.length     / total) * 100).toFixed(0) : 0,
+      facturadoPct:   total > 0 ? ((facturados.length  / total) * 100).toFixed(1) : 0,
+      vencidoPct:     total > 0 ? ((vencidos.length    / total) * 100).toFixed(1) : 0,
       suspendidoPct:  total > 0 ? ((suspendidos.length / total) * 100).toFixed(1) : 0,
       noGeneraronPct: total > 0 ? ((noGeneraron.length / total) * 100).toFixed(1) : 0,
     };
