@@ -115,6 +115,14 @@ export default function App() {
   const soloLectura     = !esAdmin && !esEditor;
   const esContabilidad  = esAdmin || ['contabilidad', 'supervisor_contabilidad'].includes(rolActual);
 
+  const [permisosRol, setPermisosRol] = useState({});
+  const tienePermiso = (permiso) => {
+    if (esAdmin) return true;
+    const permsDeRol = permisosRol[rolActual];
+    if (!permsDeRol || permsDeRol[permiso] === undefined) return true;
+    return permsDeRol[permiso];
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoginError('');
@@ -409,6 +417,10 @@ export default function App() {
     fetch('/api/historial-conciliaciones')
       .then(r => r.ok ? r.json() : [])
       .then(data => { if (Array.isArray(data)) setHistorialConciliaciones(data); })
+      .catch(() => {});
+    fetch('/api/permisos-rol')
+      .then(r => r.ok ? r.json() : {})
+      .then(data => setPermisosRol(data))
       .catch(() => {});
   }, []);
 
@@ -1574,6 +1586,38 @@ export default function App() {
   };
 
   // ─── BITÁCORA DE GESTIONES ───────────────────────────────
+  const ROLES_PANEL = [
+    { key: 'editor',                  label: 'Editor' },
+    { key: 'agente_cobro',            label: 'Agente Cobro' },
+    { key: 'contabilidad',            label: 'Contabilidad' },
+    { key: 'supervisor_cobro',        label: 'Sup. Cobro' },
+    { key: 'supervisor_contabilidad', label: 'Sup. Contab.' },
+    { key: 'viewer',                  label: 'Viewer' },
+  ];
+  const PERMISOS_LISTA = [
+    { key: 'ver_clientes',          label: 'Ver clientes' },
+    { key: 'crear_clientes',        label: 'Crear clientes' },
+    { key: 'editar_clientes',       label: 'Editar clientes' },
+    { key: 'eliminar_clientes',     label: 'Eliminar clientes' },
+    { key: 'ver_montos',            label: 'Ver montos' },
+    { key: 'registrar_pagos',       label: 'Registrar pagos' },
+    { key: 'ver_creditos',          label: 'Ver créditos' },
+    { key: 'crear_creditos',        label: 'Crear créditos' },
+    { key: 'ver_documentos',        label: 'Ver documentos' },
+    { key: 'subir_documentos',      label: 'Subir documentos' },
+    { key: 'ver_reportes_pdf',      label: 'Ver reportes PDF' },
+    { key: 'acceder_delegaciones',  label: 'Delegaciones' },
+    { key: 'ver_conciliacion',      label: 'Conciliación bancaria' },
+    { key: 'acceder_configuracion', label: 'Configuración' },
+  ];
+  const togglePermiso = async (rol, permiso, activoActual) => {
+    const nuevoActivo = !activoActual;
+    setPermisosRol(prev => ({ ...prev, [rol]: { ...(prev[rol] || {}), [permiso]: nuevoActivo } }));
+    try {
+      await fetch('/api/permisos-rol', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rol, permiso, activo: nuevoActivo }) });
+    } catch { /* silencioso */ }
+  };
+
   const TIPOS_GESTION = ['Llamada', 'WhatsApp', 'Visita', 'Email', 'Otro'];
   const RESULTADOS_GESTION = ['Contestó', 'No Contestó', 'Buzón de Voz', 'Promesa de Pago', 'Pago Recibido', 'Rechazó', 'Sin Respuesta'];
   const COLOR_RESULTADO = { 'Contestó':'#059669','No Contestó':'#dc2626','Buzón de Voz':'#6b7280','Promesa de Pago':'#d97706','Pago Recibido':'#16a34a','Rechazó':'#dc2626','Sin Respuesta':'#9ca3af' };
@@ -1925,13 +1969,13 @@ export default function App() {
             <div className="sidebar-label">Gestión</div>
             <div className={`sidebar-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span> Inicio</div>
             <div className={`sidebar-item ${activeTab === 'calendario' ? 'active' : ''}`} onClick={() => setActiveTab('calendario')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> Calendario</div>
-            <div className={`sidebar-item ${activeTab === 'cartera' ? 'active' : ''}`} onClick={() => setActiveTab('cartera')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="12" width="4" height="8" rx="1"/><rect x="10" y="8" width="4" height="12" rx="1"/><rect x="17" y="4" width="4" height="16" rx="1"/></svg></span> Cartera</div>
-            <div className={`sidebar-item ${activeTab === 'credito' ? 'active' : ''}`} onClick={() => setActiveTab('credito')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></span> Crédito</div>
+            {tienePermiso('ver_clientes') && <div className={`sidebar-item ${activeTab === 'cartera' ? 'active' : ''}`} onClick={() => setActiveTab('cartera')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="12" width="4" height="8" rx="1"/><rect x="10" y="8" width="4" height="12" rx="1"/><rect x="17" y="4" width="4" height="16" rx="1"/></svg></span> Cartera</div>}
+            {tienePermiso('ver_creditos') && <div className={`sidebar-item ${activeTab === 'credito' ? 'active' : ''}`} onClick={() => setActiveTab('credito')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></span> Crédito</div>}
             <div className={`sidebar-item ${activeTab === 'agenda' ? 'active' : ''}`} onClick={() => setActiveTab('agenda')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> Agenda del Día</div>
             <div className={`sidebar-item ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => setActiveTab('documentos')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span> Documentos</div>
             {puedeVerTodo && <div className={`sidebar-item ${activeTab === 'carteras' ? 'active' : ''}`} onClick={() => setActiveTab('carteras')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Carteras por Agente</div>}
-            {(esAdmin || esEditor) && <div className={`sidebar-item ${activeTab === 'delegations' ? 'active' : ''}`} onClick={() => { setActiveTab('delegations'); cargarDelegations(); }} style={{ position: 'relative' }}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span> Delegations{delegationsPendientes.length > 0 && <span style={{ position: 'absolute', top: '6px', right: '8px', width: '8px', height: '8px', background: '#f97316', borderRadius: '50%' }}></span>}</div>}
-            {esContabilidad && <div className={`sidebar-item ${activeTab === 'conciliacion' ? 'active' : ''}`} onClick={() => setActiveTab('conciliacion')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span> Conciliación</div>}
+            {tienePermiso('acceder_delegaciones') && <div className={`sidebar-item ${activeTab === 'delegations' ? 'active' : ''}`} onClick={() => { setActiveTab('delegations'); cargarDelegations(); }} style={{ position: 'relative' }}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span> Delegations{delegationsPendientes.length > 0 && <span style={{ position: 'absolute', top: '6px', right: '8px', width: '8px', height: '8px', background: '#f97316', borderRadius: '50%' }}></span>}</div>}
+            {esContabilidad && tienePermiso('ver_conciliacion') && <div className={`sidebar-item ${activeTab === 'conciliacion' ? 'active' : ''}`} onClick={() => setActiveTab('conciliacion')}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span> Conciliación</div>}
             <div className="sidebar-item" onClick={() => { setArchivosEnProceso([]); setShowCargaMasivaModal(true); }}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span> Carga Masiva PDF</div>
             <div className="sidebar-item" onClick={() => setShowPlantillasModal(true)}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span> Plantillas WA</div>
           </div>
@@ -1944,8 +1988,8 @@ export default function App() {
             <div className="sidebar-item" onClick={exportarTodosExcel}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> Excel — Todos</div>
             <div className="sidebar-item" onClick={exportarNoGeneraron}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> No Generaron</div>
             <div className="sidebar-item" onClick={exportarFacturados}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> Facturados</div>
-            <div className="sidebar-item" onClick={exportarPDF}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span> PDF — Cartera</div>
-            <div className="sidebar-item" onClick={generarResumenPDF}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span> Resumen PDF</div>
+            {tienePermiso('ver_reportes_pdf') && <div className="sidebar-item" onClick={exportarPDF}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span> PDF — Cartera</div>}
+            {tienePermiso('ver_reportes_pdf') && <div className="sidebar-item" onClick={generarResumenPDF}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span> Resumen PDF</div>}
             <div className="sidebar-item" onClick={backupJSON}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> Backup JSON</div>
             <div className="sidebar-item" onClick={() => setShowImportModal(true)}><span className="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span> Importar Excel</div>
             </>)}
@@ -1974,12 +2018,12 @@ export default function App() {
               <div className="sidebar-user-role">{esAdmin ? 'Administrador' : esEditor ? 'Editor' : 'Viewer'}{empresaActual ? ` · ${empresaActual.nombre}` : ''}</div>
             </div>
             <div className="sidebar-user-actions">
-              <button className="sidebar-icon-btn" onClick={() => { setSettingsSection('config'); setShowSettingsPanel(true); }} title="Configuración">
+              {tienePermiso('acceder_configuracion') && <button className="sidebar-icon-btn" onClick={() => { setSettingsSection('config'); setShowSettingsPanel(true); }} title="Configuración">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="3"/>
                   <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                 </svg>
-              </button>
+              </button>}
               <button className="sidebar-icon-btn" onClick={() => { window._manualLogout = true; signOut({ callbackUrl: "/" }); setTimeout(() => { window.location.href = "/"; }, 500); }} title="Cerrar sesión">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -2340,15 +2384,15 @@ export default function App() {
               <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '1rem' }}>Accesos rápidos</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.5rem' }}>
                 {[
-                  { label: 'Nuevo Cliente', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>, action: () => { setActiveTab('cartera'); abrirModal(); }, primary: true },
-                  { label: 'Nuevo Crédito', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>, action: () => setActiveTab('credito'), primary: true },
-                  { label: 'Agenda del Día', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, action: () => setActiveTab('agenda') },
-                  { label: 'Carga Masiva PDF', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>, action: () => { setArchivosEnProceso([]); setShowCargaMasivaModal(true); } },
-                  { label: 'Plantillas WA', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>, action: () => setShowPlantillasModal(true) },
-                  { label: 'Importar Excel', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>, action: () => setShowImportModal(true) },
-                  { label: 'Exportar PDF', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>, action: exportarPDF },
-                  { label: 'Backup', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>, action: backupJSON },
-                ].map((a, i) => (
+                  { label: 'Nuevo Cliente', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>, action: () => { setActiveTab('cartera'); abrirModal(); }, primary: true, show: tienePermiso('crear_clientes') },
+                  { label: 'Nuevo Crédito', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>, action: () => setActiveTab('credito'), primary: true, show: tienePermiso('crear_creditos') },
+                  { label: 'Agenda del Día', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, action: () => setActiveTab('agenda'), show: true },
+                  { label: 'Carga Masiva PDF', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>, action: () => { setArchivosEnProceso([]); setShowCargaMasivaModal(true); }, show: tienePermiso('subir_documentos') },
+                  { label: 'Plantillas WA', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>, action: () => setShowPlantillasModal(true), show: true },
+                  { label: 'Importar Excel', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>, action: () => setShowImportModal(true), show: tienePermiso('crear_clientes') },
+                  { label: 'Exportar PDF', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>, action: exportarPDF, show: tienePermiso('ver_reportes_pdf') },
+                  { label: 'Backup', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>, action: backupJSON, show: esAdmin },
+                ].filter(a => a.show).map((a, i) => (
                   <button key={i} onClick={a.action} style={{ display:'flex', alignItems:'center', gap:'0.5rem', padding:'0.6rem 0.9rem', background: a.primary ? 'var(--brand)' : 'var(--surface-2)', border: a.primary ? 'none' : '1px solid var(--border)', borderRadius:'9px', color: a.primary ? 'white' : 'var(--text)', fontSize:'0.82rem', fontWeight:600, cursor:'pointer', transition:'all 0.15s', textAlign:'left' }}
                     onMouseEnter={e => e.currentTarget.style.opacity='0.85'}
                     onMouseLeave={e => e.currentTarget.style.opacity='1'}>
@@ -2549,11 +2593,11 @@ export default function App() {
                       </div>
                       {/* Botones */}
                       <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                        <button className="btn btn-secondary" style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }} onClick={() => abrirGenCotModal(cliente)}>✏️ Generar Cotización</button>
-                        <label className="btn btn-secondary" style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', cursor: 'pointer' }}>
+                        {tienePermiso('subir_documentos') && <button className="btn btn-secondary" style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }} onClick={() => abrirGenCotModal(cliente)}>✏️ Generar Cotización</button>}
+                        {tienePermiso('subir_documentos') && <label className="btn btn-secondary" style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', cursor: 'pointer' }}>
                           📂 Subir PDF
                           <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => { subirDocumento(cliente.id, e.target.files[0]); e.target.value = ''; }} />
-                        </label>
+                        </label>}
                         {docs.length > 0 && cliente.contacto && (
                           <button className="btn btn-success" style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }} onClick={() => abrirNotifDocModal(cliente)}>📤 Notificar por WhatsApp</button>
                         )}
@@ -2677,7 +2721,7 @@ export default function App() {
                   🎛️{(filtroMontoMin || filtroMontoMax || filtroEstados.length > 0 || filtroAgente) && <span style={{ position: 'absolute', top: '-4px', right: '-4px', width: '8px', height: '8px', background: '#f97316', borderRadius: '50%' }}></span>}
                 </button>
               </div>
-              <button className="btn btn-primary" onClick={() => !esModoPasado && abrirModal()} disabled={esModoPasado} style={{ opacity: esModoPasado ? 0.5 : 1 }}>+ Nuevo Cliente</button>
+              {tienePermiso('crear_clientes') && <button className="btn btn-primary" onClick={() => !esModoPasado && abrirModal()} disabled={esModoPasado} style={{ opacity: esModoPasado ? 0.5 : 1 }}>+ Nuevo Cliente</button>}
             </div>
 
             {showBusquedaAvanzada && (
@@ -2738,12 +2782,12 @@ export default function App() {
                         </div>
                         <span className={`badge badge-${estadoActivoCliente(cliente).toLowerCase().replace(/ /g, '-')}`}>{estadoActivoCliente(cliente)}</span>
                       </div>
-                      <div style={{ fontSize: '1.4rem', fontWeight: 800, fontFamily: 'var(--mono)', color: 'var(--accent2)', marginBottom: '0.5rem' }}>${(parseFloat(cliente.monto) || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}</div>
-                      {s.pagado > 0 && <div style={{ fontSize: '0.75rem', color: '#059669' }}>✓ Pagado: ${s.pagado.toLocaleString('en-US', { maximumFractionDigits: 0 })} · Pend: ${s.pendiente.toLocaleString('en-US', { maximumFractionDigits: 0 })}</div>}
+                      <div style={{ fontSize: '1.4rem', fontWeight: 800, fontFamily: 'var(--mono)', color: 'var(--accent2)', marginBottom: '0.5rem' }}>{tienePermiso('ver_montos') ? '$' + (parseFloat(cliente.monto) || 0).toLocaleString('en-US', { maximumFractionDigits: 0 }) : '***'}</div>
+                      {tienePermiso('ver_montos') && s.pagado > 0 && <div style={{ fontSize: '0.75rem', color: '#059669' }}>✓ Pagado: ${s.pagado.toLocaleString('en-US', { maximumFractionDigits: 0 })} · Pend: ${s.pendiente.toLocaleString('en-US', { maximumFractionDigits: 0 })}</div>}
                       <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.75rem', justifyContent: 'flex-end' }}>
                         {cliente.contacto && <a href={`https://wa.me/1${cliente.contacto.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" className="accion-btn" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0fdf4', border: '1px solid #86efac', color: '#16a34a' }}>🟢</a>}
-                        <button className="accion-btn edit" onClick={() => !esModoPasado && abrirModal(cliente)}>✏️</button>
-                        <button className="accion-btn delete" onClick={() => !esModoPasado && eliminarCliente(cliente.id)}>🗑️</button>
+                        {tienePermiso('editar_clientes') && <button className="accion-btn edit" onClick={() => !esModoPasado && abrirModal(cliente)}>✏️</button>}
+                        {tienePermiso('eliminar_clientes') && <button className="accion-btn delete" onClick={() => !esModoPasado && eliminarCliente(cliente.id)}>🗑️</button>}
                       </div>
                     </div>
                   );
@@ -2779,15 +2823,15 @@ export default function App() {
                                 {cliente.nombre}
                               </div>
                               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>{cliente.codigoCliente ? <span style={{ fontWeight: 700, color: 'var(--accent)' }}>#{cliente.codigoCliente}</span> : `#${cliente.id}`} · {cliente.mes}/{cliente.año}</div>
-                              {s.monto > 0 && <div style={{ fontWeight: 800, fontFamily: 'var(--mono)', fontSize: '0.9rem', color: 'var(--accent2)', marginBottom: '0.35rem' }}>${s.monto.toLocaleString('en-US', { maximumFractionDigits: 0 })}</div>}
-                              {s.monto > 0 && (
+                              {s.monto > 0 && <div style={{ fontWeight: 800, fontFamily: 'var(--mono)', fontSize: '0.9rem', color: 'var(--accent2)', marginBottom: '0.35rem' }}>{tienePermiso('ver_montos') ? '$' + s.monto.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '***'}</div>}
+                              {s.monto > 0 && tienePermiso('ver_montos') && (
                                 <div className="progress-bar-wrap" style={{ marginBottom: '0.4rem' }}>
                                   <div className="progress-bar-fill" style={{ width: `${pct}%`, background: pct >= 100 ? '#059669' : color }}></div>
                                 </div>
                               )}
                               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.3rem', marginTop: '0.2rem' }}>
                                 {cliente.contacto && <button onClick={() => abrirWhatsappModal(cliente)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '0.1rem' }} title="WhatsApp">🟢</button>}
-                                <button onClick={() => !esModoPasado && abrirModal(cliente)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '0.1rem' }} title="Editar">✏️</button>
+                                {tienePermiso('editar_clientes') && <button onClick={() => !esModoPasado && abrirModal(cliente)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '0.1rem' }} title="Editar">✏️</button>}
                               </div>
                             </div>
                           );
@@ -2852,7 +2896,9 @@ export default function App() {
                             <td><span className={`badge badge-${estadoActivoCliente(cliente).toLowerCase().replace(/ /g, '-')}`}>{estadoActivoCliente(cliente)}</span></td>
 
                             <td>
-                              {editingMontoId === cliente.id ? (
+                              {!tienePermiso('ver_montos') ? (
+                                <strong style={{ color: 'var(--text-muted)', letterSpacing: '0.1em' }}>***</strong>
+                              ) : editingMontoId === cliente.id ? (
                                 <input type="number" value={tempMonto} onChange={(e) => setTempMonto(e.target.value)} onBlur={() => guardarMontoInline(cliente.id)} onKeyDown={(e) => { if (e.key === 'Enter') guardarMontoInline(cliente.id); else if (e.key === 'Escape') cancelarEdicionMonto(); }} autoFocus step="0.01" style={{ width: '100%', padding: '0.5rem', border: '2px solid #0ea5e9', borderRadius: '6px', fontSize: '1rem', fontWeight: 700 }} />
                               ) : (
                                 <div>
@@ -2868,7 +2914,7 @@ export default function App() {
                               <div className="proceso-icons">
                                 <button className={`proceso-icon cotizado ${cliente.fechaCotizacion ? 'done' : ''}`} disabled={esModoPasado} title={cliente.fechaCotizacion ? 'Cotizado' : 'Marcar Cotizado'} onClick={() => { if (esModoPasado) return; const a = { ...cliente }; if (!a.fechaCotizacion) { a.fechaCotizacion = new Date().toISOString().split('T')[0]; if (!a.estado || a.estado === 'No Generaron') a.estado = 'Cotizado'; } else { a.fechaCotizacion = ''; a.fechaNotificacion = ''; a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'No Generaron'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaCotizacion ? 'Marco Cotizado' : 'Desmarco Cotizado', usuario: 'CPEREZ' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}>📋</button>
                                 <button className={`proceso-icon notificado ${cliente.fechaNotificacion ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaCotizacion} style={{ opacity: !cliente.fechaCotizacion ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaCotizacion) return; const a = { ...cliente }; if (!a.fechaNotificacion) { a.fechaNotificacion = new Date().toISOString().split('T')[0]; a.estado = 'Notificado'; } else { a.fechaNotificacion = ''; a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'Cotizado'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaNotificacion ? 'Marco Notificado' : 'Desmarco Notificado', usuario: 'CPEREZ' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}>📧</button>
-                                <button className={`proceso-icon pagado ${cliente.fechaPago ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaNotificacion} style={{ opacity: !cliente.fechaNotificacion ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaNotificacion) return; const a = { ...cliente }; if (!a.fechaPago) { if (a.monto && parseFloat(a.monto) > 0) { abrirPagoModal(a); return; } a.fechaPago = new Date().toISOString().split('T')[0]; a.estado = 'Pagado'; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: 'Marco Pagado', usuario: 'CPEREZ' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, 'Pagado'); return; } a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'Notificado'; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: 'Desmarco Pagado', usuario: 'CPEREZ' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}>💰</button>
+                                {tienePermiso('registrar_pagos') && <button className={`proceso-icon pagado ${cliente.fechaPago ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaNotificacion} style={{ opacity: !cliente.fechaNotificacion ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaNotificacion) return; const a = { ...cliente }; if (!a.fechaPago) { if (a.monto && parseFloat(a.monto) > 0) { abrirPagoModal(a); return; } a.fechaPago = new Date().toISOString().split('T')[0]; a.estado = 'Pagado'; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: 'Marco Pagado', usuario: 'CPEREZ' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, 'Pagado'); return; } a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'Notificado'; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: 'Desmarco Pagado', usuario: 'CPEREZ' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}>💰</button>}
                                 <button className={`proceso-icon facturado ${cliente.fechaFacturacion ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaPago} style={{ opacity: !cliente.fechaPago ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaPago) return; const a = { ...cliente }; if (!a.fechaFacturacion) { a.fechaFacturacion = new Date().toISOString().split('T')[0]; a.estado = 'Facturado'; } else { a.fechaFacturacion = ''; a.estado = 'Pagado'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaFacturacion ? 'Marco Facturado' : 'Desmarco Facturado', usuario: 'CPEREZ' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}>💲</button>
                               </div>
                             </td>
@@ -2882,12 +2928,12 @@ export default function App() {
                             <td>
                               <div className="accion-icons">
                                 {cliente.contacto && <button onClick={() => abrirWhatsappModal(cliente)} className="accion-btn" title="WhatsApp" style={{ background: '#f0fdf4', border: '1px solid #86efac', color: '#16a34a' }}>🟢</button>}
-                                <button className="accion-btn edit" disabled={esModoPasado} title="Editar" onClick={() => !esModoPasado && abrirModal(cliente)}>✏️</button>
+                                {tienePermiso('editar_clientes') && <button className="accion-btn edit" disabled={esModoPasado} title="Editar" onClick={() => !esModoPasado && abrirModal(cliente)}>✏️</button>}
                                 <button className={`accion-btn nota ${cliente.nota ? 'has-note' : ''}`} title={cliente.nota ? 'Ver nota' : 'Agregar nota'} onClick={() => abrirNotaModal(cliente)}>💬</button>
-                                <button className={`accion-btn ${(cotizaciones[cliente.id]||[]).length > 0 ? 'has-note' : ''}`} title="Documentos / Cotizaciones" onClick={() => abrirDocsModal(cliente)} style={{ background: (cotizaciones[cliente.id]||[]).length > 0 ? '#ede9fe' : '', borderColor: (cotizaciones[cliente.id]||[]).length > 0 ? '#c4b5fd' : '', color: (cotizaciones[cliente.id]||[]).length > 0 ? '#7c3aed' : '' }}>📄{(cotizaciones[cliente.id]||[]).length > 0 && <span style={{ fontSize: '0.6rem', fontWeight: 800, marginLeft: '1px' }}>{(cotizaciones[cliente.id]||[]).length}</span>}</button>
+                                {tienePermiso('ver_documentos') && <button className={`accion-btn ${(cotizaciones[cliente.id]||[]).length > 0 ? 'has-note' : ''}`} title="Documentos / Cotizaciones" onClick={() => abrirDocsModal(cliente)} style={{ background: (cotizaciones[cliente.id]||[]).length > 0 ? '#ede9fe' : '', borderColor: (cotizaciones[cliente.id]||[]).length > 0 ? '#c4b5fd' : '', color: (cotizaciones[cliente.id]||[]).length > 0 ? '#7c3aed' : '' }}>📄{(cotizaciones[cliente.id]||[]).length > 0 && <span style={{ fontSize: '0.6rem', fontWeight: 800, marginLeft: '1px' }}>{(cotizaciones[cliente.id]||[]).length}</span>}</button>}
                                 <button className={`accion-btn ${(gestiones[cliente.id]||[]).length > 0 ? 'has-note' : ''}`} title="Registrar gestión / Bitácora" onClick={() => abrirGestionModal(cliente)} style={{ background: (gestiones[cliente.id]||[]).length > 0 ? '#fef9c3' : '', borderColor: (gestiones[cliente.id]||[]).length > 0 ? '#fde047' : '', color: (gestiones[cliente.id]||[]).length > 0 ? '#713f12' : '' }}>📞{(gestiones[cliente.id]||[]).length > 0 && <span style={{ fontSize: '0.6rem', fontWeight: 800, marginLeft: '1px' }}>{(gestiones[cliente.id]||[]).length}</span>}</button>
-                                <button className="accion-btn" title="Estado de Cuenta PDF" onClick={() => generarEstadoCuentaPDF(cliente)} style={{ background: '#f0f9ff', border: '1px solid #7dd3fc', color: '#0369a1' }}>📋</button>
-                                <button className="accion-btn delete" disabled={esModoPasado} title="Eliminar" onClick={() => !esModoPasado && eliminarCliente(cliente.id)}>🗑️</button>
+                                {tienePermiso('ver_reportes_pdf') && <button className="accion-btn" title="Estado de Cuenta PDF" onClick={() => generarEstadoCuentaPDF(cliente)} style={{ background: '#f0f9ff', border: '1px solid #7dd3fc', color: '#0369a1' }}>📋</button>}
+                                {tienePermiso('eliminar_clientes') && <button className="accion-btn delete" disabled={esModoPasado} title="Eliminar" onClick={() => !esModoPasado && eliminarCliente(cliente.id)}>🗑️</button>}
                               </div>
                             </td>
                           </tr>
@@ -2942,8 +2988,8 @@ export default function App() {
             <div className="controls">
               <div className="search-box"><span className="search-icon">🔍</span><input type="text" placeholder="Buscar crédito..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
               <button className="btn btn-success" onClick={exportarCreditosExcel}>📊 Exportar a Excel</button>
-              <button className="btn btn-secondary" onClick={exportarCreditosPDF}>📄 Exportar PDF</button>
-              <button className="btn btn-primary" onClick={() => abrirCreditoModal()}>➕ Nuevo Crédito</button>
+              {tienePermiso('ver_reportes_pdf') && <button className="btn btn-secondary" onClick={exportarCreditosPDF}>📄 Exportar PDF</button>}
+              {tienePermiso('crear_creditos') && <button className="btn btn-primary" onClick={() => abrirCreditoModal()}>➕ Nuevo Crédito</button>}
             </div>
 
             <div className="table-container">
@@ -4073,12 +4119,12 @@ export default function App() {
 
               {/* Acciones principales */}
               <div style={{ display: 'flex', gap: '0.65rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-                <button className="btn btn-primary" onClick={() => { setShowDocsModal(false); abrirGenCotModal(cliente); }}>✏️ Generar Cotización</button>
-                <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
+                {tienePermiso('subir_documentos') && <button className="btn btn-primary" onClick={() => { setShowDocsModal(false); abrirGenCotModal(cliente); }}>✏️ Generar Cotización</button>}
+                {tienePermiso('subir_documentos') && <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
                   📂 Subir PDF
                   <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => { subirDocumento(docsClienteId, e.target.files[0]); e.target.value = ''; }} />
-                </label>
-                <button className="btn btn-secondary" onClick={() => setNuevaCotForm(f => ({ ...f, show: !f.show, monto: '', estado: 'Cotizado' }))}>➕ Nueva Cotización</button>
+                </label>}
+                {tienePermiso('subir_documentos') && <button className="btn btn-secondary" onClick={() => setNuevaCotForm(f => ({ ...f, show: !f.show, monto: '', estado: 'Cotizado' }))}>➕ Nueva Cotización</button>}
                 {docs.filter(d => d.base64).length > 0 && (
                   <button className="btn btn-success" onClick={() => { setShowDocsModal(false); abrirNotifDocModal(cliente); }}>
                     📤 Notificar con Documento
@@ -4322,6 +4368,12 @@ export default function App() {
                   Auditoría
                 </button>
               )}
+              {esAdmin && (
+                <button className={`settings-nav-item ${settingsSection === 'permisos' ? 'active' : ''}`} onClick={() => setSettingsSection('permisos')}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  Permisos
+                </button>
+              )}
               <button className="settings-nav-item" style={{ marginTop: 'auto', color: 'var(--danger)', opacity: 0.8 }} onClick={() => { window._manualLogout = true; setShowSettingsPanel(false); signOut({ callbackUrl: '/' }); setTimeout(() => { window.location.href = '/'; }, 500); }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                 Cerrar sesión
@@ -4433,6 +4485,50 @@ export default function App() {
                   <button className="btn btn-primary" onClick={() => { setShowSettingsPanel(false); abrirAuditLog(); }}>Abrir bitácora de auditoría</button>
                 </div>
               </>)}
+              {settingsSection === 'permisos' && esAdmin && (
+                <div>
+                  <div className="settings-content-header">
+                    <div>
+                      <div className="settings-content-title">🔐 Permisos por Rol</div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>El admin siempre tiene acceso completo. Los cambios se aplican de inmediato.</div>
+                    </div>
+                    <button className="settings-close-btn" onClick={() => setShowSettingsPanel(false)}>×</button>
+                  </div>
+                  <div style={{ overflowX: 'auto', marginTop: '0.5rem' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.79rem', minWidth: 580 }}>
+                      <thead>
+                        <tr style={{ background: 'var(--surface-2)' }}>
+                          <th style={{ padding: '0.55rem 0.9rem', textAlign: 'left', fontWeight: 700, whiteSpace: 'nowrap', position: 'sticky', left: 0, background: 'var(--surface-2)', zIndex: 2, borderBottom: '2px solid var(--border)' }}>Permiso</th>
+                          {ROLES_PANEL.map(r => (
+                            <th key={r.key} style={{ padding: '0.55rem 0.5rem', textAlign: 'center', fontWeight: 700, fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap', borderBottom: '2px solid var(--border)', color: 'var(--text-muted)' }}>{r.label}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {PERMISOS_LISTA.map((p, pi) => (
+                          <tr key={p.key} style={{ borderBottom: '1px solid var(--border)', background: pi % 2 === 0 ? 'var(--surface)' : 'var(--surface-2)' }}>
+                            <td style={{ padding: '0.5rem 0.9rem', fontWeight: 600, whiteSpace: 'nowrap', position: 'sticky', left: 0, background: 'inherit', zIndex: 1 }}>{p.label}</td>
+                            {ROLES_PANEL.map(r => {
+                              const activo = permisosRol[r.key]?.[p.key] !== false;
+                              return (
+                                <td key={r.key} style={{ textAlign: 'center', padding: '0.4rem 0.5rem' }}>
+                                  <button
+                                    onClick={() => togglePermiso(r.key, p.key, activo)}
+                                    title={`${activo ? 'Desactivar' : 'Activar'} "${p.label}" para ${r.label}`}
+                                    style={{ width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer', background: activo ? 'var(--accent)' : '#9ca3af', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}
+                                  >
+                                    <span style={{ position: 'absolute', top: 2, left: activo ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: 'white', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.25)' }} />
+                                  </button>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
               {settingsSection === 'empresas' && esAdmin && (<>
                 <div className="settings-content-header">
                   <div className="settings-content-title">Gestión de Empresas</div>
