@@ -547,7 +547,7 @@ export default function App() {
   const estadoActivoCliente = (cliente) => {
     const docs = cotizaciones[cliente.id] || [];
     if (!docs.length) return cliente.estado;
-    return docs.reduce((a, b) => (a.id > b.id ? a : b)).estado;
+    return docs.reduce((a, b) => (a.id > b.id ? a : b)).estado || cliente.estado || 'Cotizado';
   };
 
   const calcularSaldoCredito = (credito) => {
