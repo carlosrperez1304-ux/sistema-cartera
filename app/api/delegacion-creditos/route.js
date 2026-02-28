@@ -43,7 +43,7 @@ export async function GET(req) {
   let delQuery = db()
     .from('delegations')
     .select('owner_id')
-    .eq('status', 'Activa')
+    .eq('status', 'accepted')
     .lte('start_date', today)
     .gte('end_date', today);
 
