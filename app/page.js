@@ -569,8 +569,9 @@ export default function App() {
   const estadoActivoCliente = (cliente) => {
     const docs = cotizaciones[cliente.id] || [];
     if (!docs.length) {
-      // Sin documentos: 'Cotizado' no tiene sentido → mostrar 'No Generaron'
-      if (cliente.estado === 'Cotizado') return 'No Generaron';
+      // Sin documentos: 'Cotizado' solo es válido si el usuario marcó el proceso manualmente
+      // (fechaCotizacion presente). Si solo es el valor default, mostrar 'No Generaron'
+      if (cliente.estado === 'Cotizado' && !cliente.fechaCotizacion) return 'No Generaron';
       return cliente.estado;
     }
     return docs.reduce((a, b) => (a.id > b.id ? a : b)).estado || cliente.estado || 'Cotizado';
@@ -610,8 +611,8 @@ export default function App() {
     const obtenerEstadoFinal = (c) => {
       const docs = cotizaciones[c.id] || [];
       if (docs.length === 0) {
-        // Sin documentos: 'Cotizado' no es válido → tratar como 'No Generaron'
-        if (c.estado === 'Cotizado') return 'No Generaron';
+        // Sin documentos: 'Cotizado' solo es válido si se marcó el proceso manualmente
+        if (c.estado === 'Cotizado' && !c.fechaCotizacion) return 'No Generaron';
         return c.estado;
       }
       return docs.reduce((a, b) => (a.id > b.id ? a : b)).estado || c.estado;
@@ -1377,11 +1378,12 @@ export default function App() {
   const eliminarDocumento = (clienteId, docId) => {
     setCotizaciones(prev => {
       const restantes = (prev[clienteId] || []).filter(d => d.id !== docId);
-      // Si ya no quedan documentos y el cliente estaba en 'Cotizado', revertir a 'No Generaron'
+      // Si ya no quedan documentos y el proceso no fue marcado manualmente,
+      // revertir el estado 'Cotizado' a 'No Generaron'
       if (restantes.length === 0) {
-        const cliente = clientes.find(c => c.id === clienteId);
-        if (cliente && cliente.estado === 'Cotizado') {
-          actualizarCliente({ ...cliente, estado: 'No Generaron' });
+        const clienteActual = clientes.find(c => c.id === clienteId);
+        if (clienteActual && clienteActual.estado === 'Cotizado' && !clienteActual.fechaCotizacion) {
+          actualizarCliente({ ...clienteActual, estado: 'No Generaron' });
         }
       }
       return { ...prev, [clienteId]: restantes };
@@ -2987,7 +2989,7 @@ export default function App() {
 
                             <td>
                               <div className="proceso-icons">
-                                <button className={`proceso-icon cotizado ${cliente.fechaCotizacion ? 'done' : ''}`} disabled={esModoPasado} title={cliente.fechaCotizacion ? 'Cotizado' : 'Marcar Cotizado'} onClick={() => { if (esModoPasado) return; const a = { ...cliente }; if (!a.fechaCotizacion) { a.fechaCotizacion = new Date().toISOString().split('T')[0]; if (!a.estado || a.estado === 'No Generaron') a.estado = 'Cotizado'; } else { a.fechaCotizacion = ''; a.fechaNotificacion = ''; a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'No Generaron'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaCotizacion ? 'Marco Cotizado' : 'Desmarco Cotizado', usuario: 'CPEREZ' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}><ClipboardList size={13}/></button>
+                                <button className={`proceso-icon cotizado ${cliente.fechaCotizacion ? 'done' : ''}`} disabled={esModoPasado} title={cliente.fechaCotizacion ? 'Cotizado' : 'Marcar Cotizado'} onClick={() => { if (esModoPasado) return; const a = { ...cliente }; if (!a.fechaCotizacion) { a.fechaCotizacion = new Date().toISOString().split('T')[0]; a.estado = 'Cotizado'; } else { a.fechaCotizacion = ''; a.fechaNotificacion = ''; a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'No Generaron'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaCotizacion ? 'Marco Cotizado' : 'Desmarco Cotizado', usuario: 'CPEREZ' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}><ClipboardList size={13}/></button>
                                 <button className={`proceso-icon notificado ${cliente.fechaNotificacion ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaCotizacion} style={{ opacity: !cliente.fechaCotizacion ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaCotizacion) return; const a = { ...cliente }; if (!a.fechaNotificacion) { a.fechaNotificacion = new Date().toISOString().split('T')[0]; a.estado = 'Notificado'; } else { a.fechaNotificacion = ''; a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'Cotizado'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaNotificacion ? 'Marco Notificado' : 'Desmarco Notificado', usuario: 'CPEREZ' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}><Mail size={13}/></button>
                                 {tienePermiso('registrar_pagos') && <button className={`proceso-icon pagado ${cliente.fechaPago ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaNotificacion} style={{ opacity: !cliente.fechaNotificacion ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaNotificacion) return; const a = { ...cliente }; if (!a.fechaPago) { if (a.monto && parseFloat(a.monto) > 0) { abrirPagoModal(a); return; } a.fechaPago = new Date().toISOString().split('T')[0]; a.estado = 'Pagado'; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: 'Marco Pagado', usuario: 'CPEREZ' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, 'Pagado'); return; } a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'Notificado'; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: 'Desmarco Pagado', usuario: 'CPEREZ' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}><DollarSign size={13}/></button>}
                                 <button className={`proceso-icon facturado ${cliente.fechaFacturacion ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaPago} style={{ opacity: !cliente.fechaPago ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaPago) return; const a = { ...cliente }; if (!a.fechaFacturacion) { a.fechaFacturacion = new Date().toISOString().split('T')[0]; a.estado = 'Facturado'; } else { a.fechaFacturacion = ''; a.estado = 'Pagado'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaFacturacion ? 'Marco Facturado' : 'Desmarco Facturado', usuario: 'CPEREZ' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}><FileText size={13}/></button>
