@@ -4,6 +4,7 @@ import { getSupabaseBrowser } from '../lib/supabase-browser.js';
 import * as XLSX from 'xlsx';
 import { signIn, signOut, useSession } from 'next-auth/react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { Pencil, Trash2, Plus, Download, Send, FolderOpen, Save, RefreshCw, CheckCircle, XCircle, AlertTriangle, HelpCircle, Info, Phone, MessageCircle, MapPin, Mail, Pin, DollarSign, ClipboardList, FileText, FileEdit, Archive, Tag, Sun, Moon, Eye, EyeOff, SlidersHorizontal, Clock, Loader2, Inbox, Ban, MessageSquare, BarChart2, Lock, Search, Calendar, Bell, Target, Palette } from 'lucide-react';
 
 export default function App() {
   const { data: session, status: sessionStatus } = useSession({
@@ -143,10 +144,10 @@ export default function App() {
         localStorage.setItem('currentUser', username.trim().toUpperCase());
         cargarUsuarios();
       } else {
-        setLoginError('❌ ' + (result?.error || 'Usuario o contraseña incorrectos'));
+        setLoginError((result?.error || 'Usuario o contraseña incorrectos'));
       }
     } catch {
-      setLoginError('❌ Error de conexión con el servidor');
+      setLoginError('Error de conexión con el servidor');
     }
   };
 
@@ -677,10 +678,10 @@ export default function App() {
     if (!('Notification' in window)) return;
     const enviarNotif = () => {
       if (creditosVencidos.length > 0) {
-        new Notification('⚠️ CartaMaster - Créditos Vencidos', { body: `Tienes ${creditosVencidos.length} crédito(s) vencido(s) que requieren atención.`, icon: '/favicon.ico' });
+        new Notification('CartaMaster - Créditos Vencidos', { body: `Tienes ${creditosVencidos.length} crédito(s) vencido(s) que requieren atención.`, icon: '/favicon.ico' });
       }
       if (creditosAlerta.length > 0) {
-        new Notification('⏰ CartaMaster - Créditos por Vencer', { body: `${creditosAlerta.length} crédito(s) vencen en los próximos 7 días.`, icon: '/favicon.ico' });
+        new Notification('CartaMaster - Créditos por Vencer', { body: `${creditosAlerta.length} crédito(s) vencen en los próximos 7 días.`, icon: '/favicon.ico' });
       }
     };
     if (Notification.permission === 'granted') { enviarNotif(); }
@@ -809,7 +810,7 @@ export default function App() {
       const r = await fetch(`/api/delegations/${id}/responder`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accion }) });
       const d = await r.json();
       if (r.ok) {
-        showToast(accion === 'aceptar' ? '✅ Delegación aceptada. Los clientes ya están en tu cartera.' : 'Delegación rechazada.', accion === 'aceptar' ? 'success' : 'info');
+        showToast(accion === 'aceptar' ? 'Delegación aceptada. Los clientes ya están en tu cartera.' : 'Delegación rechazada.', accion === 'aceptar' ? 'success' : 'info');
         // Siguiente pendiente si hay más
         const resto = delegationsPendientes.slice(1);
         if (resto.length > 0) { setDelegationsPendientes(resto); setPendienteIdx(0); }
@@ -1177,7 +1178,7 @@ export default function App() {
           } catch { /* skip */ }
         }
         setShowImportModal(false);
-        showToast(`✅ ${importados} de ${nuevos.length} clientes importados`, 'success');
+        showToast(`${importados} de ${nuevos.length} clientes importados`, 'success');
       } catch { showToast('Error al leer el archivo Excel', 'error'); }
     };
     reader.readAsBinaryString(file);
@@ -1906,7 +1907,7 @@ export default function App() {
       <div className="login-container">
         <div className="login-box">
           <div className="login-header">
-            <div className="login-logo">💼</div>
+            <div className="login-logo"><DollarSign size={32}/></div>
             <h1 className="login-title">CartaMaster</h1>
             <p className="login-subtitle">Sistema de Gestión de Cartera</p>
           </div>
@@ -1920,7 +1921,7 @@ export default function App() {
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Ingresa tu contraseña" />
             </div>
             {loginError && <div className="login-error">{loginError}</div>}
-            <button type="submit" className="login-btn">🔐 Iniciar Sesión</button>
+            <button type="submit" className="login-btn">Iniciar Sesión</button>
           </form>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '1.25rem 0' }}>
             <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }}></div>
@@ -1985,7 +1986,7 @@ export default function App() {
                 <div style={{ position: 'fixed', inset: 0, zIndex: 998 }} onClick={() => setShowNotifPanel(false)} />
                 <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', width: '300px', background: 'var(--bg-card, #1e293b)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', zIndex: 999, overflow: 'hidden' }}>
                   <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.08)', fontWeight: 700, fontSize: '0.85rem', color: 'rgba(255,255,255,0.9)' }}>
-                    🔔 Notificaciones
+                    <MessageCircle size={14} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/> Notificaciones
                   </div>
                   {estadisticas.vencido > 0 ? (
                     <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
@@ -2001,12 +2002,12 @@ export default function App() {
                       {estadisticas.vencido > 4 && <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.2rem' }}>+{estadisticas.vencido - 4} más...</div>}
                     </div>
                   ) : (
-                    <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>✅ Sin clientes vencidos</div>
+                    <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}><CheckCircle size={13} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Sin clientes vencidos</div>
                   )}
                   <div style={{ padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                     <span style={{ background: esDespuesDel15 ? 'rgba(249,115,22,0.2)' : 'rgba(100,116,139,0.2)', borderRadius: '6px', padding: '0.15rem 0.5rem', fontSize: '0.7rem', fontWeight: 700, color: esDespuesDel15 ? '#fb923c' : '#94a3b8' }}>CORTE</span>
                     <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.6)' }}>
-                      {esDespuesDel15 ? '⚠️ Ya pasó el día 15 de este mes' : `Día 15 de cada mes · Faltan ${15 - new Date().getDate()} días`}
+                      {esDespuesDel15 ? <><AlertTriangle size={13} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Ya pasó el día 15 de este mes</> : `Día 15 de cada mes · Faltan ${15 - new Date().getDate()} días`}
                     </span>
                   </div>
                 </div>
@@ -2174,10 +2175,10 @@ export default function App() {
             {/* ACCESOS RÁPIDOS */}
             <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:'0.6rem', marginBottom:'1.25rem' }}>
               {[
-                { label:'Nueva Cotización', icon:'📋', action:() => { setActiveTab('cartera'); abrirModal(); } },
-                { label:'Ver Agenda', icon:'📅', action:() => setActiveTab('agenda') },
-                { label:'Carga Masiva PDF', icon:'📂', action:() => { setArchivosEnProceso([]); setShowCargaMasivaModal(true); } },
-                { label:'Exportar Excel', icon:'📊', action:exportarTodosExcel },
+                { label:'Nueva Cotización', icon:<ClipboardList size={22}/>, action:() => { setActiveTab('cartera'); abrirModal(); } },
+                { label:'Ver Agenda', icon:<Clock size={22}/>, action:() => setActiveTab('agenda') },
+                { label:'Carga Masiva PDF', icon:<FolderOpen size={22}/>, action:() => { setArchivosEnProceso([]); setShowCargaMasivaModal(true); } },
+                { label:'Exportar Excel', icon:<BarChart2 size={22}/>, action:exportarTodosExcel },
               ].map((a,i) => (
                 <button key={i} onClick={a.action} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'0.4rem', padding:'0.75rem', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'10px', cursor:'pointer', color:'var(--text)', fontSize:'0.75rem', fontWeight:600, transition:'all 0.15s' }}
                   onMouseOver={e => { e.currentTarget.style.borderColor='var(--brand)'; e.currentTarget.style.background='var(--brand-bg)'; }}
@@ -2247,7 +2248,7 @@ export default function App() {
               if (total === 0) return null;
               return (
                 <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.2rem', marginBottom: '1rem' }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '1rem' }}>📊 Antigüedad de Cartera (Aging Report)</div>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '1rem' }}><BarChart2 size={14} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Antigüedad de Cartera (Aging Report)</div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.6rem', marginBottom: '1rem' }}>
                     {buckets.map(b => (
                       <div key={b.label} style={{ background: b.bg, borderRadius: '10px', padding: '0.75rem', textAlign: 'center', border: `1px solid ${b.color}33` }}>
@@ -2267,7 +2268,7 @@ export default function App() {
             {/* Meta Mensual */}
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.2rem', marginBottom: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)' }}>🎯 Meta de Cobros del Mes</div>
+                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)' }}>Meta de Cobros del Mes</div>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                   <input type="number" value={metaMensual || ''} onChange={e => setMetaMensual(parseFloat(e.target.value) || 0)} placeholder="Meta ($)" style={{ width: '120px', padding: '0.35rem 0.6rem', border: '1px solid var(--border2)', borderRadius: '7px', fontSize: '0.82rem', background: 'var(--surface2)', color: 'var(--text)', fontFamily: 'var(--mono)' }} />
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>meta mensual</span>
@@ -2286,7 +2287,7 @@ export default function App() {
                     </div>
                     <div className="meta-bar"><div className={`meta-bar-fill ${claseBar}`} style={{ width: `${pct}%` }}></div></div>
                     <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      {pct >= 100 ? '🎉 ¡Meta alcanzada!' : `Faltan $${(metaMensual - cobrado).toLocaleString('en-US', { maximumFractionDigits: 0 })} para la meta`}
+                      {pct >= 100 ? '¡Meta alcanzada!' : `Faltan $${(metaMensual - cobrado).toLocaleString('en-US', { maximumFractionDigits: 0 })} para la meta`}
                     </div>
                   </div>
                 );
@@ -2299,7 +2300,7 @@ export default function App() {
               const maxMonto = Math.max(...meses.map(m => (historialMeses[m]?.clientes || []).filter(c => c.estado === 'Pagado').reduce((s, c) => s + (parseFloat(c.monto)||0), 0)), estadisticas.montoPagado || 1);
               return (
                 <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.2rem', marginBottom: '1rem' }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '1rem' }}>📈 Comparativa de Cobros (últimos meses)</div>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '1rem' }}>Comparativa de Cobros (últimos meses)</div>
                   <div className="comparativa-bar">
                     {meses.map(m => {
                       const cobrado = (historialMeses[m]?.clientes || []).filter(c => c.estado === 'Pagado').reduce((s, c) => s + (parseFloat(c.monto)||0), 0);
@@ -2346,7 +2347,7 @@ export default function App() {
               if (recientes.length === 0) return null;
               return (
                 <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.2rem', marginBottom: '1rem' }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '0.75rem' }}>⚡ Actividad Reciente</div>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '0.75rem' }}>Actividad Reciente</div>
                   <div className="timeline" style={{ maxHeight: '280px', overflowY: 'auto', paddingRight: '0.5rem' }}>
                     {recientes.map((ev, i) => (
                       <div key={i} className="timeline-item">
@@ -2379,24 +2380,24 @@ export default function App() {
               if (sinContacto.length === 0 && promesaIncumplida.length === 0 && seguimientoHoy.length === 0) return null;
               return (
                 <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.2rem', marginBottom: '1rem' }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '1rem' }}>🔔 Alertas Inteligentes</div>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '1rem' }}>Alertas Inteligentes</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     {seguimientoHoy.length > 0 && (
                       <div onClick={() => setActiveTab('agenda')} style={{ display:'flex', alignItems:'center', gap:'0.75rem', padding:'0.7rem 1rem', background:'#fef9c3', border:'1px solid #fde047', borderRadius:'10px', cursor:'pointer' }}>
-                        <span style={{ fontSize:'1.3rem' }}>📅</span>
+                        <Clock size={20}/>
                         <div><div style={{ fontWeight:700, fontSize:'0.85rem', color:'#713f12' }}>{seguimientoHoy.length} cliente{seguimientoHoy.length>1?'s':''} con seguimiento pendiente HOY</div><div style={{ fontSize:'0.73rem', color:'#92400e' }}>{seguimientoHoy.slice(0,3).map(c=>c.nombre).join(', ')}{seguimientoHoy.length>3?` +${seguimientoHoy.length-3} más`:''}</div></div>
                         <span style={{ marginLeft:'auto', fontSize:'0.75rem', color:'#92400e', fontWeight:700 }}>Ver →</span>
                       </div>
                     )}
                     {promesaIncumplida.length > 0 && (
                       <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', padding:'0.7rem 1rem', background:'#fef2f2', border:'1px solid #fca5a5', borderRadius:'10px' }}>
-                        <span style={{ fontSize:'1.3rem' }}>⚠️</span>
+                        <AlertTriangle size={20}/>
                         <div><div style={{ fontWeight:700, fontSize:'0.85rem', color:'#991b1b' }}>{promesaIncumplida.length} promesa{promesaIncumplida.length>1?'s':''} de pago incumplida{promesaIncumplida.length>1?'s':''}</div><div style={{ fontSize:'0.73rem', color:'#b91c1c' }}>{promesaIncumplida.slice(0,3).map(c=>c.nombre).join(', ')}</div></div>
                       </div>
                     )}
                     {sinContacto.length > 0 && (
                       <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', padding:'0.7rem 1rem', background:'#f0f9ff', border:'1px solid #7dd3fc', borderRadius:'10px' }}>
-                        <span style={{ fontSize:'1.3rem' }}>📞</span>
+                        <Phone size={20}/>
                         <div><div style={{ fontWeight:700, fontSize:'0.85rem', color:'#075985' }}>{sinContacto.length} cliente{sinContacto.length>1?'s':''} sin contacto en más de {recordatoriosDias} días</div><div style={{ fontSize:'0.73rem', color:'#0369a1' }}>{sinContacto.slice(0,3).map(c=>c.nombre).join(', ')}{sinContacto.length>3?` +${sinContacto.length-3} más`:''}</div></div>
                       </div>
                     )}
@@ -2417,7 +2418,7 @@ export default function App() {
               const maxVal = Math.max(proyec90, 1);
               return (
                 <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.2rem', marginBottom: '1rem' }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '1rem' }}>📈 Proyección de Cobros</div>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '1rem' }}>Proyección de Cobros</div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '0.75rem' }}>
                     {[{ label: '30 días', val: proyec30, color: '#0284c7' }, { label: '60 días', val: proyec60, color: '#7c3aed' }, { label: '90 días', val: proyec90, color: '#059669' }].map(p => (
                       <div key={p.label} style={{ background: 'var(--surface2)', borderRadius: '10px', padding: '0.85rem', textAlign: 'center' }}>
@@ -2470,7 +2471,7 @@ export default function App() {
           {/* TAB CALENDARIO */}
           <div className={`tab-content ${activeTab === 'calendario' ? 'active' : ''}`}>
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.5rem' }}>
-              <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--navy)', marginBottom: '1.25rem' }}>📅 Vencimientos de Créditos</div>
+              <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--navy)', marginBottom: '1.25rem' }}><Clock size={14} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Vencimientos de Créditos</div>
               {(() => {
                 const hoy = new Date();
                 const año = hoy.getFullYear();
@@ -2530,26 +2531,26 @@ export default function App() {
                 return Math.floor((new Date() - new Date(ug.fecha)) / 86400000) > recordatoriosDias && ['Cotizado','Notificado'].includes(c.estado);
               });
               const secciones = [
-                { titulo: '📅 Seguimiento programado para hoy', color: '#713f12', bg: '#fef9c3', border: '#fde047', lista: seguimientoHoy },
-                { titulo: '⚠️ Promesas de pago incumplidas', color: '#991b1b', bg: '#fef2f2', border: '#fca5a5', lista: promesaIncumplida },
-                { titulo: '🔴 Vencidos sin ninguna gestión', color: '#7c2d12', bg: '#fff7ed', border: '#fed7aa', lista: vencidosSinGestion },
-                { titulo: `📞 Sin contacto en más de ${recordatoriosDias} días`, color: '#1e40af', bg: '#eff6ff', border: '#bfdbfe', lista: sinContactoReciente },
+                { titulo: 'Seguimiento programado para hoy', color: '#713f12', bg: '#fef9c3', border: '#fde047', lista: seguimientoHoy },
+                { titulo: 'Promesas de pago incumplidas', color: '#991b1b', bg: '#fef2f2', border: '#fca5a5', lista: promesaIncumplida },
+                { titulo: 'Vencidos sin ninguna gestión', color: '#7c2d12', bg: '#fff7ed', border: '#fed7aa', lista: vencidosSinGestion },
+                { titulo: `Sin contacto en más de ${recordatoriosDias} días`, color: '#1e40af', bg: '#eff6ff', border: '#bfdbfe', lista: sinContactoReciente },
               ];
               return (
                 <div>
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.25rem', flexWrap:'wrap', gap:'0.75rem' }}>
                     <div>
-                      <h2 style={{ fontWeight:800, fontSize:'1.1rem', color:'var(--text)' }}>📅 Agenda del Día</h2>
+                      <h2 style={{ fontWeight:800, fontSize:'1.1rem', color:'var(--text)' }}><Clock size={16} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Agenda del Día</h2>
                       <p style={{ fontSize:'0.82rem', color:'var(--text-muted)', marginTop:'0.2rem' }}>{new Date().toLocaleDateString('es-DO',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>
                     </div>
                     <div style={{ display:'flex', gap:'0.5rem' }}>
-                      <button className="btn btn-primary" style={{ background:'#7c3aed' }} onClick={() => setShowPlantillasModal(true)}>💬 Plantillas WA</button>
-                      {clientesSeleccionados.length > 0 && <button className="btn btn-primary" style={{ background:'#25d366' }} onClick={iniciarWaMasivo}>📱 WA Masivo ({clientesSeleccionados.length})</button>}
+                      <button className="btn btn-primary" style={{ background:'#7c3aed' }} onClick={() => setShowPlantillasModal(true)}><MessageSquare size={13} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Plantillas WA</button>
+                      {clientesSeleccionados.length > 0 && <button className="btn btn-primary" style={{ background:'#25d366' }} onClick={iniciarWaMasivo}><MessageCircle size={13} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>WA Masivo ({clientesSeleccionados.length})</button>}
                     </div>
                   </div>
                   {secciones.every(s => s.lista.length === 0) ? (
                     <div style={{ textAlign:'center', padding:'3rem', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'14px' }}>
-                      <div style={{ fontSize:'3rem', marginBottom:'0.75rem' }}>🎉</div>
+                      <div style={{ fontSize:'3rem', marginBottom:'0.75rem' }}><CheckCircle size={48}/></div>
                       <h3 style={{ fontWeight:800, color:'var(--text)' }}>¡Todo al día!</h3>
                       <p style={{ color:'var(--text-muted)', marginTop:'0.5rem' }}>No hay clientes pendientes de gestión por hoy.</p>
                     </div>
@@ -2575,8 +2576,8 @@ export default function App() {
                                 </div>
                               </div>
                               <div style={{ display:'flex', gap:'0.35rem', flexShrink:0 }}>
-                                <button onClick={() => abrirGestionModal(c)} className="btn btn-secondary" style={{ fontSize:'0.75rem', padding:'0.3rem 0.65rem' }}>📞 Gestión</button>
-                                {c.contacto && <button onClick={() => abrirWhatsappModal(c)} style={{ padding:'0.3rem 0.65rem', border:'1px solid #86efac', background:'#f0fdf4', borderRadius:'7px', cursor:'pointer', fontSize:'0.8rem' }}>🟢</button>}
+                                <button onClick={() => abrirGestionModal(c)} className="btn btn-secondary" style={{ fontSize:'0.75rem', padding:'0.3rem 0.65rem' }}><Phone size={13} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Gestión</button>
+                                {c.contacto && <button onClick={() => abrirWhatsappModal(c)} style={{ padding:'0.3rem 0.65rem', border:'1px solid #86efac', background:'#f0fdf4', borderRadius:'7px', cursor:'pointer', fontSize:'0.8rem' }}><MessageCircle size={13}/></button>}
                                 <input type="checkbox" checked={clientesSeleccionados.includes(c.id)} onChange={() => toggleSeleccion(c.id)} style={{ cursor:'pointer', width:'16px', height:'16px' }} title="Seleccionar para WA masivo" />
                               </div>
                             </div>
@@ -2595,12 +2596,12 @@ export default function App() {
             {/* Header con buscador */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
               <div>
-                <h2 style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--text)' }}>📄 Documentos y Cotizaciones</h2>
+                <h2 style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--text)' }}><FileText size={16} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Documentos y Cotizaciones</h2>
                 <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Genera, sube y envía documentos a tus clientes por WhatsApp</p>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <button className="btn btn-primary" style={{ fontSize: '0.78rem', padding: '0.4rem 0.9rem' }} onClick={() => { setArchivosEnProceso([]); setShowCargaMasivaModal(true); }}>
-                  📂 Carga Masiva
+                  <FolderOpen size={13} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Carga Masiva
                 </button>
                 <span style={{ background: 'var(--surface2)', border: '1px solid var(--border)', padding: '0.4rem 0.85rem', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
                   {Object.values(cotizaciones).reduce((s, d) => s + d.length, 0)} documentos en total
@@ -2611,13 +2612,13 @@ export default function App() {
             {/* Cómo funciona — si no hay documentos */}
             {Object.values(cotizaciones).reduce((s, d) => s + d.length, 0) === 0 && (
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '2rem', marginBottom: '1.25rem', textAlign: 'center' }}>
-                <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>📋</div>
+                <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}><ClipboardList size={48}/></div>
                 <h3 style={{ fontWeight: 800, color: 'var(--text)', marginBottom: '0.5rem' }}>¿Cómo funciona?</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '1rem', maxWidth: '600px', margin: '1.25rem auto 0' }}>
                   {[
-                    { paso: '1', icono: '✏️', titulo: 'Genera o sube', desc: 'Crea una cotización desde el sistema o sube tu PDF existente' },
-                    { paso: '2', icono: '💾', titulo: 'Se guarda', desc: 'El documento queda guardado asociado al cliente automáticamente' },
-                    { paso: '3', icono: '📤', titulo: 'Notifica', desc: 'El PDF se descarga y WhatsApp se abre con el mensaje listo' },
+                    { paso: '1', icono: <Pencil size={24}/>, titulo: 'Genera o sube', desc: 'Crea una cotización desde el sistema o sube tu PDF existente' },
+                    { paso: '2', icono: <Save size={24}/>, titulo: 'Se guarda', desc: 'El documento queda guardado asociado al cliente automáticamente' },
+                    { paso: '3', icono: <Send size={24}/>, titulo: 'Notifica', desc: 'El PDF se descarga y WhatsApp se abre con el mensaje listo' },
                   ].map(p => (
                     <div key={p.paso} style={{ background: 'var(--surface2)', borderRadius: '12px', padding: '1rem', border: '1px solid var(--border)' }}>
                       <div style={{ fontSize: '1.5rem', marginBottom: '0.4rem' }}>{p.icono}</div>
@@ -2649,13 +2650,13 @@ export default function App() {
                       </div>
                       {/* Botones */}
                       <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                        {tienePermiso('subir_documentos') && <button className="btn btn-secondary" style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }} onClick={() => abrirGenCotModal(cliente)}>✏️ Generar Cotización</button>}
+                        {tienePermiso('subir_documentos') && <button className="btn btn-secondary" style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }} onClick={() => abrirGenCotModal(cliente)}><Pencil size={13} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Generar Cotización</button>}
                         {tienePermiso('subir_documentos') && <label className="btn btn-secondary" style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', cursor: 'pointer' }}>
-                          📂 Subir PDF
+                          <FolderOpen size={13} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Subir PDF
                           <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => { subirDocumento(cliente.id, e.target.files[0]); e.target.value = ''; }} />
                         </label>}
                         {docs.length > 0 && cliente.contacto && (
-                          <button className="btn btn-success" style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }} onClick={() => abrirNotifDocModal(cliente)}>📤 Notificar por WhatsApp</button>
+                          <button className="btn btn-success" style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }} onClick={() => abrirNotifDocModal(cliente)}><Send size={13} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Notificar por WhatsApp</button>
                         )}
                       </div>
                     </div>
@@ -2665,15 +2666,15 @@ export default function App() {
                       <div style={{ marginTop: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                         {docs.map(doc => (
                           <div key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.85rem', background: 'var(--surface2)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                            <span style={{ fontSize: '1.1rem' }}>{doc.tipo === 'generado' ? '📋' : '📄'}</span>
+                            <span style={{ fontSize: '1.1rem' }}>{doc.tipo === 'generado' ? <ClipboardList size={16}/> : <FileText size={16}/>}</span>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ fontWeight: 600, fontSize: '0.82rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.nombre}</div>
                               <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                                {doc.tipo === 'generado' ? '✏️ Generado' : '📂 Subido'} · {new Date(doc.fecha).toLocaleDateString('es-DO', { day:'2-digit', month:'short', year:'numeric' })}
+                                {doc.tipo === 'generado' ? <><Pencil size={11} style={{verticalAlign:'middle', marginRight:'0.2rem'}}/>Generado</> : <><FolderOpen size={11} style={{verticalAlign:'middle', marginRight:'0.2rem'}}/>Subido</>} · {new Date(doc.fecha).toLocaleDateString('es-DO', { day:'2-digit', month:'short', year:'numeric' })}
                                 {doc.monto && <span style={{ color: '#059669', fontWeight: 700, marginLeft: '0.4rem' }}>${parseFloat(doc.monto).toLocaleString('en-US',{maximumFractionDigits:2})}</span>}
                               </div>
                             </div>
-                            <button onClick={() => descargarDocumento(doc)} className="btn btn-secondary" style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem' }}>⬇️</button>
+                            <button onClick={() => descargarDocumento(doc)} className="btn btn-secondary" style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem' }}><Download size={13}/></button>
                             <button onClick={() => eliminarDocumento(cliente.id, doc.id)} style={{ width: '28px', height: '28px', borderRadius: '6px', border: '1px solid #fca5a5', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
                           </div>
                         ))}
@@ -2751,7 +2752,7 @@ export default function App() {
 
             <div className="controls">
               <div className="search-box">
-                <span className="search-icon">🔍</span>
+                <span className="search-icon"><HelpCircle size={14}/></span>
                 <input type="text" placeholder="Buscar por nombre, ID o contacto... (F)" value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setPaginaActual(1); }} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
@@ -2764,17 +2765,17 @@ export default function App() {
               <div className="filter-buttons">
                 {['todos', 'cotizado', 'notificado', 'pagado', 'facturado', 'vencido', 'no-generaron', 'delegaciones'].map(f => (
                   <button key={f} className={`btn btn-filter ${filter === f ? 'active' : ''}`} onClick={() => { setFilter(f); setPaginaActual(1); }}>
-                    {f === 'todos' ? 'Todos' : f === 'no-generaron' ? 'No Generaron' : f === 'delegaciones' ? '🤝 Delegaciones' : f.charAt(0).toUpperCase() + f.slice(1)}
+                    {f === 'todos' ? 'Todos' : f === 'no-generaron' ? 'No Generaron' : f === 'delegaciones' ? 'Delegaciones' : f.charAt(0).toUpperCase() + f.slice(1)}
                   </button>
                 ))}
               </div>
               <div style={{ display: 'flex', gap: '0.3rem' }}>
-                <button className="btn btn-secondary" onClick={() => { setVistaCards(false); setVistaKanban(false); }} style={{ background: !vistaCards && !vistaKanban ? 'var(--navy)' : '', color: !vistaCards && !vistaKanban ? 'white' : '' }} title="Tabla">📋</button>
-                <button className="btn btn-secondary" onClick={() => { setVistaCards(true); setVistaKanban(false); }} style={{ background: vistaCards ? 'var(--navy)' : '', color: vistaCards ? 'white' : '' }} title="Tarjetas">🃏</button>
-                <button className="btn btn-secondary" onClick={() => { setVistaKanban(true); setVistaCards(false); }} style={{ background: vistaKanban ? 'var(--navy)' : '', color: vistaKanban ? 'white' : '' }} title="Kanban">📌 Kanban</button>
-                <button className="btn btn-secondary" onClick={() => setModoCompacto(m => !m)} style={{ background: modoCompacto ? 'var(--navy)' : '', color: modoCompacto ? 'white' : '' }} title="Modo compacto">⊟</button>
+                <button className="btn btn-secondary" onClick={() => { setVistaCards(false); setVistaKanban(false); }} style={{ background: !vistaCards && !vistaKanban ? 'var(--navy)' : '', color: !vistaCards && !vistaKanban ? 'white' : '' }} title="Tabla"><ClipboardList size={14}/></button>
+                <button className="btn btn-secondary" onClick={() => { setVistaCards(true); setVistaKanban(false); }} style={{ background: vistaCards ? 'var(--navy)' : '', color: vistaCards ? 'white' : '' }} title="Tarjetas"><FileText size={14}/></button>
+                <button className="btn btn-secondary" onClick={() => { setVistaKanban(true); setVistaCards(false); }} style={{ background: vistaKanban ? 'var(--navy)' : '', color: vistaKanban ? 'white' : '' }} title="Kanban"><Pin size={14}/> Kanban</button>
+                <button className="btn btn-secondary" onClick={() => setModoCompacto(m => !m)} style={{ background: modoCompacto ? 'var(--navy)' : '', color: modoCompacto ? 'white' : '' }} title="Modo compacto"><Ban size={14}/></button>
                 <button className="btn btn-secondary" onClick={() => setShowBusquedaAvanzada(b => !b)} style={{ background: showBusquedaAvanzada ? 'var(--accent)' : '', color: showBusquedaAvanzada ? 'white' : '', position: 'relative' }} title="Filtros avanzados">
-                  🎛️{(filtroMontoMin || filtroMontoMax || filtroEstados.length > 0 || filtroAgente) && <span style={{ position: 'absolute', top: '-4px', right: '-4px', width: '8px', height: '8px', background: '#f97316', borderRadius: '50%' }}></span>}
+                  <SlidersHorizontal size={14}/>{(filtroMontoMin || filtroMontoMax || filtroEstados.length > 0 || filtroAgente) && <span style={{ position: 'absolute', top: '-4px', right: '-4px', width: '8px', height: '8px', background: '#f97316', borderRadius: '50%' }}></span>}
                 </button>
               </div>
               {tienePermiso('crear_clientes') && <button className="btn btn-primary" onClick={() => !esModoPasado && abrirModal()} disabled={esModoPasado} style={{ opacity: esModoPasado ? 0.5 : 1 }}>+ Nuevo Cliente</button>}
@@ -2782,7 +2783,7 @@ export default function App() {
 
             {showBusquedaAvanzada && (
               <div className="adv-search-panel">
-                <div className="panel-title">🎛️ Filtros Avanzados {(filtroMontoMin || filtroMontoMax || filtroEstados.length > 0 || filtroAgente) && <button onClick={() => { setFiltroMontoMin(''); setFiltroMontoMax(''); setFiltroEstados([]); setFiltroAgente(''); }} style={{ marginLeft: '0.5rem', padding: '0.1rem 0.5rem', fontSize: '0.68rem', border: '1px solid var(--danger)', borderRadius: '5px', background: '#fef2f2', color: 'var(--danger)', cursor: 'pointer', fontWeight: 700 }}>✕ Limpiar</button>}</div>
+                <div className="panel-title"><SlidersHorizontal size={13} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Filtros Avanzados {(filtroMontoMin || filtroMontoMax || filtroEstados.length > 0 || filtroAgente) && <button onClick={() => { setFiltroMontoMin(''); setFiltroMontoMax(''); setFiltroEstados([]); setFiltroAgente(''); }} style={{ marginLeft: '0.5rem', padding: '0.1rem 0.5rem', fontSize: '0.68rem', border: '1px solid var(--danger)', borderRadius: '5px', background: '#fef2f2', color: 'var(--danger)', cursor: 'pointer', fontWeight: 700 }}>✕ Limpiar</button>}</div>
                 <div className="adv-row">
                   <div className="adv-field">
                     <label>Monto mínimo</label>
@@ -2841,9 +2842,9 @@ export default function App() {
                       <div style={{ fontSize: '1.4rem', fontWeight: 800, fontFamily: 'var(--mono)', color: 'var(--accent2)', marginBottom: '0.5rem' }}>{tienePermiso('ver_montos') ? '$' + (parseFloat(cliente.monto) || 0).toLocaleString('en-US', { maximumFractionDigits: 0 }) : '***'}</div>
                       {tienePermiso('ver_montos') && s.pagado > 0 && <div style={{ fontSize: '0.75rem', color: '#059669' }}>✓ Pagado: ${s.pagado.toLocaleString('en-US', { maximumFractionDigits: 0 })} · Pend: ${s.pendiente.toLocaleString('en-US', { maximumFractionDigits: 0 })}</div>}
                       <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.75rem', justifyContent: 'flex-end' }}>
-                        {cliente.contacto && <a href={`https://wa.me/1${cliente.contacto.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" className="accion-btn" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0fdf4', border: '1px solid #86efac', color: '#16a34a' }}>🟢</a>}
-                        {tienePermiso('editar_clientes') && <button className="accion-btn edit" onClick={() => !esModoPasado && abrirModal(cliente)}>✏️</button>}
-                        {tienePermiso('eliminar_clientes') && <button className="accion-btn delete" onClick={() => !esModoPasado && eliminarCliente(cliente.id)}>🗑️</button>}
+                        {cliente.contacto && <a href={`https://wa.me/1${cliente.contacto.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" className="accion-btn" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0fdf4', border: '1px solid #86efac', color: '#16a34a' }}><MessageCircle size={13}/></a>}
+                        {tienePermiso('editar_clientes') && <button className="accion-btn edit" onClick={() => !esModoPasado && abrirModal(cliente)}><Pencil size={13}/></button>}
+                        {tienePermiso('eliminar_clientes') && <button className="accion-btn delete" onClick={() => !esModoPasado && eliminarCliente(cliente.id)}><Trash2 size={13}/></button>}
                       </div>
                     </div>
                   );
@@ -2854,18 +2855,18 @@ export default function App() {
             {vistaKanban && (
               <div className="kanban-board">
                 {[
-                  { estado: 'Cotizado', color: '#ea580c', emoji: '📋' },
-                  { estado: 'Notificado', color: '#0284c7', emoji: '📧' },
-                  { estado: 'Pagado', color: '#059669', emoji: '💰' },
-                  { estado: 'Facturado', color: '#16a34a', emoji: '✅' },
-                  { estado: 'Vencido', color: '#dc2626', emoji: '❌' },
-                  { estado: 'No Generaron', color: '#64748b', emoji: '🚫' },
+                  { estado: 'Cotizado', color: '#ea580c', emoji: <ClipboardList size={14}/> },
+                  { estado: 'Notificado', color: '#0284c7', emoji: <Mail size={14}/> },
+                  { estado: 'Pagado', color: '#059669', emoji: <DollarSign size={14}/> },
+                  { estado: 'Facturado', color: '#16a34a', emoji: <CheckCircle size={14}/> },
+                  { estado: 'Vencido', color: '#dc2626', emoji: <XCircle size={14}/> },
+                  { estado: 'No Generaron', color: '#64748b', emoji: <Ban size={14}/> },
                 ].map(({ estado, color, emoji }) => {
                   const cols = clientesFiltrados.filter(c => estadoActivoCliente(c) === estado);
                   return (
                     <div key={estado} className="kanban-col">
                       <div className="kanban-col-header" style={{ borderTop: `3px solid ${color}` }}>
-                        <span style={{ fontWeight: 700, fontSize: '0.82rem', color }}>{emoji} {estado}</span>
+                        <span style={{ fontWeight: 700, fontSize: '0.82rem', color, display:'flex', alignItems:'center', gap:'0.3rem' }}>{emoji} {estado}</span>
                         <span style={{ background: color + '22', color, fontWeight: 800, fontSize: '0.75rem', padding: '0.15rem 0.55rem', borderRadius: '20px' }}>{cols.length}</span>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.75rem 0.6rem', minHeight: '80px' }}>
@@ -2886,8 +2887,8 @@ export default function App() {
                                 </div>
                               )}
                               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.3rem', marginTop: '0.2rem' }}>
-                                {cliente.contacto && <button onClick={() => abrirWhatsappModal(cliente)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '0.1rem' }} title="WhatsApp">🟢</button>}
-                                {tienePermiso('editar_clientes') && <button onClick={() => !esModoPasado && abrirModal(cliente)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '0.1rem' }} title="Editar">✏️</button>}
+                                {cliente.contacto && <button onClick={() => abrirWhatsappModal(cliente)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '0.1rem' }} title="WhatsApp"><MessageCircle size={14}/></button>}
+                                {tienePermiso('editar_clientes') && <button onClick={() => !esModoPasado && abrirModal(cliente)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '0.1rem' }} title="Editar"><Pencil size={14}/></button>}
                               </div>
                             </div>
                           );
@@ -2939,7 +2940,7 @@ export default function App() {
                                     </div>
                                   )}
                                 </div>
-                                <button onClick={() => { setTagClienteId(cliente.id); setTagInput(''); setShowTagModal(true); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem', opacity: 0.4, padding: '0 0.2rem' }} title="Agregar etiqueta">🏷️</button>
+                                <button onClick={() => { setTagClienteId(cliente.id); setTagInput(''); setShowTagModal(true); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem', opacity: 0.4, padding: '0 0.2rem' }} title="Agregar etiqueta"><Tag size={13}/></button>
                               </div>
                             </td>
                             {puedeVerTodo && <td>
@@ -2968,10 +2969,10 @@ export default function App() {
 
                             <td>
                               <div className="proceso-icons">
-                                <button className={`proceso-icon cotizado ${cliente.fechaCotizacion ? 'done' : ''}`} disabled={esModoPasado} title={cliente.fechaCotizacion ? 'Cotizado' : 'Marcar Cotizado'} onClick={() => { if (esModoPasado) return; const a = { ...cliente }; if (!a.fechaCotizacion) { a.fechaCotizacion = new Date().toISOString().split('T')[0]; if (!a.estado || a.estado === 'No Generaron') a.estado = 'Cotizado'; } else { a.fechaCotizacion = ''; a.fechaNotificacion = ''; a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'No Generaron'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaCotizacion ? 'Marco Cotizado' : 'Desmarco Cotizado', usuario: 'CPEREZ' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}>📋</button>
-                                <button className={`proceso-icon notificado ${cliente.fechaNotificacion ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaCotizacion} style={{ opacity: !cliente.fechaCotizacion ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaCotizacion) return; const a = { ...cliente }; if (!a.fechaNotificacion) { a.fechaNotificacion = new Date().toISOString().split('T')[0]; a.estado = 'Notificado'; } else { a.fechaNotificacion = ''; a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'Cotizado'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaNotificacion ? 'Marco Notificado' : 'Desmarco Notificado', usuario: 'CPEREZ' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}>📧</button>
-                                {tienePermiso('registrar_pagos') && <button className={`proceso-icon pagado ${cliente.fechaPago ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaNotificacion} style={{ opacity: !cliente.fechaNotificacion ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaNotificacion) return; const a = { ...cliente }; if (!a.fechaPago) { if (a.monto && parseFloat(a.monto) > 0) { abrirPagoModal(a); return; } a.fechaPago = new Date().toISOString().split('T')[0]; a.estado = 'Pagado'; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: 'Marco Pagado', usuario: 'CPEREZ' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, 'Pagado'); return; } a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'Notificado'; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: 'Desmarco Pagado', usuario: 'CPEREZ' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}>💰</button>}
-                                <button className={`proceso-icon facturado ${cliente.fechaFacturacion ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaPago} style={{ opacity: !cliente.fechaPago ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaPago) return; const a = { ...cliente }; if (!a.fechaFacturacion) { a.fechaFacturacion = new Date().toISOString().split('T')[0]; a.estado = 'Facturado'; } else { a.fechaFacturacion = ''; a.estado = 'Pagado'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaFacturacion ? 'Marco Facturado' : 'Desmarco Facturado', usuario: 'CPEREZ' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}>💲</button>
+                                <button className={`proceso-icon cotizado ${cliente.fechaCotizacion ? 'done' : ''}`} disabled={esModoPasado} title={cliente.fechaCotizacion ? 'Cotizado' : 'Marcar Cotizado'} onClick={() => { if (esModoPasado) return; const a = { ...cliente }; if (!a.fechaCotizacion) { a.fechaCotizacion = new Date().toISOString().split('T')[0]; if (!a.estado || a.estado === 'No Generaron') a.estado = 'Cotizado'; } else { a.fechaCotizacion = ''; a.fechaNotificacion = ''; a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'No Generaron'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaCotizacion ? 'Marco Cotizado' : 'Desmarco Cotizado', usuario: 'CPEREZ' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}><ClipboardList size={13}/></button>
+                                <button className={`proceso-icon notificado ${cliente.fechaNotificacion ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaCotizacion} style={{ opacity: !cliente.fechaCotizacion ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaCotizacion) return; const a = { ...cliente }; if (!a.fechaNotificacion) { a.fechaNotificacion = new Date().toISOString().split('T')[0]; a.estado = 'Notificado'; } else { a.fechaNotificacion = ''; a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'Cotizado'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaNotificacion ? 'Marco Notificado' : 'Desmarco Notificado', usuario: 'CPEREZ' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}><Mail size={13}/></button>
+                                {tienePermiso('registrar_pagos') && <button className={`proceso-icon pagado ${cliente.fechaPago ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaNotificacion} style={{ opacity: !cliente.fechaNotificacion ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaNotificacion) return; const a = { ...cliente }; if (!a.fechaPago) { if (a.monto && parseFloat(a.monto) > 0) { abrirPagoModal(a); return; } a.fechaPago = new Date().toISOString().split('T')[0]; a.estado = 'Pagado'; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: 'Marco Pagado', usuario: 'CPEREZ' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, 'Pagado'); return; } a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'Notificado'; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: 'Desmarco Pagado', usuario: 'CPEREZ' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}><DollarSign size={13}/></button>}
+                                <button className={`proceso-icon facturado ${cliente.fechaFacturacion ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaPago} style={{ opacity: !cliente.fechaPago ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaPago) return; const a = { ...cliente }; if (!a.fechaFacturacion) { a.fechaFacturacion = new Date().toISOString().split('T')[0]; a.estado = 'Facturado'; } else { a.fechaFacturacion = ''; a.estado = 'Pagado'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaFacturacion ? 'Marco Facturado' : 'Desmarco Facturado', usuario: 'CPEREZ' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}><FileText size={13}/></button>
                               </div>
                             </td>
                             <td style={{ textAlign: 'center' }}>
@@ -3058,13 +3059,13 @@ export default function App() {
             {clientesSeleccionados.length > 0 && (
               <div style={{ position:'sticky', bottom:'1rem', left:0, right:0, zIndex:200, background:'#1e2d4a', borderRadius:'14px', padding:'0.85rem 1.25rem', display:'flex', alignItems:'center', gap:'1rem', boxShadow:'0 8px 30px rgba(0,0,0,0.25)', flexWrap:'wrap' }}>
                 <div style={{ color:'white', fontWeight:700, fontSize:'0.88rem' }}>
-                  ✅ {clientesSeleccionados.length} cliente{clientesSeleccionados.length>1?'s':''} seleccionado{clientesSeleccionados.length>1?'s':''}
+                  <CheckCircle size={14} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>{clientesSeleccionados.length} cliente{clientesSeleccionados.length>1?'s':''} seleccionado{clientesSeleccionados.length>1?'s':''}
                 </div>
                 <button onClick={iniciarWaMasivo} style={{ background:'#25d366', color:'white', border:'none', borderRadius:'9px', padding:'0.5rem 1.1rem', fontWeight:700, fontSize:'0.85rem', cursor:'pointer', display:'flex', alignItems:'center', gap:'0.4rem' }}>
-                  📱 WhatsApp Masivo
+                  <MessageCircle size={13} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>WhatsApp Masivo
                 </button>
                 <button onClick={() => { const ids = clientesSeleccionados; ids.forEach(id => { const c = clientes.find(x=>x.id===id); if(c) abrirGestionModal(c); }); }} style={{ background:'#f59e0b', color:'white', border:'none', borderRadius:'9px', padding:'0.5rem 1.1rem', fontWeight:700, fontSize:'0.85rem', cursor:'pointer' }}>
-                  📞 Registrar Gestión
+                  <Phone size={13} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Registrar Gestión
                 </button>
                 <button onClick={() => setClientesSeleccionados([])} style={{ marginLeft:'auto', background:'transparent', color:'#94a3b8', border:'1px solid #334155', borderRadius:'9px', padding:'0.45rem 0.9rem', fontSize:'0.82rem', cursor:'pointer' }}>
                   Cancelar selección
@@ -3075,8 +3076,8 @@ export default function App() {
 
           {/* TAB CRÉDITO */}
           <div className={`tab-content ${activeTab === 'credito' ? 'active' : ''}`}>
-            {creditosVencidos.length > 0 && <div className="alert-box danger"><h3>⚠️ Créditos Vencidos ({creditosVencidos.length})</h3>{creditosVencidos.map(credito => <div key={credito.id} className="alert-item"><div><strong>{credito.cliente}</strong> - Orden: {credito.numeroOrden}<div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Vencido: {new Date(credito.fechaVencimiento).toLocaleDateString('es-DO')}</div></div><span className="dias-restantes critico">{Math.abs(getDiasRestantes(credito.fechaVencimiento))} días vencido</span></div>)}</div>}
-            {creditosAlerta.length > 0 && <div className="alert-box"><h3>⏰ Créditos por Vencer ({creditosAlerta.length})</h3>{creditosAlerta.map(credito => { const dias = getDiasRestantes(credito.fechaVencimiento); return <div key={credito.id} className="alert-item"><div><strong>{credito.cliente}</strong> - Orden: {credito.numeroOrden}<div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Vence: {new Date(credito.fechaVencimiento).toLocaleDateString('es-DO')}</div></div><span className={`dias-restantes ${dias <= 3 ? 'critico' : 'advertencia'}`}>{dias} {dias === 1 ? 'día' : 'días'}</span></div>; })}</div>}
+            {creditosVencidos.length > 0 && <div className="alert-box danger"><h3><AlertTriangle size={14} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Créditos Vencidos ({creditosVencidos.length})</h3>{creditosVencidos.map(credito => <div key={credito.id} className="alert-item"><div><strong>{credito.cliente}</strong> - Orden: {credito.numeroOrden}<div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Vencido: {new Date(credito.fechaVencimiento).toLocaleDateString('es-DO')}</div></div><span className="dias-restantes critico">{Math.abs(getDiasRestantes(credito.fechaVencimiento))} días vencido</span></div>)}</div>}
+            {creditosAlerta.length > 0 && <div className="alert-box"><h3><Clock size={14} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Créditos por Vencer ({creditosAlerta.length})</h3>{creditosAlerta.map(credito => { const dias = getDiasRestantes(credito.fechaVencimiento); return <div key={credito.id} className="alert-item"><div><strong>{credito.cliente}</strong> - Orden: {credito.numeroOrden}<div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Vence: {new Date(credito.fechaVencimiento).toLocaleDateString('es-DO')}</div></div><span className={`dias-restantes ${dias <= 3 ? 'critico' : 'advertencia'}`}>{dias} {dias === 1 ? 'día' : 'días'}</span></div>; })}</div>}
 
             <div className="dashboard">
               <div className="stat-card activo"><div className="stat-label">Activos</div><div className="stat-value">{creditoStats.activo}</div><div className="stat-percentage">{creditoStats.activoPct}%</div></div>
@@ -3088,10 +3089,10 @@ export default function App() {
             </div>
 
             <div className="controls">
-              <div className="search-box"><span className="search-icon">🔍</span><input type="text" placeholder="Buscar crédito..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
-              <button className="btn btn-success" onClick={exportarCreditosExcel}>📊 Exportar a Excel</button>
-              {tienePermiso('ver_reportes_pdf') && <button className="btn btn-secondary" onClick={exportarCreditosPDF}>📄 Exportar PDF</button>}
-              {tienePermiso('crear_creditos') && <button className="btn btn-primary" onClick={() => abrirCreditoModal()}>➕ Nuevo Crédito</button>}
+              <div className="search-box"><span className="search-icon"><SlidersHorizontal size={13}/></span><input type="text" placeholder="Buscar crédito..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+              <button className="btn btn-success" onClick={exportarCreditosExcel}><BarChart2 size={13}/> Exportar a Excel</button>
+              {tienePermiso('ver_reportes_pdf') && <button className="btn btn-secondary" onClick={exportarCreditosPDF}><FileText size={13}/> Exportar PDF</button>}
+              {tienePermiso('crear_creditos') && <button className="btn btn-primary" onClick={() => abrirCreditoModal()}><Plus size={13}/> Nuevo Crédito</button>}
             </div>
 
             <div className="table-container">
@@ -3116,10 +3117,10 @@ export default function App() {
                           <td>{(() => { const s = calcularSaldosCredito(credito.monto, credito.abonos || []); const pct = s.total > 0 ? Math.min((s.abonado / s.total) * 100, 100) : 0; return <div style={{ minWidth: '110px' }}><div style={{ fontWeight: 700, color: s.pendiente > 0 ? '#f59e0b' : '#059669', marginBottom: '0.25rem' }}>${s.pendiente.toFixed(2)}</div>{s.total > 0 && <div className="progress-bar-wrap"><div className="progress-bar-fill" style={{ width: `${pct}%`, background: pct >= 100 ? '#059669' : '#635bff' }}></div></div>}{s.abonado > 0 && <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{pct.toFixed(0)}% pagado</div>}</div>; })()}</td>
                           <td>
                             <div className="proceso-icons">
-                              <button className={`proceso-icon cotizado ${credito.fechaCotizacion ? 'done' : ''}`} onClick={() => { const a = { ...credito }; if (!a.fechaCotizacion) a.fechaCotizacion = new Date().toISOString().split('T')[0]; else { a.fechaCotizacion = ''; a.fechaNotificacionC = ''; a.fechaPagoC = ''; a.fechaFacturacionC = ''; } actualizarCredito(a); }}>📋</button>
-                              <button className={`proceso-icon notificado ${credito.fechaNotificacionC ? 'done' : ''}`} disabled={!credito.fechaCotizacion} style={{ opacity: !credito.fechaCotizacion ? 0.3 : 1 }} onClick={() => { if (!credito.fechaCotizacion) return; const a = { ...credito }; if (!a.fechaNotificacionC) a.fechaNotificacionC = new Date().toISOString().split('T')[0]; else { a.fechaNotificacionC = ''; a.fechaPagoC = ''; a.fechaFacturacionC = ''; } actualizarCredito(a); }}>📧</button>
-                              <button className={`proceso-icon pagado ${credito.fechaPagoC ? 'done' : ''}`} disabled={!credito.fechaNotificacionC} style={{ opacity: !credito.fechaNotificacionC ? 0.3 : 1 }} onClick={() => { if (!credito.fechaNotificacionC) return; if (!credito.fechaPagoC) { abrirPagoCreditoModal(credito); return; } const a = { ...credito }; a.fechaPagoC = ''; a.fechaFacturacionC = ''; a.abonos = []; a.estado = 'Activo'; actualizarCredito(a); }}>💰</button>
-                              <button className={`proceso-icon facturado ${credito.fechaFacturacionC ? 'done' : ''}`} disabled={!credito.fechaPagoC} style={{ opacity: !credito.fechaPagoC ? 0.3 : 1 }} onClick={() => { if (!credito.fechaPagoC) return; const a = { ...credito }; if (!a.fechaFacturacionC) a.fechaFacturacionC = new Date().toISOString().split('T')[0]; else a.fechaFacturacionC = ''; actualizarCredito(a); }}>💲</button>
+                              <button className={`proceso-icon cotizado ${credito.fechaCotizacion ? 'done' : ''}`} onClick={() => { const a = { ...credito }; if (!a.fechaCotizacion) a.fechaCotizacion = new Date().toISOString().split('T')[0]; else { a.fechaCotizacion = ''; a.fechaNotificacionC = ''; a.fechaPagoC = ''; a.fechaFacturacionC = ''; } actualizarCredito(a); }}><ClipboardList size={13}/></button>
+                              <button className={`proceso-icon notificado ${credito.fechaNotificacionC ? 'done' : ''}`} disabled={!credito.fechaCotizacion} style={{ opacity: !credito.fechaCotizacion ? 0.3 : 1 }} onClick={() => { if (!credito.fechaCotizacion) return; const a = { ...credito }; if (!a.fechaNotificacionC) a.fechaNotificacionC = new Date().toISOString().split('T')[0]; else { a.fechaNotificacionC = ''; a.fechaPagoC = ''; a.fechaFacturacionC = ''; } actualizarCredito(a); }}><Mail size={13}/></button>
+                              <button className={`proceso-icon pagado ${credito.fechaPagoC ? 'done' : ''}`} disabled={!credito.fechaNotificacionC} style={{ opacity: !credito.fechaNotificacionC ? 0.3 : 1 }} onClick={() => { if (!credito.fechaNotificacionC) return; if (!credito.fechaPagoC) { abrirPagoCreditoModal(credito); return; } const a = { ...credito }; a.fechaPagoC = ''; a.fechaFacturacionC = ''; a.abonos = []; a.estado = 'Activo'; actualizarCredito(a); }}><DollarSign size={13}/></button>
+                              <button className={`proceso-icon facturado ${credito.fechaFacturacionC ? 'done' : ''}`} disabled={!credito.fechaPagoC} style={{ opacity: !credito.fechaPagoC ? 0.3 : 1 }} onClick={() => { if (!credito.fechaPagoC) return; const a = { ...credito }; if (!a.fechaFacturacionC) a.fechaFacturacionC = new Date().toISOString().split('T')[0]; else a.fechaFacturacionC = ''; actualizarCredito(a); }}><DollarSign size={13}/></button>
                             </div>
                           </td>
                           <td>{new Date(credito.fechaInicio).toLocaleDateString('es-DO')}</td>
@@ -3129,9 +3130,9 @@ export default function App() {
                           <td><span className={`badge badge-${(credito.estado||'').toLowerCase().replace(/ /g, '-')}`}>{credito.estado}</span></td>
                           <td>
                             <div className="action-btns">
-                              {credito.estado !== 'Pagado' && <button className="btn-icon" onClick={() => { const a = { ...credito, estado: 'Pagado', historial: [...(credito.historial || []), { fecha: new Date().toISOString(), accion: 'Marcado como Pagado' }] }; actualizarCredito(a); }} title="Marcar Pagado">✅</button>}
-                              <button className="btn-icon" onClick={() => abrirCreditoModal(credito)} title="Editar">✏️</button>
-                              <button className="btn-icon" onClick={() => eliminarCredito(credito.id)} title="Eliminar">🗑️</button>
+                              {credito.estado !== 'Pagado' && <button className="btn-icon" onClick={() => { const a = { ...credito, estado: 'Pagado', historial: [...(credito.historial || []), { fecha: new Date().toISOString(), accion: 'Marcado como Pagado' }] }; actualizarCredito(a); }} title="Marcar Pagado"><CheckCircle size={13}/></button>}
+                              <button className="btn-icon" onClick={() => abrirCreditoModal(credito)} title="Editar"><Pencil size={13}/></button>
+                              <button className="btn-icon" onClick={() => eliminarCredito(credito.id)} title="Eliminar"><Trash2 size={13}/></button>
                             </div>
                           </td>
                         </tr>
@@ -3148,14 +3149,14 @@ export default function App() {
             <div style={{ padding: '1.5rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: '1.2rem', color: 'var(--text)' }}>✅ Validar Pagos</div>
+                  <div style={{ fontWeight: 800, fontSize: '1.2rem', color: 'var(--text)', display:'flex', alignItems:'center', gap:'0.4rem' }}><CheckCircle size={18}/> Validar Pagos</div>
                   <div style={{ fontSize: '0.82rem', color: '#64748b' }}>{pagosPendientes.length} pago(s) pendiente(s) de validación</div>
                 </div>
-                <button onClick={cargarPagosPendientes} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}>🔄 Actualizar</button>
+                <button onClick={cargarPagosPendientes} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem', display:'flex', alignItems:'center', gap:'0.3rem' }}><RefreshCw size={13}/> Actualizar</button>
               </div>
               {pagosPendientes.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
-                  <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✅</div>
+                  <CheckCircle size={48} style={{ color:'#059669', marginBottom: '1rem' }}/>
                   <div style={{ fontWeight: 700, fontSize: '1rem' }}>No hay pagos pendientes</div>
                   <div style={{ fontSize: '0.85rem' }}>Todos los pagos han sido validados</div>
                 </div>
@@ -3195,9 +3196,9 @@ export default function App() {
                               </div>
                             ) : (
                               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                                <button onClick={() => validarPago(pago.id, 'aprobar')} style={{ padding: '0.35rem 0.8rem', borderRadius: '6px', border: 'none', background: '#059669', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '0.78rem' }}>✅ Aprobar</button>
-                                <button onClick={() => setPagoRechazandoId(pago.id)} style={{ padding: '0.35rem 0.8rem', borderRadius: '6px', border: 'none', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '0.78rem' }}>❌ Rechazar</button>
-                                {esAdmin && <button onClick={async () => { if (!confirm('¿Eliminar este pago?')) return; await fetch(`/api/pagos?id=${pago.id}`, { method: 'DELETE' }); cargarPagosPendientes(); showToast('Pago eliminado', 'success'); }} style={{ padding: '0.35rem 0.8rem', borderRadius: '6px', border: 'none', background: '#64748b', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '0.78rem' }}>🗑️</button>}
+                                <button onClick={() => validarPago(pago.id, 'aprobar')} style={{ padding: '0.35rem 0.8rem', borderRadius: '6px', border: 'none', background: '#059669', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '0.78rem', display:'flex', alignItems:'center', gap:'0.3rem' }}><CheckCircle size={13}/> Aprobar</button>
+                                <button onClick={() => setPagoRechazandoId(pago.id)} style={{ padding: '0.35rem 0.8rem', borderRadius: '6px', border: 'none', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '0.78rem', display:'flex', alignItems:'center', gap:'0.3rem' }}><XCircle size={13}/> Rechazar</button>
+                                {esAdmin && <button onClick={async () => { if (!confirm('¿Eliminar este pago?')) return; await fetch(`/api/pagos?id=${pago.id}`, { method: 'DELETE' }); cargarPagosPendientes(); showToast('Pago eliminado', 'success'); }} style={{ padding: '0.35rem 0.8rem', borderRadius: '6px', border: 'none', background: '#64748b', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '0.78rem' }}><Trash2 size={13}/></button>}
                               </div>
                             )}
                           </td>
@@ -3239,7 +3240,7 @@ export default function App() {
                       fetch('/api/historial-conciliaciones', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ mes_key: new Date().toISOString().slice(0,7), datos: conciliacion }) }).catch(()=>{});
                       showToast('Conciliación guardada en historial', 'success');
                     }} style={{ display:'flex', alignItems:'center', gap:'0.5rem', padding:'0.6rem 1rem', background:'#059669', color:'white', borderRadius:'9px', fontSize:'0.84rem', fontWeight:600, cursor:'pointer', border:'none' }}>
-                      💾 Guardar Conciliación
+                      <Save size={13}/> Guardar Conciliación
                     </button>
                   )}
                   <label style={{ display:'flex', alignItems:'center', gap:'0.6rem', padding:'0.6rem 1rem', background:'var(--brand)', color:'white', borderRadius:'9px', fontSize:'0.84rem', fontWeight:600, cursor:'pointer' }}>
@@ -3375,7 +3376,7 @@ export default function App() {
                       <div style={{ width:'1px', height:'20px', background:'var(--border)' }}></div>
                       {['todos','conciliado','pendiente'].map(f => (
                         <button key={f} onClick={() => setBancoFiltro(f)} style={{ padding:'0.3rem 0.75rem', borderRadius:'6px', fontSize:'0.75rem', fontWeight:600, cursor:'pointer', background: bancoFiltro === f ? 'var(--brand)' : 'var(--surface-2)', color: bancoFiltro === f ? 'white' : 'var(--text-muted)', border:'1px solid var(--border)' }}>
-                          {f === 'todos' ? 'Todos' : f === 'conciliado' ? '✅ Conciliados' : '⚠️ Pendientes'}
+                          {f === 'todos' ? 'Todos' : f === 'conciliado' ? <><CheckCircle size={12}/> Conciliados</> : <><AlertTriangle size={12}/> Pendientes</>}
                         </button>
                       ))}
                     </div>
@@ -3407,7 +3408,7 @@ export default function App() {
                             <td style={{ padding:'0.6rem 0.9rem', fontFamily:'var(--mono)', color:'#059669', fontWeight:600 }}>{m.credito > 0 ? `$${m.credito.toLocaleString('en-US', { maximumFractionDigits:0 })}` : ''}</td>
                             <td style={{ padding:'0.6rem 0.9rem' }}>
                               <span style={{ padding:'0.2rem 0.6rem', borderRadius:'5px', fontSize:'0.7rem', fontWeight:700, background: m.conciliado ? 'rgba(5,150,105,0.1)' : 'rgba(220,38,38,0.1)', color: m.conciliado ? '#059669' : '#dc2626' }}>
-                                {m.conciliado ? (m.confianza === 'alto' ? '✅ Alto' : '🔶 Medio') : '⚠️ Pendiente'}
+                                {m.conciliado ? (m.confianza === 'alto' ? <><CheckCircle size={12}/> Alto</> : <><AlertTriangle size={12}/> Medio</>) : <><AlertTriangle size={12}/> Pendiente</>}
                               </span>
                             </td>
                             <td style={{ padding:'0.6rem 0.9rem', fontSize:'0.78rem', color:'var(--text-muted)' }}>
@@ -3607,9 +3608,9 @@ export default function App() {
                                 <td style={{ fontSize: '0.82rem' }}>{d.endDate}</td>
                                 <td>
                                   <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
-                                    {d.permisos.can_edit && <span style={{ fontSize: '0.65rem', background: '#dcfce7', color: '#166534', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>✏️ Editar</span>}
-                                    {d.permisos.can_register_payments && <span style={{ fontSize: '0.65rem', background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>💰 Pagos</span>}
-                                    {d.permisos.can_delete && <span style={{ fontSize: '0.65rem', background: '#fee2e2', color: '#991b1b', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>🗑️ Eliminar</span>}
+                                    {d.permisos.can_edit && <span style={{ fontSize: '0.65rem', background: '#dcfce7', color: '#166534', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700, display:'inline-flex', alignItems:'center', gap:'0.2rem' }}><Pencil size={10}/> Editar</span>}
+                                    {d.permisos.can_register_payments && <span style={{ fontSize: '0.65rem', background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700, display:'inline-flex', alignItems:'center', gap:'0.2rem' }}><DollarSign size={10}/> Pagos</span>}
+                                    {d.permisos.can_delete && <span style={{ fontSize: '0.65rem', background: '#fee2e2', color: '#991b1b', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700, display:'inline-flex', alignItems:'center', gap:'0.2rem' }}><Trash2 size={10}/> Eliminar</span>}
                                   </div>
                                 </td>
                                 <td><span style={{ fontSize: '0.75rem', fontWeight: 700, background: statusColors[d.status] + '20', color: statusColors[d.status], padding: '0.2rem 0.6rem', borderRadius: '20px' }}>{statusLabels[d.status] || d.status}</span></td>
@@ -3666,10 +3667,10 @@ export default function App() {
                               {d.startDate} → {d.endDate}
                             </div>
                             <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
-                              {d.permisos.can_edit && <span style={{ fontSize: '0.65rem', background: '#dcfce7', color: '#166534', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>✏️ Editar</span>}
-                              {d.permisos.can_register_payments && <span style={{ fontSize: '0.65rem', background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>💰 Pagos</span>}
-                              {d.permisos.can_delete && <span style={{ fontSize: '0.65rem', background: '#fee2e2', color: '#991b1b', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>🗑️ Eliminar</span>}
-                              {d.permisos.read_only || (!d.permisos.can_edit && !d.permisos.can_register_payments && !d.permisos.can_delete) && <span style={{ fontSize: '0.65rem', background: 'var(--surface2)', color: 'var(--text-muted)', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700 }}>👁 Solo lectura</span>}
+                              {d.permisos.can_edit && <span style={{ fontSize: '0.65rem', background: '#dcfce7', color: '#166534', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700, display:'inline-flex', alignItems:'center', gap:'0.2rem' }}><Pencil size={10}/> Editar</span>}
+                              {d.permisos.can_register_payments && <span style={{ fontSize: '0.65rem', background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700, display:'inline-flex', alignItems:'center', gap:'0.2rem' }}><DollarSign size={10}/> Pagos</span>}
+                              {d.permisos.can_delete && <span style={{ fontSize: '0.65rem', background: '#fee2e2', color: '#991b1b', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700, display:'inline-flex', alignItems:'center', gap:'0.2rem' }}><Trash2 size={10}/> Eliminar</span>}
+                              {d.permisos.read_only || (!d.permisos.can_edit && !d.permisos.can_register_payments && !d.permisos.can_delete) && <span style={{ fontSize: '0.65rem', background: 'var(--surface2)', color: 'var(--text-muted)', padding: '0.1rem 0.4rem', borderRadius: '9px', fontWeight: 700, display:'inline-flex', alignItems:'center', gap:'0.2rem' }}><Eye size={10}/> Solo lectura</span>}
                             </div>
                             {d.status === 'accepted' && (
                               <button onClick={() => { setFiltroAgente(currentUser); setActiveTab('cartera'); }} style={{ marginTop: '0.75rem', width: '100%', padding: '0.45rem', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}>
@@ -3738,7 +3739,7 @@ export default function App() {
             <div className="modal-content" style={{ maxWidth: '620px', width: '95vw', padding: 0, borderRadius: '16px', overflow: 'hidden' }}>
               <div style={{ background: 'linear-gradient(135deg, #1e2d4a 0%, #2d4170 100%)', padding: '1.25rem 1.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#fff' }}>{editingCliente ? '✏️ Editar Cliente' : '➕ Nuevo Cliente'}</h2>
+                  <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#fff', display:'flex', alignItems:'center', gap:'0.4rem' }}>{editingCliente ? <><Pencil size={15}/> Editar Cliente</> : <><Plus size={15}/> Nuevo Cliente</>}</h2>
                   {editingCliente && <div style={{ fontSize: '0.75rem', color: '#93c5fd', marginTop: '0.2rem' }}>ID #{formData.id} · Código {formData.codigoCliente || '—'}</div>}
                 </div>
                 <button className="close-btn" onClick={cerrarModal} style={{ color: '#fff', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
@@ -3780,12 +3781,12 @@ export default function App() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                     <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b' }}>Monto</label>
                     <label style={{ cursor: pdfCargando ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.25rem 0.7rem', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, color: '#475569', userSelect: 'none' }}>
-                      {pdfCargando ? '⏳ Leyendo PDF…' : '📄 Leer desde factura PDF'}
+                      {pdfCargando ? <><Loader2 size={12}/> Leyendo PDF…</> : <><FileText size={12}/> Leer desde factura PDF</>}
                       <input type="file" accept=".pdf,application/pdf" style={{ display: 'none' }} disabled={pdfCargando} onChange={e => { if (e.target.files[0]) leerFacturaPDF(e.target.files[0]); e.target.value = ''; }} />
                     </label>
                   </div>
                   <input type="number" value={formData.monto} onChange={(e) => setFormData({ ...formData, monto: e.target.value })} step="0.01" placeholder="Ej: 5000" style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '1rem', fontWeight: 700, boxSizing: 'border-box', background: '#fff' }} />
-                  {pdfError && <div style={{ fontSize: '0.73rem', color: '#dc2626', marginTop: '0.4rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '0.4rem 0.6rem' }}>⚠️ {pdfError}</div>}
+                  {pdfError && <div style={{ fontSize: '0.73rem', color: '#dc2626', marginTop: '0.4rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '0.4rem 0.6rem', display:'flex', alignItems:'center', gap:'0.3rem' }}><AlertTriangle size={12}/> {pdfError}</div>}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div className="form-group" style={{ margin: 0 }}>
@@ -3835,7 +3836,7 @@ export default function App() {
                 )}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid #e2e8f0', marginTop: '0.5rem' }}>
                   <button type="button" onClick={cerrarModal} style={{ padding: '0.65rem 1.5rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#64748b', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer' }}>Cancelar</button>
-                  <button type="submit" style={{ padding: '0.65rem 1.75rem', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #1e2d4a, #2d4170)', color: '#fff', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer' }}>{editingCliente ? '💾 Actualizar' : '➕ Guardar'}</button>
+                  <button type="submit" style={{ padding: '0.65rem 1.75rem', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #1e2d4a, #2d4170)', color: '#fff', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', display:'flex', alignItems:'center', gap:'0.4rem' }}>{editingCliente ? <><Save size={14}/> Actualizar</> : <><Plus size={14}/> Guardar</>}</button>
                 </div>
               </form>
             </div>
@@ -3850,7 +3851,7 @@ export default function App() {
                 <div className="form-group autocomplete-container">
                   <label>Cliente *</label>
                   <input type="text" value={creditoFormData.cliente} onChange={(e) => manejarCambioCliente(e.target.value)} onKeyDown={manejarTecladoAutocomplete} placeholder="Escribe el nombre del cliente..." autoComplete="off" required />
-                  <small style={{ color: '#64748b', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>💡 Escribe para ver sugerencias</small>
+                  <small style={{ color: '#64748b', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block', display:'flex', alignItems:'center', gap:'0.3rem' }}><Info size={12}/> Escribe para ver sugerencias</small>
                   {mostrarAutocomplete && clientesFiltradosAuto.length > 0 && <div className="autocomplete-dropdown">{clientesFiltradosAuto.map((cliente, index) => <div key={cliente.id} className={`autocomplete-item ${index === selectedAutoIndex ? 'selected' : ''}`} onClick={() => seleccionarClienteAutocomplete(cliente)} onMouseEnter={() => setSelectedAutoIndex(index)}><span className="cliente-nombre">{cliente.nombre}</span><span className="cliente-id">ID: {cliente.id}</span></div>)}</div>}
                 </div>
                 <div className="form-group"><label>Monto del Crédito *</label><input type="number" value={creditoFormData.monto} onChange={(e) => setCreditoFormData({ ...creditoFormData, monto: e.target.value })} step="0.01" required /></div>
@@ -3858,16 +3859,16 @@ export default function App() {
                   <div className="form-group"><label>Fecha de Inicio *</label><input type="date" value={creditoFormData.fechaInicio} onChange={(e) => { const nd = { ...creditoFormData, fechaInicio: e.target.value }; if (nd.fechaVencimiento) { const i = new Date(e.target.value); const f = new Date(nd.fechaVencimiento); nd.plazoMeses = Math.max(1, ((f.getFullYear() - i.getFullYear()) * 12) + (f.getMonth() - i.getMonth())).toString(); } setCreditoFormData(nd); }} required /></div>
                   <div className="form-group"><label>Fecha de Vencimiento *</label><input type="date" value={creditoFormData.fechaVencimiento} onChange={(e) => { const nd = { ...creditoFormData, fechaVencimiento: e.target.value }; if (nd.fechaInicio) { const i = new Date(nd.fechaInicio); const f = new Date(e.target.value); nd.plazoMeses = Math.max(1, ((f.getFullYear() - i.getFullYear()) * 12) + (f.getMonth() - i.getMonth())).toString(); } setCreditoFormData(nd); }} required /></div>
                 </div>
-                {creditoFormData.fechaInicio && creditoFormData.fechaVencimiento && <div style={{ padding: '0.9rem', background: 'rgba(0,212,170,0.08)', border: '1px solid rgba(0,212,170,0.2)', borderRadius: '10px', marginBottom: '1rem', fontSize: '0.88rem', fontWeight: 600, color: '#64748b' }}>⏱ Plazo calculado: <span style={{ color: '#0ea5e9', fontWeight: 800, fontSize: '1.1rem' }}>{creditoFormData.plazoMeses || '0'} {creditoFormData.plazoMeses === '1' ? 'mes' : 'meses'}</span></div>}
+                {creditoFormData.fechaInicio && creditoFormData.fechaVencimiento && <div style={{ padding: '0.9rem', background: 'rgba(0,212,170,0.08)', border: '1px solid rgba(0,212,170,0.2)', borderRadius: '10px', marginBottom: '1rem', fontSize: '0.88rem', fontWeight: 600, color: '#64748b', display:'flex', alignItems:'center', gap:'0.3rem' }}><Clock size={14}/> Plazo calculado: <span style={{ color: '#0ea5e9', fontWeight: 800, fontSize: '1.1rem' }}>{creditoFormData.plazoMeses || '0'} {creditoFormData.plazoMeses === '1' ? 'mes' : 'meses'}</span></div>}
                 <div className="form-group"><label>Estado *</label><select value={creditoFormData.estado} onChange={(e) => setCreditoFormData({ ...creditoFormData, estado: e.target.value })} required>{['Activo','Por Vencer','Vencido','Pagado'].map(e => <option key={e} value={e}>{e}</option>)}</select></div>
                 <div className="form-group"><label>Comentario</label><textarea value={creditoFormData.comentario} onChange={(e) => setCreditoFormData({ ...creditoFormData, comentario: e.target.value })} /></div>
                 {creditoFormData.monto && parseFloat(creditoFormData.monto) > 0 && (
                   <div className="abonos-section">
-                    <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem' }}>💰 Abonos</h3>
+                    <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem', display:'flex', alignItems:'center', gap:'0.4rem' }}><DollarSign size={15}/> Abonos</h3>
                     <div className="saldo-info">
                       {[['Total', 'total', '#0284c7'], ['Abonado', 'abonado', '#059669'], ['Pendiente', 'pendiente', '#f97316']].map(([label, key, color]) => { const s = calcularSaldosCredito(creditoFormData.monto, creditoFormData.abonos); return <div key={key} className="saldo-item"><label>{label}</label><div className="valor" style={{ color }}>${s[key].toFixed(2)}</div></div>; })}
                     </div>
-                    <div className="abono-input-group"><input type="number" value={nuevoAbono} onChange={(e) => setNuevoAbono(e.target.value)} placeholder="Monto del abono..." step="0.01" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); agregarAbono(); } }} /><button type="button" onClick={agregarAbono}>➕ Agregar</button></div>
+                    <div className="abono-input-group"><input type="number" value={nuevoAbono} onChange={(e) => setNuevoAbono(e.target.value)} placeholder="Monto del abono..." step="0.01" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); agregarAbono(); } }} /><button type="button" onClick={agregarAbono} style={{display:'flex',alignItems:'center',gap:'0.3rem'}}><Plus size={13}/> Agregar</button></div>
                     {creditoFormData.abonos && creditoFormData.abonos.length > 0 && creditoFormData.abonos.map(abono => <div key={abono.id} className="abono-item"><div><div className="abono-monto">${abono.monto.toFixed(2)}</div><div className="abono-fecha">{abono.fechaFormato}</div></div><button type="button" onClick={() => eliminarAbono(abono.id)}>✕</button></div>)}
                   </div>
                 )}
@@ -3930,11 +3931,11 @@ export default function App() {
                   <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Plantillas</div>
                   <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                     {[
-                      { label: '💰 Cobro', msg: `Hola ${whatsappCliente.nombre}, le recordamos que tiene un saldo pendiente de *$${(parseFloat(whatsappCliente.monto)||0).toLocaleString('en-US')}*. Por favor gestione su pago. Gracias.` },
-                      { label: '⏰ Recordatorio', msg: `Hola ${whatsappCliente.nombre}, le contactamos para recordarle sobre su cuenta con estado *${whatsappCliente.estado}*. Quedamos atentos.` },
-                      { label: '✅ Confirmación', msg: `Hola ${whatsappCliente.nombre}, confirmamos la recepción de su pago. Gracias por su gestión.` },
-                      { label: '👋 Bienvenida', msg: `Hola ${whatsappCliente.nombre}, bienvenido a nuestros servicios. Estamos a su disposición para cualquier consulta.` },
-                    ].map(t => <button key={t.label} onClick={() => setWhatsappMensaje(t.msg)} style={{ padding: '0.35rem 0.75rem', borderRadius: '7px', border: '1px solid var(--border2)', background: 'var(--surface2)', color: 'var(--text)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}>{t.label}</button>)}
+                      { icon: <DollarSign size={11}/>, label: 'Cobro', msg: `Hola ${whatsappCliente.nombre}, le recordamos que tiene un saldo pendiente de *$${(parseFloat(whatsappCliente.monto)||0).toLocaleString('en-US')}*. Por favor gestione su pago. Gracias.` },
+                      { icon: <Clock size={11}/>, label: 'Recordatorio', msg: `Hola ${whatsappCliente.nombre}, le contactamos para recordarle sobre su cuenta con estado *${whatsappCliente.estado}*. Quedamos atentos.` },
+                      { icon: <CheckCircle size={11}/>, label: 'Confirmación', msg: `Hola ${whatsappCliente.nombre}, confirmamos la recepción de su pago. Gracias por su gestión.` },
+                      { label: 'Bienvenida', msg: `Hola ${whatsappCliente.nombre}, bienvenido a nuestros servicios. Estamos a su disposición para cualquier consulta.` },
+                    ].map(t => <button key={t.label} onClick={() => setWhatsappMensaje(t.msg)} style={{ padding: '0.35rem 0.75rem', borderRadius: '7px', border: '1px solid var(--border2)', background: 'var(--surface2)', color: 'var(--text)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', display:'flex', alignItems:'center', gap:'0.35rem' }}>{t.icon}{t.label}</button>)}
                   </div>
                 </div>
                 <div className="form-group">
@@ -3943,7 +3944,7 @@ export default function App() {
                 </div>
                 <div className="form-actions">
                   <button className="btn btn-secondary" onClick={() => setShowWhatsappModal(false)}>Cancelar</button>
-                  <button className="btn btn-success" onClick={enviarWhatsapp}>🟢 Enviar por WhatsApp</button>
+                  <button className="btn btn-success" onClick={enviarWhatsapp}><MessageSquare size={13}/> Enviar por WhatsApp</button>
                 </div>
               </div>
             </div>
@@ -3954,7 +3955,7 @@ export default function App() {
             <div className="modal show">
               <div className="modal-content" style={{ maxWidth: '460px' }}>
                 <div className="modal-header">
-                  <h2>📥 Importar Clientes desde Excel</h2>
+                  <h2><Download size={15}/> Importar Clientes desde Excel</h2>
                   <button className="close-btn" onClick={() => setShowImportModal(false)}>×</button>
                 </div>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: '1.25rem' }}>El archivo Excel debe tener estas columnas:</p>
@@ -3962,7 +3963,7 @@ export default function App() {
                   ID | Nombre | Contacto | Estado | Mes | Año | Monto | Comentario
                 </div>
                 <div style={{ textAlign: 'center', padding: '1.5rem', border: '2px dashed var(--border2)', borderRadius: '12px' }}>
-                  <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📂</div>
+                  <div style={{ marginBottom: '0.5rem', color: 'var(--text-muted)' }}><FolderOpen size={40}/></div>
                   <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.9rem' }}>Selecciona tu archivo Excel</p>
                   <label style={{ padding: '0.65rem 1.5rem', background: 'var(--accent)', color: 'white', borderRadius: '9px', cursor: 'pointer', fontWeight: 700, fontSize: '0.88rem' }}>
                     Elegir archivo
@@ -4020,7 +4021,7 @@ export default function App() {
                       <tbody>
                         {pagos.length === 0 ? (
                           <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2.5rem', color: '#94a3b8' }}>
-                            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>💸</div>
+                            <div style={{ marginBottom: '0.5rem' }}><DollarSign size={32}/></div>
                             <p>No hay pagos registrados aún.</p>
                           </td></tr>
                         ) : (
@@ -4036,7 +4037,7 @@ export default function App() {
                                 <td style={{ padding: '0.6rem 0.8rem', textAlign: 'right', color: '#059669', fontWeight: 700, fontFamily: 'monospace' }}>-${monto.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
                                 <td style={{ padding: '0.6rem 0.8rem', textAlign: 'right', fontWeight: 700, fontFamily: 'monospace', color: balance < 0 ? '#dc2626' : '#059669' }}>${balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
                                 <td style={{ padding: '0.6rem 0.8rem', textAlign: 'center' }}>
-                                  <button onClick={() => generarReciboPDF(historialPagosCliente, pago)} title="Descargar recibo" style={{ padding: '0.2rem 0.5rem', borderRadius: '6px', border: '1px solid #bae6fd', background: '#f0f9ff', color: '#0284c7', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>📄</button>
+                                  <button onClick={() => generarReciboPDF(historialPagosCliente, pago)} title="Descargar recibo" style={{ padding: '0.2rem 0.5rem', borderRadius: '6px', border: '1px solid #bae6fd', background: '#f0f9ff', color: '#0284c7', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}><FileText size={12}/></button>
                                 </td>
                               </tr>
                             );
@@ -4047,7 +4048,7 @@ export default function App() {
                   </div>
                   <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', background: '#f8fafc' }}>
                     <button className="btn btn-secondary" onClick={() => setShowHistorialPagosModal(false)}>Cerrar</button>
-                    <button className="btn btn-success" onClick={() => { setShowHistorialPagosModal(false); setPagoClienteTarget(historialPagosCliente); setShowPagoModal(true); }}>💰 Agregar Pago</button>
+                    <button className="btn btn-success" onClick={() => { setShowHistorialPagosModal(false); setPagoClienteTarget(historialPagosCliente); setShowPagoModal(true); }}><DollarSign size={13}/> Agregar Pago</button>
                   </div>
                 </div>
               </div>
@@ -4140,20 +4141,20 @@ export default function App() {
           {/* Modal Nota */}
           <div className={`modal ${showNotaModal ? 'show' : ''}`}>
             <div className="nota-modal-content">
-              <div className="modal-header"><h2>💬 Nota del Cliente</h2><button className="close-btn" onClick={() => setShowNotaModal(false)}>✕</button></div>
+              <div className="modal-header"><h2><MessageCircle size={15}/> Nota del Cliente</h2><button className="close-btn" onClick={() => setShowNotaModal(false)}>✕</button></div>
               <p style={{ fontSize: '0.85rem', color: '#64748b' }}>{notaClienteId && clientes.find(c => c.id === notaClienteId)?.nombre}</p>
               <textarea value={notaTexto} onChange={(e) => setNotaTexto(e.target.value)} placeholder="Escribe una nota..." />
-              <div className="form-actions"><button className="btn btn-secondary" onClick={() => setShowNotaModal(false)}>Cancelar</button><button className="btn btn-success" onClick={guardarNota}>💾 Guardar</button></div>
+              <div className="form-actions"><button className="btn btn-secondary" onClick={() => setShowNotaModal(false)}>Cancelar</button><button className="btn btn-success" onClick={guardarNota}><Save size={13}/> Guardar</button></div>
             </div>
           </div>
 
           {/* Modal Guardar Mes */}
           <div className={`modal ${showDescargaMesModal ? 'show' : ''}`}>
             <div className="nota-modal-content">
-              <div className="modal-header"><h2>💾 Guardar y Descargar Mes</h2><button className="close-btn" onClick={() => setShowDescargaMesModal(false)}>✕</button></div>
+              <div className="modal-header"><h2><Save size={15}/> Guardar y Descargar Mes</h2><button className="close-btn" onClick={() => setShowDescargaMesModal(false)}>✕</button></div>
               <p style={{ fontSize: '0.88rem', color: '#64748b', marginBottom: '1.5rem' }}>Selecciona el formato de descarga:</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <button className="btn btn-primary" onClick={descargarMesExcel} style={{ width: '100%', justifyContent: 'center' }}>📊 Descargar en Excel</button>
+                <button className="btn btn-primary" onClick={descargarMesExcel} style={{ width: '100%', justifyContent: 'center' }}><BarChart2 size={13}/> Descargar en Excel</button>
               </div>
               <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '1rem', textAlign: 'center' }}>El mes se guardará en el historial automáticamente</p>
             </div>
@@ -4169,7 +4170,7 @@ export default function App() {
               <div className="modal show" style={{ zIndex: 100000 }}>
                 <div className="modal-content" style={{ maxWidth: '480px', border: '2px solid #f97316' }}>
                   <div className="modal-header" style={{ background: 'linear-gradient(135deg, #fff7ed, #ffedd5)', borderRadius: '12px 12px 0 0' }}>
-                    <h2 style={{ fontSize: '1.1rem', color: '#c2410c' }}>📥 Solicitud de Delegación</h2>
+                    <h2 style={{ fontSize: '1.1rem', color: '#c2410c' }}><Inbox size={15}/> Solicitud de Delegación</h2>
                     {delegationsPendientes.length > 1 && <span style={{ fontSize: '0.75rem', color: '#9a3412', fontWeight: 700 }}>{pendienteIdx + 1}/{delegationsPendientes.length}</span>}
                   </div>
                   <div style={{ padding: '1.25rem' }}>
@@ -4190,10 +4191,10 @@ export default function App() {
                     <div style={{ marginBottom: '1rem' }}>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.4rem' }}>Permisos que tendrás</div>
                       <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                        {d.permisos.can_edit && <span style={{ fontSize: '0.78rem', background: '#dcfce7', color: '#166534', padding: '0.2rem 0.6rem', borderRadius: '9px', fontWeight: 700 }}>✏️ Editar</span>}
-                        {d.permisos.can_register_payments && <span style={{ fontSize: '0.78rem', background: '#dbeafe', color: '#1e40af', padding: '0.2rem 0.6rem', borderRadius: '9px', fontWeight: 700 }}>💰 Pagos</span>}
-                        {d.permisos.can_delete && <span style={{ fontSize: '0.78rem', background: '#fee2e2', color: '#991b1b', padding: '0.2rem 0.6rem', borderRadius: '9px', fontWeight: 700 }}>🗑️ Eliminar</span>}
-                        {d.permisos.read_only || (!d.permisos.can_edit && !d.permisos.can_register_payments && !d.permisos.can_delete) && <span style={{ fontSize: '0.78rem', background: 'var(--surface2)', color: 'var(--text-muted)', padding: '0.2rem 0.6rem', borderRadius: '9px', fontWeight: 700 }}>👁 Solo lectura</span>}
+                        {d.permisos.can_edit && <span style={{ fontSize: '0.78rem', background: '#dcfce7', color: '#166534', padding: '0.2rem 0.6rem', borderRadius: '9px', fontWeight: 700, display:'inline-flex', alignItems:'center', gap:'0.3rem' }}><Pencil size={11}/> Editar</span>}
+                        {d.permisos.can_register_payments && <span style={{ fontSize: '0.78rem', background: '#dbeafe', color: '#1e40af', padding: '0.2rem 0.6rem', borderRadius: '9px', fontWeight: 700, display:'inline-flex', alignItems:'center', gap:'0.3rem' }}><DollarSign size={11}/> Pagos</span>}
+                        {d.permisos.can_delete && <span style={{ fontSize: '0.78rem', background: '#fee2e2', color: '#991b1b', padding: '0.2rem 0.6rem', borderRadius: '9px', fontWeight: 700, display:'inline-flex', alignItems:'center', gap:'0.3rem' }}><Trash2 size={11}/> Eliminar</span>}
+                        {d.permisos.read_only || (!d.permisos.can_edit && !d.permisos.can_register_payments && !d.permisos.can_delete) && <span style={{ fontSize: '0.78rem', background: 'var(--surface2)', color: 'var(--text-muted)', padding: '0.2rem 0.6rem', borderRadius: '9px', fontWeight: 700, display:'inline-flex', alignItems:'center', gap:'0.3rem' }}><Eye size={11}/> Solo lectura</span>}
                       </div>
                     </div>
                     <p style={{ margin: '0 0 1.25rem', fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
@@ -4201,7 +4202,7 @@ export default function App() {
                     </p>
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
                       <button className="btn btn-secondary" onClick={() => responderDelegacion(d.id, 'rechazar')} style={{ flex: 1 }}>Rechazar</button>
-                      <button className="btn btn-primary" onClick={() => responderDelegacion(d.id, 'aceptar')} style={{ flex: 1, background: '#10b981', border: 'none' }}>✅ Aceptar</button>
+                      <button className="btn btn-primary" onClick={() => responderDelegacion(d.id, 'aceptar')} style={{ flex: 1, background: '#10b981', border: 'none' }}><CheckCircle size={13}/> Aceptar</button>
                     </div>
                   </div>
                 </div>
@@ -4245,7 +4246,7 @@ export default function App() {
                         {['total', 'parcial'].map(t => (
                           <label key={t} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', padding: '0.6rem 1rem', border: `2px solid ${delegacionForm.tipo === t ? 'var(--accent)' : 'var(--border)'}`, borderRadius: '9px', flex: 1, fontWeight: 600, fontSize: '0.88rem', background: delegacionForm.tipo === t ? 'rgba(var(--accent-rgb),0.08)' : 'transparent' }}>
                             <input type="radio" name="tipo" value={t} checked={delegacionForm.tipo === t} onChange={() => setDelegacionForm(f => ({ ...f, tipo: t, clienteIds: [] }))} style={{ marginRight: '0.2rem' }} />
-                            {t === 'total' ? '📋 Total (todos mis clientes)' : '🎯 Parcial (seleccionar)'}
+                            {t === 'total' ? 'Total (todos mis clientes)' : 'Parcial (seleccionar)'}
                           </label>
                         ))}
                       </div>
@@ -4315,10 +4316,10 @@ export default function App() {
                   <div>
                     <p style={{ margin: '0 0 1rem', fontSize: '0.88rem', color: 'var(--text-muted)' }}>Configura los permisos del usuario delegado sobre tus clientes:</p>
                     {[
-                      { key: 'can_edit', label: '✏️ Puede editar datos del cliente', desc: 'Nombre, contacto, estado, monto, comentarios' },
-                      { key: 'can_register_payments', label: '💰 Puede registrar y eliminar pagos', desc: 'Gestión del historial de pagos' },
-                      { key: 'can_delete', label: '🗑️ Puede eliminar clientes', desc: 'Eliminación permanente (recomendado: desactivado)' },
-                      { key: 'read_only', label: '👁 Solo lectura', desc: 'Bloquea edición, pagos y eliminación — solo visualización' },
+                      { key: 'can_edit', label: 'Puede editar datos del cliente', desc: 'Nombre, contacto, estado, monto, comentarios' },
+                      { key: 'can_register_payments', label: 'Puede registrar y eliminar pagos', desc: 'Gestión del historial de pagos' },
+                      { key: 'can_delete', label: 'Puede eliminar clientes', desc: 'Eliminación permanente (recomendado: desactivado)' },
+                      { key: 'read_only', label: 'Solo lectura', desc: 'Bloquea edición, pagos y eliminación — solo visualización' },
                     ].map(p => (
                       <label key={p.key} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', border: `1px solid ${delegacionForm.permisos[p.key] ? 'var(--accent)' : 'var(--border)'}`, borderRadius: '9px', marginBottom: '0.5rem', cursor: 'pointer', background: delegacionForm.permisos[p.key] ? 'rgba(var(--accent-rgb),0.05)' : 'transparent' }}>
                         <input type="checkbox" checked={delegacionForm.permisos[p.key]} onChange={e => setDelegacionForm(f => ({ ...f, permisos: { ...f.permisos, [p.key]: e.target.checked } }))} />
@@ -4349,7 +4350,7 @@ export default function App() {
             <div className="modal show" style={{ zIndex: 99999 }}>
               <div className="modal-content" style={{ maxWidth: '420px' }}>
                 <div className="modal-header">
-                  <h2 style={{ fontSize: '1.1rem', color: '#dc2626' }}>⚠️ {confirmModal.titulo}</h2>
+                  <h2 style={{ fontSize: '1.1rem', color: '#dc2626', display:'flex', alignItems:'center', gap:'0.5rem' }}><AlertTriangle size={18}/> {confirmModal.titulo}</h2>
                   <button className="close-btn" onClick={cerrarConfirm}>×</button>
                 </div>
                 <div style={{ padding: '1.25rem 0', fontSize: '0.93rem', color: 'var(--text)', lineHeight: 1.6 }}>
@@ -4377,21 +4378,21 @@ export default function App() {
           <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowDocsModal(false); }}>
             <div className="modal-content" style={{ maxWidth: '560px' }}>
               <div className="modal-header">
-                <h2>📄 Documentos — {cliente.nombre}</h2>
+                <h2><FileText size={15}/> Documentos — {cliente.nombre}</h2>
                 <button className="close-btn" onClick={() => setShowDocsModal(false)}>×</button>
               </div>
 
               {/* Acciones principales */}
               <div style={{ display: 'flex', gap: '0.65rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-                {tienePermiso('subir_documentos') && <button className="btn btn-primary" onClick={() => { setShowDocsModal(false); abrirGenCotModal(cliente); }}>✏️ Generar Cotización</button>}
+                {tienePermiso('subir_documentos') && <button className="btn btn-primary" onClick={() => { setShowDocsModal(false); abrirGenCotModal(cliente); }}><Pencil size={13}/> Generar Cotización</button>}
                 {tienePermiso('subir_documentos') && <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
-                  📂 Subir PDF
+                  <FolderOpen size={13}/> Subir PDF
                   <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => { subirDocumento(docsClienteId, e.target.files[0]); e.target.value = ''; }} />
                 </label>}
-                {tienePermiso('subir_documentos') && <button className="btn btn-secondary" onClick={() => setNuevaCotForm(f => ({ ...f, show: !f.show, monto: '', estado: 'Cotizado' }))}>➕ Nueva Cotización</button>}
+                {tienePermiso('subir_documentos') && <button className="btn btn-secondary" onClick={() => setNuevaCotForm(f => ({ ...f, show: !f.show, monto: '', estado: 'Cotizado' }))}><Plus size={13}/> Nueva Cotización</button>}
                 {docs.filter(d => d.base64).length > 0 && (
                   <button className="btn btn-success" onClick={() => { setShowDocsModal(false); abrirNotifDocModal(cliente); }}>
-                    📤 Notificar con Documento
+                    <Send size={13}/> Notificar con Documento
                   </button>
                 )}
               </div>
@@ -4411,7 +4412,7 @@ export default function App() {
               {/* Lista de cotizaciones/documentos */}
               {docs.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)', border: '2px dashed var(--border)', borderRadius: '12px' }}>
-                  <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📭</div>
+                  <div style={{ marginBottom: '0.5rem', color: 'var(--text-muted)' }}><Inbox size={40}/></div>
                   <p style={{ fontWeight: 600 }}>Sin cotizaciones aún</p>
                   <p style={{ fontSize: '0.82rem', marginTop: '0.25rem' }}>Genera, sube un PDF o crea una cotización manual</p>
                 </div>
@@ -4422,7 +4423,7 @@ export default function App() {
                     const color = ESTADO_COLORS[doc.estado] || '#64748b';
                     return (
                       <div key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1rem', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '10px' }}>
-                        <div style={{ fontSize: '1.8rem', flexShrink: 0 }}>{doc.tipo === 'generado' ? '📋' : doc.tipo === 'manual' ? '📝' : doc.tipo === 'legacy' ? '🗂️' : '📄'}</div>
+                        <div style={{ flexShrink: 0, color: 'var(--text-muted)' }}>{doc.tipo === 'generado' ? <ClipboardList size={22}/> : doc.tipo === 'manual' ? <FileEdit size={22}/> : doc.tipo === 'legacy' ? <Archive size={22}/> : <FileText size={22}/>}</div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.nombre || (doc.tipo === 'manual' ? 'Cotización manual' : doc.tipo === 'legacy' ? 'Datos anteriores' : '—')}</div>
                           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
@@ -4434,8 +4435,8 @@ export default function App() {
                           {['Cotizado','Notificado','Pagado','Facturado','Vencido'].map(est => <option key={est} value={est}>{est}</option>)}
                         </select>
                         <div style={{ display: 'flex', gap: '0.3rem', flexShrink: 0 }}>
-                          {doc.base64 && <button onClick={() => descargarDocumento(doc)} className="btn btn-secondary" style={{ padding: '0.3rem 0.65rem', fontSize: '0.78rem' }}>⬇️</button>}
-                          <button onClick={() => eliminarDocumento(docsClienteId, doc.id)} style={{ width: '30px', height: '30px', borderRadius: '7px', border: '1px solid #fca5a5', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', fontSize: '0.82rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑️</button>
+                          {doc.base64 && <button onClick={() => descargarDocumento(doc)} className="btn btn-secondary" style={{ padding: '0.3rem 0.65rem', fontSize: '0.78rem' }}><Download size={13}/></button>}
+                          <button onClick={() => eliminarDocumento(docsClienteId, doc.id)} style={{ width: '30px', height: '30px', borderRadius: '7px', border: '1px solid #fca5a5', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Trash2 size={13}/></button>
                         </div>
                       </div>
                     );
@@ -4443,7 +4444,7 @@ export default function App() {
                 </div>
               )}
               <div style={{ marginTop: '1rem', fontSize: '0.73rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                💾 Documentos guardados localmente · Máx. recomendado: 3MB por archivo
+                <Save size={12}/> Documentos guardados localmente · Máx. recomendado: 3MB por archivo
               </div>
             </div>
           </div>
@@ -4455,7 +4456,7 @@ export default function App() {
         <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowGenCotModal(false); }}>
           <div className="modal-content" style={{ maxWidth: '600px' }}>
             <div className="modal-header">
-              <h2>✏️ Generar Cotización — {genCotCliente.nombre}</h2>
+              <h2><Pencil size={15}/> Generar Cotización — {genCotCliente.nombre}</h2>
               <button className="close-btn" onClick={() => setShowGenCotModal(false)}>×</button>
             </div>
 
@@ -4508,7 +4509,7 @@ export default function App() {
 
             <div className="form-actions">
               <button className="btn btn-secondary" onClick={() => setShowGenCotModal(false)}>Cancelar</button>
-              <button className="btn btn-primary" onClick={generarCotizacionPDF}>📄 Generar y Descargar PDF</button>
+              <button className="btn btn-primary" onClick={generarCotizacionPDF}><FileText size={13}/> Generar y Descargar PDF</button>
             </div>
           </div>
         </div>
@@ -4519,7 +4520,7 @@ export default function App() {
         <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowNotifDocModal(false); }}>
           <div className="modal-content" style={{ maxWidth: '500px' }}>
             <div className="modal-header">
-              <h2>📤 Notificar con Documento — {notifDocCliente.nombre}</h2>
+              <h2><Send size={15}/> Notificar con Documento — {notifDocCliente.nombre}</h2>
               <button className="close-btn" onClick={() => setShowNotifDocModal(false)}>×</button>
             </div>
 
@@ -4529,7 +4530,7 @@ export default function App() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '160px', overflowY: 'auto' }}>
                 {(cotizaciones[notifDocCliente.id] || []).map(doc => (
                   <div key={doc.id} onClick={() => setNotifDocSeleccionado(doc)} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.65rem 0.85rem', borderRadius: '9px', border: `2px solid ${notifDocSeleccionado?.id === doc.id ? 'var(--accent)' : 'var(--border)'}`, background: notifDocSeleccionado?.id === doc.id ? 'var(--accent-glow)' : 'var(--surface2)', cursor: 'pointer', transition: 'all 0.15s' }}>
-                    <span style={{ fontSize: '1.3rem' }}>{doc.tipo === 'generado' ? '📋' : '📄'}</span>
+                    <span style={{ color: 'var(--text-muted)' }}>{doc.tipo === 'generado' ? <ClipboardList size={18}/> : <FileText size={18}/>}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: '0.83rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.nombre}</div>
                       <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(doc.fecha).toLocaleDateString('es-DO')}{doc.monto && ` · $${parseFloat(doc.monto).toLocaleString('en-US',{maximumFractionDigits:2})}`}</div>
@@ -4548,7 +4549,7 @@ export default function App() {
 
             {/* Instrucción visual */}
             <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '9px', padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.8rem', color: '#78350f' }}>
-              <strong>📋 ¿Cómo funciona?</strong>
+              <strong><ClipboardList size={13}/> ¿Cómo funciona?</strong>
               <ol style={{ marginTop: '0.35rem', paddingLeft: '1.2rem', lineHeight: 1.7 }}>
                 <li>El PDF se <strong>descargará automáticamente</strong> a tu computadora</li>
                 <li>Se abrirá <strong>WhatsApp Web</strong> con el mensaje listo</li>
@@ -4559,10 +4560,10 @@ export default function App() {
             <div className="form-actions">
               <button className="btn btn-secondary" onClick={() => setShowNotifDocModal(false)}>Cancelar</button>
               <button className="btn btn-success" onClick={enviarNotifConDocumento} disabled={!notifDocSeleccionado || !notifDocCliente?.contacto}>
-                🟢 Descargar PDF y abrir WhatsApp
+                <MessageSquare size={13}/> Descargar PDF y abrir WhatsApp
               </button>
             </div>
-            {!notifDocCliente?.contacto && <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--danger)', marginTop: '0.5rem' }}>⚠️ Este cliente no tiene número de contacto registrado</div>}
+            {!notifDocCliente?.contacto && <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--danger)', marginTop: '0.5rem', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.35rem' }}><AlertTriangle size={13}/> Este cliente no tiene número de contacto registrado</div>}
           </div>
         </div>
       )}
@@ -4572,7 +4573,7 @@ export default function App() {
         <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowTagModal(false); }}>
           <div className="modal-content" style={{ maxWidth: '400px' }}>
             <div className="modal-header">
-              <h2>🏷️ Etiquetas — {clientes.find(c => c.id === tagClienteId)?.nombre}</h2>
+              <h2><Tag size={15}/> Etiquetas — {clientes.find(c => c.id === tagClienteId)?.nombre}</h2>
               <button className="close-btn" onClick={() => setShowTagModal(false)}>×</button>
             </div>
             <div style={{ marginBottom: '1rem' }}>
@@ -4653,10 +4654,10 @@ export default function App() {
                 </div>
 
                 <div style={{ marginBottom: '1.5rem' }}>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '0.75rem', paddingBottom: '0.4rem', borderBottom: '1px solid var(--border)' }}>🎨 Apariencia</div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '0.75rem', paddingBottom: '0.4rem', borderBottom: '1px solid var(--border)', display:'flex', alignItems:'center', gap:'0.4rem' }}><Palette size={11}/> Apariencia</div>
                   <div className="settings-row">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>🎨</div>
+                      <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Palette size={18}/></div>
                       <div><div className="settings-row-label">Color de acento</div><div className="settings-row-desc">Color principal de la interfaz</div></div>
                     </div>
                     <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -4668,7 +4669,7 @@ export default function App() {
                   </div>
                   <div className="settings-row">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>{darkMode ? '🌙' : '☀️'}</div>
+                      <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{darkMode ? <Moon size={18}/> : <Sun size={18}/>}</div>
                       <div><div className="settings-row-label">Modo oscuro</div><div className="settings-row-desc">{darkMode ? 'Tema oscuro activo' : 'Tema claro activo'}</div></div>
                     </div>
                     <div className="settings-toggle" onClick={() => setDarkMode(m => !m)} style={{ background: darkMode ? 'var(--brand)' : 'var(--border-2)' }}>
@@ -4687,10 +4688,10 @@ export default function App() {
                 </div>
 
                 <div style={{ marginBottom: '1.5rem' }}>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '0.75rem', paddingBottom: '0.4rem', borderBottom: '1px solid var(--border)' }}>🔔 Notificaciones</div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '0.75rem', paddingBottom: '0.4rem', borderBottom: '1px solid var(--border)', display:'flex', alignItems:'center', gap:'0.4rem' }}><Bell size={11}/> Notificaciones</div>
                   <div className="settings-row">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>⏰</div>
+                      <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Clock size={18}/></div>
                       <div><div className="settings-row-label">Alerta de créditos</div><div className="settings-row-desc">Alertar cuando falten N días o menos para vencer</div></div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -4701,10 +4702,10 @@ export default function App() {
                 </div>
 
                 <div style={{ marginBottom: '1.5rem' }}>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '0.75rem', paddingBottom: '0.4rem', borderBottom: '1px solid var(--border)' }}>🎯 Objetivos</div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '0.75rem', paddingBottom: '0.4rem', borderBottom: '1px solid var(--border)', display:'flex', alignItems:'center', gap:'0.4rem' }}><Target size={11}/> Objetivos</div>
                   <div className="settings-row">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>💰</div>
+                      <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: 'var(--surface-2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><DollarSign size={18}/></div>
                       <div><div className="settings-row-label">Meta mensual</div><div className="settings-row-desc">Objetivo de cobros del mes en curso</div></div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
@@ -4715,7 +4716,7 @@ export default function App() {
                 </div>
 
                 <div style={{ marginTop: '0.5rem' }}>
-                  <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => { setShowSettingsPanel(false); showToast('✅ Configuración guardada', 'success'); }}>Guardar cambios</button>
+                  <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => { setShowSettingsPanel(false); showToast('Configuración guardada', 'success'); }}>Guardar cambios</button>
                 </div>
               </>)}
 
@@ -4753,7 +4754,7 @@ export default function App() {
                 <div>
                   <div className="settings-content-header">
                     <div>
-                      <div className="settings-content-title">🔐 Permisos por Rol</div>
+                      <div className="settings-content-title" style={{display:'flex',alignItems:'center',gap:'0.5rem'}}><Lock size={14}/> Permisos por Rol</div>
                       <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>El admin siempre tiene acceso completo. Los cambios se aplican de inmediato.</div>
                     </div>
                     <button className="settings-close-btn" onClick={() => setShowSettingsPanel(false)}>×</button>
@@ -4824,12 +4825,12 @@ export default function App() {
                         if (r.ok) { setEmpresas(prev => prev.map(e => e.id === emp.id ? { ...e, nombre: nuevoNombre } : e)); showToast('Nombre actualizado', 'success'); }
                         else showToast('Error actualizando', 'error');
                       }} style={{ fontWeight:700, fontSize:'0.88rem', background:'transparent', border:'1px solid transparent', borderRadius:'5px', padding:'0.2rem 0.4rem', color:'var(--text)', width:'100%', cursor:'text' }} onFocus={e => e.target.style.borderColor='var(--brand)'} />
-                      <div style={{ fontSize:'0.72rem', color:'var(--text-muted)', paddingLeft:'0.4rem' }}>/{emp.slug} · ID: {emp.id} · {emp.activa ? '✅ Activa' : '⛔ Inactiva'}</div>
+                      <div style={{ fontSize:'0.72rem', color:'var(--text-muted)', paddingLeft:'0.4rem', display:'flex', alignItems:'center', gap:'0.3rem' }}>/{emp.slug} · ID: {emp.id} · {emp.activa ? <><CheckCircle size={11} style={{color:'#059669'}}/> Activa</> : <><Ban size={11} style={{color:'#dc2626'}}/> Inactiva</>}</div>
                     </div>
                     <div style={{ display:'flex', flexDirection:'column', gap:'0.4rem', alignItems:'flex-end' }}>
                       {emp.config?.logoUrl && <img src={emp.config.logoUrl} alt="logo" style={{ height:'32px', objectFit:'contain', borderRadius:'4px', marginBottom:'0.25rem' }} />}
                       <label style={{ fontSize:'0.72rem', padding:'0.25rem 0.6rem', borderRadius:'6px', border:'1px solid var(--brand)', background:'rgba(99,91,255,0.08)', color:'var(--brand)', cursor:'pointer', whiteSpace:'nowrap', fontWeight:600 }}>
-                        {emp.config?.logoUrl ? '🔄 Cambiar logo' : '🖼️ Subir logo'}
+                        {emp.config?.logoUrl ? <><RefreshCw size={11}/> Cambiar logo</> : <><FileText size={11}/> Subir logo</>}
                         <input type="file" accept="image/*" style={{ display:'none' }} onChange={async e => {
                           const file = e.target.files[0];
                           if (!file) return;
@@ -4943,8 +4944,8 @@ export default function App() {
                       placeholder={usuarioEditando ? 'Dejar vacío para no cambiar' : 'Mín. 8 chars, 1 mayúscula, 1 número'}
                       style={{ paddingRight:'2.5rem' }}
                     />
-                    <button type="button" onClick={() => setShowPassActual(v => !v)} style={{ position:'absolute', right:'0.5rem', top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', fontSize:'0.9rem' }}>
-                      {showPassActual ? '🙈' : '👁️'}
+                    <button type="button" onClick={() => setShowPassActual(v => !v)} style={{ position:'absolute', right:'0.5rem', top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)' }}>
+                      {showPassActual ? <EyeOff size={16}/> : <Eye size={16}/>}
                     </button>
                   </div>
                   {/* Indicadores de requisitos en tiempo real */}
@@ -4986,7 +4987,7 @@ export default function App() {
                     !!validarPassUI(usuarioForm.pass)
                   }
                 >
-                  {usuarioEditando ? '💾 Actualizar usuario' : '➕ Crear usuario'}
+                  {usuarioEditando ? <><Save size={13}/> Actualizar usuario</> : <><Plus size={13}/> Crear usuario</>}
                 </button>
               </div>
             </div>
@@ -5021,9 +5022,9 @@ export default function App() {
                     <div style={{ fontSize:'0.73rem', color:'var(--text-muted)' }}>{u.nombre || '—'}</div>
                   </div>
                   <div style={{ display:'flex', gap:'0.35rem' }}>
-                    <button onClick={() => editarUsuario(key)} style={{ padding:'0.25rem 0.6rem', border:'1px solid var(--border2)', borderRadius:'6px', background:'var(--surface2)', cursor:'pointer', fontSize:'0.78rem' }}>✏️</button>
+                    <button onClick={() => editarUsuario(key)} style={{ padding:'0.25rem 0.6rem', border:'1px solid var(--border2)', borderRadius:'6px', background:'var(--surface2)', cursor:'pointer' }}><Pencil size={13}/></button>
                     {key !== currentUser && (
-                      <button onClick={() => eliminarUsuario(key)} style={{ padding:'0.25rem 0.6rem', border:'1px solid #fca5a5', borderRadius:'6px', background:'#fee2e2', color:'#dc2626', cursor:'pointer', fontSize:'0.78rem' }}>🗑️</button>
+                      <button onClick={() => eliminarUsuario(key)} style={{ padding:'0.25rem 0.6rem', border:'1px solid #fca5a5', borderRadius:'6px', background:'#fee2e2', color:'#dc2626', cursor:'pointer' }}><Trash2 size={13}/></button>
                     )}
                   </div>
                 </div>
@@ -5037,7 +5038,7 @@ export default function App() {
                 <li><strong>Editor</strong> — puede crear, editar y eliminar clientes y créditos; sin acceso a usuarios ni auditoría</li>
                 <li><strong>Viewer</strong> — solo puede ver la información, sin modificar nada</li>
               </ul>
-              <div style={{ marginTop:'0.5rem', color:'#059669', fontWeight:600 }}>✅ Los usuarios se guardan en el servidor — cualquier computadora puede acceder con sus credenciales.</div>
+              <div style={{ marginTop:'0.5rem', color:'#059669', fontWeight:600, display:'flex', alignItems:'center', gap:'0.4rem' }}><CheckCircle size={14}/> Los usuarios se guardan en el servidor — cualquier computadora puede acceder con sus credenciales.</div>
             </div>
 
             <div className="form-actions">
@@ -5052,7 +5053,7 @@ export default function App() {
         <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowAuditModal(false); }}>
           <div className="modal-content" style={{ maxWidth: '820px' }}>
             <div className="modal-header">
-              <h2>🔍 Bitácora de Seguridad</h2>
+              <h2><Search size={15}/> Bitácora de Seguridad</h2>
               <button className="close-btn" onClick={() => setShowAuditModal(false)}>×</button>
             </div>
 
@@ -5065,7 +5066,7 @@ export default function App() {
                 placeholder="Filtrar por usuario, IP, acción..."
                 style={{ flex:1, padding:'0.5rem 0.8rem', border:'1px solid var(--border)', borderRadius:'8px', background:'var(--surface2)', color:'var(--text)', fontSize:'0.82rem' }}
               />
-              <button onClick={abrirAuditLog} className="btn btn-secondary" style={{ whiteSpace:'nowrap' }}>🔄 Actualizar</button>
+              <button onClick={abrirAuditLog} className="btn btn-secondary" style={{ whiteSpace:'nowrap' }}><RefreshCw size={13}/> Actualizar</button>
               <span style={{ fontSize:'0.75rem', color:'var(--text-muted)', whiteSpace:'nowrap' }}>
                 {auditLoading ? 'Cargando...' : `${auditEntries.length} registros`}
               </span>
@@ -5073,8 +5074,17 @@ export default function App() {
 
             {/* Leyenda */}
             <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap', marginBottom:'0.75rem', fontSize:'0.68rem' }}>
-              {[['🟢','Login OK','#dcfce7','#15803d'],['🔴','Login Fail','#fee2e2','#dc2626'],['➕','Creado','#eff6ff','#1d4ed8'],['✏️','Actualizado','#fef9c3','#92400e'],['🗑️','Eliminado','#fce7f3','#be185d'],['🚫','Acceso Denegado','#fef2f2','#991b1b'],['⛔','CSRF','#fef2f2','#7f1d1d'],['⏱️','Rate Limit','#fff7ed','#c2410c']].map(([ico,lbl,bg,col]) => (
-                <span key={lbl} style={{ background:bg, color:col, padding:'0.15rem 0.45rem', borderRadius:'6px', fontWeight:600 }}>{ico} {lbl}</span>
+              {[
+                { ico: <CheckCircle size={11}/>, lbl:'Login OK', bg:'#dcfce7', col:'#15803d' },
+                { ico: <XCircle size={11}/>, lbl:'Login Fail', bg:'#fee2e2', col:'#dc2626' },
+                { ico: <Plus size={11}/>, lbl:'Creado', bg:'#eff6ff', col:'#1d4ed8' },
+                { ico: <Pencil size={11}/>, lbl:'Actualizado', bg:'#fef9c3', col:'#92400e' },
+                { ico: <Trash2 size={11}/>, lbl:'Eliminado', bg:'#fce7f3', col:'#be185d' },
+                { ico: <Ban size={11}/>, lbl:'Acceso Denegado', bg:'#fef2f2', col:'#991b1b' },
+                { ico: <Ban size={11}/>, lbl:'CSRF', bg:'#fef2f2', col:'#7f1d1d' },
+                { ico: <Clock size={11}/>, lbl:'Rate Limit', bg:'#fff7ed', col:'#c2410c' },
+              ].map(({ ico, lbl, bg, col }) => (
+                <span key={lbl} style={{ background:bg, color:col, padding:'0.15rem 0.45rem', borderRadius:'6px', fontWeight:600, display:'inline-flex', alignItems:'center', gap:'0.25rem' }}>{ico} {lbl}</span>
               ))}
             </div>
 
@@ -5102,7 +5112,7 @@ export default function App() {
             </div>
 
             <div style={{ marginTop:'0.75rem', background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:'9px', padding:'0.65rem 1rem', fontSize:'0.75rem', color:'#166534' }}>
-              <strong>🔒 Información:</strong> Estos registros son de solo lectura. Cada acción queda registrada con fecha, hora, usuario e IP.
+              <strong style={{display:'inline-flex',alignItems:'center',gap:'0.3rem'}}><Lock size={12}/> Información:</strong> Estos registros son de solo lectura. Cada acción queda registrada con fecha, hora, usuario e IP.
               El archivo <code>data/audit.log</code> se guarda en el servidor y no puede ser alterado desde el sistema.
             </div>
 
@@ -5118,7 +5128,7 @@ export default function App() {
         <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowGestionModal(false); }}>
           <div className="modal-content" style={{ maxWidth: '500px' }}>
             <div className="modal-header">
-              <h2>📞 Registrar Gestión — {clientes.find(c=>c.id===gestionClienteId)?.nombre}</h2>
+              <h2><Phone size={15}/> Registrar Gestión — {clientes.find(c=>c.id===gestionClienteId)?.nombre}</h2>
               <button className="close-btn" onClick={() => setShowGestionModal(false)}>×</button>
             </div>
 
@@ -5128,7 +5138,7 @@ export default function App() {
                 <div style={{ fontSize:'0.72rem', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', marginBottom:'0.4rem' }}>Historial reciente</div>
                 {(gestiones[gestionClienteId]||[]).slice(0,5).map(g => (
                   <div key={g.id} style={{ display:'flex', gap:'0.6rem', alignItems:'flex-start', padding:'0.45rem 0', borderBottom:'1px solid var(--border)' }}>
-                    <span style={{ fontSize:'0.8rem' }}>{g.tipo==='Llamada'?'📞':g.tipo==='WhatsApp'?'💬':g.tipo==='Visita'?'🚗':g.tipo==='Email'?'📧':'📌'}</span>
+                    <span style={{ color:'var(--text-muted)' }}>{g.tipo==='Llamada'?<Phone size={14}/>:g.tipo==='WhatsApp'?<MessageCircle size={14}/>:g.tipo==='Visita'?<MapPin size={14}/>:g.tipo==='Email'?<Mail size={14}/>:<Pin size={14}/>}</span>
                     <div style={{ flex:1, minWidth:0 }}>
                       <span style={{ fontSize:'0.78rem', fontWeight:700, color: COLOR_RESULTADO[g.resultado]||'var(--text)' }}>{g.resultado}</span>
                       <span style={{ fontSize:'0.73rem', color:'var(--text-muted)', marginLeft:'0.4rem' }}>{new Date(g.fecha).toLocaleDateString('es-DO')}</span>
@@ -5158,12 +5168,12 @@ export default function App() {
               <textarea value={gestionNota} onChange={e => setGestionNota(e.target.value)} rows={2} placeholder="Ej: Dijo que paga el viernes, comunicarse el lunes..." />
             </div>
             <div className="form-group">
-              <label>📅 Próximo seguimiento (opcional)</label>
+              <label style={{display:'flex',alignItems:'center',gap:'0.4rem'}}><Calendar size={13}/> Próximo seguimiento (opcional)</label>
               <input type="date" value={gestionProximaFecha} onChange={e => setGestionProximaFecha(e.target.value)} min={new Date().toISOString().split('T')[0]} />
             </div>
             <div className="form-actions">
               <button className="btn btn-secondary" onClick={() => setShowGestionModal(false)}>Cancelar</button>
-              <button className="btn btn-primary" onClick={guardarGestion}>✅ Guardar Gestión</button>
+              <button className="btn btn-primary" onClick={guardarGestion}><CheckCircle size={13}/> Guardar Gestión</button>
             </div>
           </div>
         </div>
@@ -5174,7 +5184,7 @@ export default function App() {
         <div className="modal show" onClick={e => { if (e.target === e.currentTarget && !waMasivoActivo) { setShowWaMasivoModal(false); } }}>
           <div className="modal-content" style={{ maxWidth: '560px' }}>
             <div className="modal-header">
-              <h2>📱 WhatsApp Masivo — {clientesSeleccionados.length} clientes</h2>
+              <h2><Phone size={15}/> WhatsApp Masivo — {clientesSeleccionados.length} clientes</h2>
               <button className="close-btn" onClick={() => !waMasivoActivo && setShowWaMasivoModal(false)}>×</button>
             </div>
 
@@ -5184,12 +5194,12 @@ export default function App() {
               <div style={{ display:'flex', flexWrap:'wrap', gap:'0.35rem', maxHeight:'80px', overflowY:'auto' }}>
                 {clientes.filter(c => clientesSeleccionados.includes(c.id)).map(c => (
                   <span key={c.id} style={{ background: c.contacto ? '#f0fdf4' : '#fef2f2', border:`1px solid ${c.contacto ? '#86efac' : '#fca5a5'}`, borderRadius:'20px', padding:'0.15rem 0.6rem', fontSize:'0.75rem', fontWeight:600, color: c.contacto ? '#15803d' : '#dc2626' }}>
-                    {c.nombre}{!c.contacto ? ' ⚠️' : ''}
+                    {c.nombre}{!c.contacto ? <AlertTriangle size={11} style={{marginLeft:'0.25rem'}}/> : null}
                   </span>
                 ))}
               </div>
               {clientes.filter(c => clientesSeleccionados.includes(c.id) && !c.contacto).length > 0 && (
-                <div style={{ fontSize:'0.72rem', color:'#dc2626', marginTop:'0.3rem' }}>⚠️ Los clientes en rojo no tienen número y serán omitidos</div>
+                <div style={{ fontSize:'0.72rem', color:'#dc2626', marginTop:'0.3rem', display:'flex', alignItems:'center', gap:'0.3rem' }}><AlertTriangle size={12}/> Los clientes en rojo no tienen número y serán omitidos</div>
               )}
             </div>
 
@@ -5216,13 +5226,13 @@ export default function App() {
               </div>
             )}
 
-            <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:'9px', padding:'0.65rem 0.9rem', marginBottom:'1rem', fontSize:'0.78rem', color:'#78350f' }}>
-              💡 Se abrirá WhatsApp Web para cada cliente con su mensaje personalizado. Los nombres y montos se reemplazarán automáticamente.
+            <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:'9px', padding:'0.65rem 0.9rem', marginBottom:'1rem', fontSize:'0.78rem', color:'#78350f', display:'flex', alignItems:'flex-start', gap:'0.4rem' }}>
+              <Info size={14} style={{flexShrink:0,marginTop:'0.1rem'}}/> Se abrirá WhatsApp Web para cada cliente con su mensaje personalizado. Los nombres y montos se reemplazarán automáticamente.
             </div>
             <div className="form-actions">
               <button className="btn btn-secondary" onClick={() => !waMasivoActivo && setShowWaMasivoModal(false)} disabled={waMasivoActivo}>Cancelar</button>
               <button className="btn btn-primary" style={{ background:'#25d366' }} onClick={enviarWaMasivo} disabled={!waMasivoMensaje.trim() || waMasivoActivo}>
-                🟢 Enviar a {clientes.filter(c => clientesSeleccionados.includes(c.id) && c.contacto).length} clientes
+                <MessageSquare size={13}/> Enviar a {clientes.filter(c => clientesSeleccionados.includes(c.id) && c.contacto).length} clientes
               </button>
             </div>
           </div>
@@ -5234,20 +5244,20 @@ export default function App() {
         <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowPlantillasModal(false); }}>
           <div className="modal-content" style={{ maxWidth: '620px' }}>
             <div className="modal-header">
-              <h2>💬 Plantillas de WhatsApp</h2>
+              <h2><MessageCircle size={15}/> Plantillas de WhatsApp</h2>
               <button className="close-btn" onClick={() => setShowPlantillasModal(false)}>×</button>
             </div>
 
             {/* Editor */}
             <div style={{ background:'var(--surface2)', borderRadius:'12px', padding:'1rem', marginBottom:'1rem', border:'1px solid var(--border)' }}>
-              <div style={{ fontSize:'0.78rem', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', marginBottom:'0.5rem' }}>{plantillaEditando ? '✏️ Editando plantilla' : '➕ Nueva plantilla'}</div>
+              <div style={{ fontSize:'0.78rem', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', marginBottom:'0.5rem', display:'flex', alignItems:'center', gap:'0.35rem' }}>{plantillaEditando ? <><Pencil size={11}/> Editando plantilla</> : <><Plus size={11}/> Nueva plantilla</>}</div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 2fr', gap:'0.5rem', marginBottom:'0.5rem' }}>
                 <input type="text" value={plantillaForm.nombre} onChange={e => setPlantillaForm(p=>({...p,nombre:e.target.value}))} placeholder="Nombre de la plantilla" style={{ padding:'0.5rem 0.7rem', border:'1px solid var(--border2)', borderRadius:'7px', background:'var(--surface)', color:'var(--text)', fontSize:'0.83rem', fontFamily:'Plus Jakarta Sans, sans-serif' }} />
                 <input type="text" value={plantillaForm.texto} onChange={e => setPlantillaForm(p=>({...p,texto:e.target.value}))} placeholder="Texto… usa {nombre}, {monto}, {estado}" style={{ padding:'0.5rem 0.7rem', border:'1px solid var(--border2)', borderRadius:'7px', background:'var(--surface)', color:'var(--text)', fontSize:'0.83rem', fontFamily:'Plus Jakarta Sans, sans-serif' }} />
               </div>
               <div style={{ display:'flex', gap:'0.5rem', justifyContent:'flex-end' }}>
                 {plantillaEditando && <button className="btn btn-secondary" onClick={() => { setPlantillaEditando(null); setPlantillaForm({nombre:'',texto:''}); }}>Cancelar</button>}
-                <button className="btn btn-primary" onClick={guardarPlantilla} disabled={!plantillaForm.nombre.trim() || !plantillaForm.texto.trim()}>{plantillaEditando ? '💾 Actualizar' : '➕ Agregar'}</button>
+                <button className="btn btn-primary" onClick={guardarPlantilla} disabled={!plantillaForm.nombre.trim() || !plantillaForm.texto.trim()}>{plantillaEditando ? <><Save size={13}/> Actualizar</> : <><Plus size={13}/> Agregar</>}</button>
               </div>
             </div>
 
@@ -5258,8 +5268,8 @@ export default function App() {
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.3rem' }}>
                     <span style={{ fontWeight:700, fontSize:'0.88rem' }}>{p.nombre}</span>
                     <div style={{ display:'flex', gap:'0.35rem' }}>
-                      <button onClick={() => { setPlantillaEditando(p.id); setPlantillaForm({nombre:p.nombre,texto:p.texto}); }} style={{ padding:'0.2rem 0.55rem', border:'1px solid var(--border2)', borderRadius:'6px', background:'var(--surface2)', cursor:'pointer', fontSize:'0.75rem' }}>✏️</button>
-                      <button onClick={() => eliminarPlantilla(p.id)} style={{ padding:'0.2rem 0.55rem', border:'1px solid #fca5a5', borderRadius:'6px', background:'#fee2e2', color:'#dc2626', cursor:'pointer', fontSize:'0.75rem' }}>🗑️</button>
+                      <button onClick={() => { setPlantillaEditando(p.id); setPlantillaForm({nombre:p.nombre,texto:p.texto}); }} style={{ padding:'0.2rem 0.55rem', border:'1px solid var(--border2)', borderRadius:'6px', background:'var(--surface2)', cursor:'pointer' }}><Pencil size={13}/></button>
+                      <button onClick={() => eliminarPlantilla(p.id)} style={{ padding:'0.2rem 0.55rem', border:'1px solid #fca5a5', borderRadius:'6px', background:'#fee2e2', color:'#dc2626', cursor:'pointer' }}><Trash2 size={13}/></button>
                     </div>
                   </div>
                   <div style={{ fontSize:'0.78rem', color:'var(--text-muted)', lineHeight:1.5 }}>{p.texto}</div>
@@ -5267,8 +5277,8 @@ export default function App() {
               ))}
             </div>
 
-            <div style={{ marginTop:'0.75rem', fontSize:'0.73rem', color:'var(--text-muted)' }}>
-              💡 Variables: <code>{'{nombre}'}</code> <code>{'{monto}'}</code> <code>{'{estado}'}</code> — se reemplazan automáticamente por los datos del cliente
+            <div style={{ marginTop:'0.75rem', fontSize:'0.73rem', color:'var(--text-muted)', display:'flex', alignItems:'center', gap:'0.35rem' }}>
+              <Info size={13}/> Variables: <code>{'{nombre}'}</code> <code>{'{monto}'}</code> <code>{'{estado}'}</code> — se reemplazan automáticamente por los datos del cliente
             </div>
             <div className="form-actions"><button className="btn btn-secondary" onClick={() => setShowPlantillasModal(false)}>Cerrar</button></div>
           </div>
@@ -5280,7 +5290,7 @@ export default function App() {
         <div className="modal show" onClick={e => { if (e.target === e.currentTarget) { setShowCargaMasivaModal(false); setArchivosEnProceso([]); } }}>
           <div className="modal-content" style={{ maxWidth: '780px' }}>
             <div className="modal-header">
-              <h2>📂 Carga Masiva de Documentos</h2>
+              <h2><FolderOpen size={15}/> Carga Masiva de Documentos</h2>
               <button className="close-btn" onClick={() => { setShowCargaMasivaModal(false); setArchivosEnProceso([]); }}>×</button>
             </div>
 
@@ -5293,17 +5303,17 @@ export default function App() {
                   onDragLeave={e => { e.currentTarget.style.borderColor = 'var(--border2)'; e.currentTarget.style.background = 'var(--surface2)'; }}
                   onDrop={e => { e.preventDefault(); e.currentTarget.style.borderColor = 'var(--border2)'; e.currentTarget.style.background = 'var(--surface2)'; procesarArchivosMasivos(e.dataTransfer.files); }}
                 >
-                  <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📁</div>
+                  <div style={{ marginBottom: '0.75rem', color: 'var(--text-muted)' }}><FolderOpen size={40}/></div>
                   <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text)', marginBottom: '0.35rem' }}>Arrastra los PDFs aquí o haz clic para seleccionar</div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>Hasta 200 archivos · Máx. 3MB por archivo · Solo .pdf</div>
                   <input type="file" accept=".pdf" multiple style={{ display: 'none' }} onChange={e => { procesarArchivosMasivos(e.target.files); e.target.value = ''; }} />
                   <span className="btn btn-primary" style={{ pointerEvents: 'none', fontSize: '0.85rem' }}>Seleccionar archivos</span>
                 </label>
                 {cargaMasivaProcesando && (
-                  <div style={{ textAlign: 'center', marginTop: '1.25rem', color: 'var(--text-muted)', fontSize: '0.88rem' }}>⏳ Procesando archivos, un momento...</div>
+                  <div style={{ textAlign: 'center', marginTop: '1.25rem', color: 'var(--text-muted)', fontSize: '0.88rem', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.4rem' }}><Loader2 size={14}/> Procesando archivos, un momento...</div>
                 )}
                 <div style={{ marginTop: '1.25rem', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '10px', padding: '0.85rem 1.1rem', fontSize: '0.8rem', color: '#15803d' }}>
-                  <strong>💡 ¿Cómo funciona la detección automática?</strong>
+                  <strong style={{display:'inline-flex',alignItems:'center',gap:'0.3rem'}}><Info size={13}/> ¿Cómo funciona la detección automática?</strong>
                   <ul style={{ marginTop: '0.4rem', paddingLeft: '1.2rem', lineHeight: 1.8 }}>
                     <li>Si el nombre del archivo contiene el <strong>ID numérico</strong> del cliente (ej: <em>cotizacion_42.pdf</em>) → vinculación automática</li>
                     <li>Si contiene el <strong>nombre completo</strong> del cliente (ej: <em>Juan_Perez_cotizacion.pdf</em>) → vinculación automática</li>
@@ -5319,18 +5329,18 @@ export default function App() {
                 {/* Resumen badges */}
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
                   {[
-                    { label: 'Vinculados', count: archivosEnProceso.filter(a => a.estado === 'vinculado').length, color: '#059669', bg: '#f0fdf4', border: '#86efac', icon: '✅' },
-                    { label: 'Sugeridos', count: archivosEnProceso.filter(a => a.estado === 'sugerido').length, color: '#d97706', bg: '#fffbeb', border: '#fde68a', icon: '⚠️' },
-                    { label: 'Sin vincular', count: archivosEnProceso.filter(a => a.estado === 'sin-vincular').length, color: '#6b7280', bg: 'var(--surface2)', border: 'var(--border)', icon: '❓' },
-                    { label: 'Errores', count: archivosEnProceso.filter(a => a.estado === 'error').length, color: '#dc2626', bg: '#fef2f2', border: '#fca5a5', icon: '❌' },
+                    { label: 'Vinculados', count: archivosEnProceso.filter(a => a.estado === 'vinculado').length, color: '#059669', bg: '#f0fdf4', border: '#86efac', icon: <CheckCircle size={12}/> },
+                    { label: 'Sugeridos', count: archivosEnProceso.filter(a => a.estado === 'sugerido').length, color: '#d97706', bg: '#fffbeb', border: '#fde68a', icon: <AlertTriangle size={12}/> },
+                    { label: 'Sin vincular', count: archivosEnProceso.filter(a => a.estado === 'sin-vincular').length, color: '#6b7280', bg: 'var(--surface2)', border: 'var(--border)', icon: <HelpCircle size={12}/> },
+                    { label: 'Errores', count: archivosEnProceso.filter(a => a.estado === 'error').length, color: '#dc2626', bg: '#fef2f2', border: '#fca5a5', icon: <XCircle size={12}/> },
                   ].filter(b => b.count > 0).map(b => (
-                    <span key={b.label} style={{ background: b.bg, border: `1px solid ${b.border}`, padding: '0.3rem 0.85rem', borderRadius: '20px', fontSize: '0.77rem', fontWeight: 700, color: b.color }}>
+                    <span key={b.label} style={{ background: b.bg, border: `1px solid ${b.border}`, padding: '0.3rem 0.85rem', borderRadius: '20px', fontSize: '0.77rem', fontWeight: 700, color: b.color, display:'inline-flex', alignItems:'center', gap:'0.3rem' }}>
                       {b.icon} {b.label}: {b.count}
                     </span>
                   ))}
                   {archivosEnProceso.filter(a => a.montoDetectado).length > 0 && (
-                    <span style={{ background: '#e0f2fe', border: '1px solid #bae6fd', padding: '0.3rem 0.85rem', borderRadius: '20px', fontSize: '0.77rem', fontWeight: 700, color: '#0369a1' }}>
-                      💰 Con monto: {archivosEnProceso.filter(a => a.montoDetectado).length}
+                    <span style={{ background: '#e0f2fe', border: '1px solid #bae6fd', padding: '0.3rem 0.85rem', borderRadius: '20px', fontSize: '0.77rem', fontWeight: 700, color: '#0369a1', display:'inline-flex', alignItems:'center', gap:'0.3rem' }}>
+                      <DollarSign size={12}/> Con monto: {archivosEnProceso.filter(a => a.montoDetectado).length}
                     </span>
                   )}
                   <span style={{ background: 'var(--surface2)', border: '1px solid var(--border)', padding: '0.3rem 0.85rem', borderRadius: '20px', fontSize: '0.77rem', fontWeight: 700, color: 'var(--text-muted)' }}>
@@ -5344,8 +5354,8 @@ export default function App() {
                     <div key={arch.id || idx} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.75rem', alignItems: 'center', padding: '0.65rem 0.9rem', background: arch.estado === 'vinculado' ? '#f0fdf4' : arch.estado === 'sugerido' ? '#fffbeb' : arch.estado === 'error' ? '#fef2f2' : 'var(--surface2)', borderRadius: '9px', border: `1px solid ${arch.estado === 'vinculado' ? '#86efac' : arch.estado === 'sugerido' ? '#fde68a' : arch.estado === 'error' ? '#fca5a5' : 'var(--border)'}` }}>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.2rem' }}>
-                          <span style={{ fontSize: '0.9rem', flexShrink: 0 }}>
-                            {arch.estado === 'vinculado' ? '✅' : arch.estado === 'sugerido' ? '⚠️' : arch.estado === 'error' ? '❌' : '❓'}
+                          <span style={{ flexShrink: 0 }}>
+                            {arch.estado === 'vinculado' ? <CheckCircle size={14} style={{color:'#059669'}}/> : arch.estado === 'sugerido' ? <AlertTriangle size={14} style={{color:'#d97706'}}/> : arch.estado === 'error' ? <XCircle size={14} style={{color:'#dc2626'}}/> : <HelpCircle size={14} style={{color:'#6b7280'}}/>}
                           </span>
                           <span style={{ fontWeight: 600, fontSize: '0.82rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text)' }}>{arch.nombre}</span>
                         </div>
@@ -5361,8 +5371,8 @@ export default function App() {
                               <span style={{ fontSize: '0.72rem', color: '#6b7280' }}>No se detectó cliente automáticamente</span>
                             )}
                             {arch.montoDetectado ? (
-                              <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#0369a1', background: '#e0f2fe', border: '1px solid #bae6fd', borderRadius: '20px', padding: '0.1rem 0.5rem' }}>
-                                💰 RD${arch.montoDetectado.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                              <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#0369a1', background: '#e0f2fe', border: '1px solid #bae6fd', borderRadius: '20px', padding: '0.1rem 0.5rem', display:'inline-flex', alignItems:'center', gap:'0.2rem' }}>
+                                <DollarSign size={11}/> RD${arch.montoDetectado.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                               </span>
                             ) : (
                               <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>sin monto</span>
@@ -5387,8 +5397,8 @@ export default function App() {
                   ))}
                 </div>
 
-                <div style={{ marginTop: '0.6rem', fontSize: '0.73rem', color: 'var(--text-muted)' }}>
-                  💡 Usa el menú desplegable para asignar o corregir manualmente el cliente de cada archivo
+                <div style={{ marginTop: '0.6rem', fontSize: '0.73rem', color: 'var(--text-muted)', display:'flex', alignItems:'center', gap:'0.35rem' }}>
+                  <Info size={13}/> Usa el menú desplegable para asignar o corregir manualmente el cliente de cada archivo
                 </div>
               </div>
             )}
@@ -5396,7 +5406,7 @@ export default function App() {
             <div className="form-actions" style={{ marginTop: '1.25rem' }}>
               <button className="btn btn-secondary" onClick={() => { setShowCargaMasivaModal(false); setArchivosEnProceso([]); }}>Cancelar</button>
               {archivosEnProceso.length > 0 && (
-                <button className="btn btn-secondary" onClick={() => setArchivosEnProceso([])}>🔄 Seleccionar otros archivos</button>
+                <button className="btn btn-secondary" onClick={() => setArchivosEnProceso([])}><RefreshCw size={13}/> Seleccionar otros archivos</button>
               )}
               {archivosEnProceso.length > 0 && (
                 <button
@@ -5404,7 +5414,7 @@ export default function App() {
                   onClick={confirmarCargaMasiva}
                   disabled={archivosEnProceso.every(a => !a.clienteAsignado || !a.base64)}
                 >
-                  💾 Guardar {archivosEnProceso.filter(a => a.clienteAsignado && a.base64).length} documento{archivosEnProceso.filter(a => a.clienteAsignado && a.base64).length !== 1 ? 's' : ''}
+                  <Save size={13}/> Guardar {archivosEnProceso.filter(a => a.clienteAsignado && a.base64).length} documento{archivosEnProceso.filter(a => a.clienteAsignado && a.base64).length !== 1 ? 's' : ''}
                 </button>
               )}
             </div>
@@ -5456,7 +5466,7 @@ export default function App() {
       {sessionExpired && (
         <div className="modal-overlay" style={{ zIndex: 9999, backdropFilter: 'blur(6px)' }}>
           <div className="modal-content" style={{ maxWidth: '380px', textAlign: 'center', padding: '2.5rem 2rem' }}>
-            <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>⏱️</div>
+            <Clock size={56} style={{ color:'var(--text-muted)', marginBottom:'1rem' }}/>
             <h2 style={{ marginBottom: '0.6rem', fontSize: '1.3rem' }}>Sesión del día expirada</h2>
             <p style={{ color: 'var(--text-muted)', marginBottom: '1.75rem', fontSize: '0.88rem', lineHeight: 1.5 }}>
               Por seguridad, tu sesión expira cada 24 horas. Vuelve a iniciar sesión para continuar trabajando.
@@ -5473,7 +5483,7 @@ export default function App() {
       <div className="toast-container">
         {toasts.map(t => (
           <div key={t.id} className={`toast ${t.type}${t.removing ? ' removing' : ''}`}>
-            <span style={{ fontSize: '1rem' }}>{t.type === 'success' ? '✅' : t.type === 'error' ? '❌' : 'ℹ️'}</span>
+            {t.type === 'success' ? <CheckCircle size={15}/> : t.type === 'error' ? <XCircle size={15}/> : <Info size={15}/>}
             {t.msg}
           </div>
         ))}
