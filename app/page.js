@@ -2976,8 +2976,13 @@ export default function App() {
                             </td>
                             <td style={{ textAlign: 'center' }}>
                               {(estadoActivoCliente(cliente) === 'Pagado' || estadoActivoCliente(cliente) === 'Facturado') ? <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>—</span> : (
-                                <button disabled={esModoPasado} onClick={() => { if (esModoPasado) return; const a = { ...cliente }; a.suspendido = !a.suspendido; a.fechaSuspension = a.suspendido ? new Date().toISOString().split('T')[0] : ''; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.suspendido ? 'Cliente SUSPENDIDO' : 'Suspensión removida', usuario: 'CPEREZ' }]; actualizarCliente(a); }} style={{ padding: '0.3rem 0.65rem', borderRadius: '7px', border: cliente.suspendido ? '1px solid #dc2626' : '1px solid #cbd5e1', background: cliente.suspendido ? '#ef4444' : 'white', color: cliente.suspendido ? 'white' : '#64748b', fontWeight: 700, fontSize: '0.75rem', cursor: esModoPasado ? 'not-allowed' : 'pointer', opacity: esModoPasado ? 0.4 : 1 }}>
-                                  {cliente.suspendido ? '🔴 Activo' : '⏸️ Suspender'}
+                                <button disabled={esModoPasado} onClick={() => { if (esModoPasado) return; const a = { ...cliente }; a.suspendido = !a.suspendido; a.fechaSuspension = a.suspendido ? new Date().toISOString().split('T')[0] : ''; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.suspendido ? 'Cliente SUSPENDIDO' : 'Suspensión removida', usuario: 'CPEREZ' }]; actualizarCliente(a); }}
+                                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.35rem 0.75rem', borderRadius: '7px', border: cliente.suspendido ? '1.5px solid #dc2626' : '1.5px solid #cbd5e1', background: cliente.suspendido ? '#fef2f2' : '#f8fafc', color: cliente.suspendido ? '#dc2626' : '#64748b', fontWeight: 700, fontSize: '0.75rem', cursor: esModoPasado ? 'not-allowed' : 'pointer', opacity: esModoPasado ? 0.4 : 1, transition: 'all 0.2s' }}>
+                                  {cliente.suspendido ? (
+                                    <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="10 8 16 12 10 16 10 8"/></svg> Reactivar</>
+                                  ) : (
+                                    <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Suspender</>
+                                  )}
                                 </button>
                               )}
                             </td>
