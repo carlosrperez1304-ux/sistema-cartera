@@ -2936,7 +2936,6 @@ export default function App() {
                       <th style={{ width:'120px' }}>Estado</th>
                       <th style={{ width:'100px' }}>Monto</th>
                       <th style={{ width:'110px' }}>Proceso</th>
-                      <th style={{ width:'110px' }}>Suspensión</th>
                       <th style={{ width:'120px', textAlign:'right' }}>Opciones</th>
                     </tr></thead>
                     <tbody>
@@ -2995,18 +2994,7 @@ export default function App() {
                                 <button className={`proceso-icon facturado ${cliente.fechaFacturacion ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaPago} style={{ opacity: !cliente.fechaPago ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaPago) return; const a = { ...cliente }; if (!a.fechaFacturacion) { a.fechaFacturacion = new Date().toISOString().split('T')[0]; a.estado = 'Facturado'; } else { a.fechaFacturacion = ''; a.estado = 'Pagado'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaFacturacion ? 'Marco Facturado' : 'Desmarco Facturado', usuario: 'CPEREZ' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}><FileText size={13}/></button>
                               </div>
                             </td>
-                            <td style={{ textAlign: 'center' }}>
-                              {(estadoActivoCliente(cliente) === 'Pagado' || estadoActivoCliente(cliente) === 'Facturado') ? <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>—</span> : (
-                                <button disabled={esModoPasado} onClick={() => { if (esModoPasado) return; const a = { ...cliente }; a.suspendido = !a.suspendido; a.fechaSuspension = a.suspendido ? new Date().toISOString().split('T')[0] : ''; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.suspendido ? 'Cliente SUSPENDIDO' : 'Suspensión removida', usuario: 'CPEREZ' }]; actualizarCliente(a); }}
-                                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.35rem 0.75rem', borderRadius: '7px', border: cliente.suspendido ? '1.5px solid #dc2626' : '1.5px solid #cbd5e1', background: cliente.suspendido ? '#fef2f2' : '#f8fafc', color: cliente.suspendido ? '#dc2626' : '#64748b', fontWeight: 700, fontSize: '0.75rem', cursor: esModoPasado ? 'not-allowed' : 'pointer', opacity: esModoPasado ? 0.4 : 1, transition: 'all 0.2s' }}>
-                                  {cliente.suspendido ? (
-                                    <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="10 8 16 12 10 16 10 8"/></svg> Reactivar</>
-                                  ) : (
-                                    <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Suspender</>
-                                  )}
-                                </button>
-                              )}
-                            </td>
+
                             <td style={{ position: 'relative' }}>
                               <div style={{ position: 'relative', display: 'inline-block' }}>
                                 <button
@@ -3047,6 +3035,15 @@ export default function App() {
                                       <button onClick={() => { generarEstadoCuentaPDF(cliente); setMenuAbierto(null); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 1rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#0369a1', fontWeight: 600, borderBottom: '1px solid #f1f5f9' }}>
                                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                                         Estado de Cuenta PDF
+                                      </button>
+                                    )}
+                                    {!esModoPasado && (estadoActivoCliente(cliente) !== 'Pagado' && estadoActivoCliente(cliente) !== 'Facturado') && (
+                                      <button onClick={() => { const a = { ...cliente }; a.suspendido = !a.suspendido; a.fechaSuspension = a.suspendido ? new Date().toISOString().split('T')[0] : ''; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.suspendido ? 'Cliente SUSPENDIDO' : 'Suspensión removida', usuario: currentUser || 'SISTEMA' }]; actualizarCliente(a); setMenuAbierto(null); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 1rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: cliente.suspendido ? '#16a34a' : '#f97316', fontWeight: 600, borderBottom: '1px solid #f1f5f9' }}>
+                                        {cliente.suspendido ? (
+                                          <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="10 8 16 12 10 16 10 8"/></svg> Reactivar cliente</>
+                                        ) : (
+                                          <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Suspender cliente</>
+                                        )}
                                       </button>
                                     )}
                                     {tienePermiso('eliminar_clientes') && (
