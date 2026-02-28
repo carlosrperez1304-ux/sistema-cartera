@@ -568,7 +568,11 @@ export default function App() {
 
   const estadoActivoCliente = (cliente) => {
     const docs = cotizaciones[cliente.id] || [];
-    if (!docs.length) return cliente.estado;
+    if (!docs.length) {
+      // Sin documentos: 'Cotizado' no tiene sentido → mostrar 'No Generaron'
+      if (cliente.estado === 'Cotizado') return 'No Generaron';
+      return cliente.estado;
+    }
     return docs.reduce((a, b) => (a.id > b.id ? a : b)).estado || cliente.estado || 'Cotizado';
   };
 
@@ -605,7 +609,11 @@ export default function App() {
     // Combinar estado directo del cliente con cotizaciones cargadas
     const obtenerEstadoFinal = (c) => {
       const docs = cotizaciones[c.id] || [];
-      if (docs.length === 0) return c.estado;
+      if (docs.length === 0) {
+        // Sin documentos: 'Cotizado' no es válido → tratar como 'No Generaron'
+        if (c.estado === 'Cotizado') return 'No Generaron';
+        return c.estado;
+      }
       return docs.reduce((a, b) => (a.id > b.id ? a : b)).estado || c.estado;
     };
     const obtenerMontoFinal = (c) => {
@@ -622,7 +630,7 @@ export default function App() {
     const facturados  = clientesEnriquecidos.filter(c => c._estado === 'Facturado');
     const vencidos    = clientesEnriquecidos.filter(c => c._estado === 'Vencido');
     const suspendidos = clientesData.filter(c => c.suspendido === true);
-    const noGeneraron = clientesData.filter(c => c.estado === 'No Generaron');
+    const noGeneraron = clientesEnriquecidos.filter(c => c._estado === 'No Generaron');
     return {
       cotizado: cotizados.length, notificado: notificados.length,
       pagado: pagados.length, facturado: facturados.length,
@@ -1367,7 +1375,17 @@ export default function App() {
   };
 
   const eliminarDocumento = (clienteId, docId) => {
-    setCotizaciones(prev => ({ ...prev, [clienteId]: (prev[clienteId] || []).filter(d => d.id !== docId) }));
+    setCotizaciones(prev => {
+      const restantes = (prev[clienteId] || []).filter(d => d.id !== docId);
+      // Si ya no quedan documentos y el cliente estaba en 'Cotizado', revertir a 'No Generaron'
+      if (restantes.length === 0) {
+        const cliente = clientes.find(c => c.id === clienteId);
+        if (cliente && cliente.estado === 'Cotizado') {
+          actualizarCliente({ ...cliente, estado: 'No Generaron' });
+        }
+      }
+      return { ...prev, [clienteId]: restantes };
+    });
     fetch(`/api/cotizaciones/${clienteId}/${docId}`, { method:'DELETE' }).catch(() => {});
     showToast('Documento eliminado', 'info');
   };
