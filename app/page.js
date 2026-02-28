@@ -2722,10 +2722,11 @@ export default function App() {
                 { key: 'no-generaron', label: 'No Generaron', val: estadisticas.noGeneraron, pct: estadisticas.noGeneraronPct, monto: null, color: '#64748b' },
                 { key: 'suspendido', label: 'Suspendidos', val: estadisticas.suspendido, pct: estadisticas.suspendidoPct, monto: estadisticas.montoSuspendido, color: '#dc2626' },
               ].map(s => (
-                <div key={s.key} className={`stat-card ${s.key}`}>
+                <div key={s.key} className={`stat-card ${s.key}`} onClick={() => { setFilter(filter === s.key ? 'todos' : s.key); setPaginaActual(1); }} style={{ cursor: 'pointer', outline: filter === s.key ? `2px solid ${s.color}` : 'none', outlineOffset: '2px', transition: 'all 0.15s' }} title={filter === s.key ? 'Clic para quitar filtro' : `Filtrar por ${s.label}`}>
                   <div className="stat-label">{s.label}</div>
                   <div className="stat-value">{s.val}</div>
                   <div className="stat-percentage">{s.pct}%{s.monto != null && fmtMonto(s.monto, s.val) && <span style={{ display: 'block', color: s.color, fontWeight: 800, fontSize: '0.85rem' }}>{fmtMonto(s.monto, s.val)}</span>}</div>
+                  {filter === s.key && <div style={{ fontSize: '0.65rem', fontWeight: 700, color: s.color, marginTop: '0.2rem' }}>✓ Filtrando</div>}
                 </div>
               ))}
             </div>
@@ -2783,13 +2784,7 @@ export default function App() {
                 <input type="date" value={fechaHasta} onChange={e => { setFechaHasta(e.target.value); setPaginaActual(1); }} style={{ padding: '0.45rem 0.6rem', border: '1px solid var(--border2)', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--surface)', color: 'var(--text)' }} />
                 {(fechaDesde || fechaHasta) && <button onClick={() => { setFechaDesde(''); setFechaHasta(''); }} style={{ padding: '0.4rem 0.7rem', borderRadius: '7px', border: '1px solid var(--danger)', background: '#fef2f2', color: 'var(--danger)', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}>✕ Limpiar</button>}
               </div>
-              <div className="filter-buttons">
-                {['todos', 'cotizado', 'notificado', 'pagado', 'facturado', 'vencido', 'no-generaron', 'delegaciones'].map(f => (
-                  <button key={f} className={`btn btn-filter ${filter === f ? 'active' : ''}`} onClick={() => { setFilter(f); setPaginaActual(1); }}>
-                    {f === 'todos' ? 'Todos' : f === 'no-generaron' ? 'No Generaron' : f === 'delegaciones' ? 'Delegaciones' : f.charAt(0).toUpperCase() + f.slice(1)}
-                  </button>
-                ))}
-              </div>
+
               <div style={{ display: 'flex', gap: '0.3rem' }}>
                 <button className="btn btn-secondary" onClick={() => { setVistaCards(false); setVistaKanban(false); }} style={{ background: !vistaCards && !vistaKanban ? 'var(--navy)' : '', color: !vistaCards && !vistaKanban ? 'white' : '' }} title="Tabla"><ClipboardList size={14}/></button>
                 <button className="btn btn-secondary" onClick={() => { setVistaCards(true); setVistaKanban(false); }} style={{ background: vistaCards ? 'var(--navy)' : '', color: vistaCards ? 'white' : '' }} title="Tarjetas"><FileText size={14}/></button>
