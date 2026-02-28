@@ -724,6 +724,7 @@ export default function App() {
         const p = { 'Vencido': 1, 'Notificado': 2, 'Cotizado': 3, 'Pagado': 4, 'Facturado': 5, 'No Generaron': 6 };
         comparacion = (p[estadoActivoCliente(a)] || 999) - (p[estadoActivoCliente(b)] || 999);
       } else if (ordenarPor === 'id') comparacion = parseInt(a.id) - parseInt(b.id);
+      else if (ordenarPor === 'codigo') comparacion = parseInt(a.codigoCliente || 0) - parseInt(b.codigoCliente || 0);
       else if (ordenarPor === 'nombre') comparacion = a.nombre.localeCompare(b.nombre);
       else if (ordenarPor === 'monto') comparacion = parseFloat(a.monto || 0) - parseFloat(b.monto || 0);
       return direccionOrden === 'asc' ? comparacion : -comparacion;
@@ -2839,8 +2840,8 @@ export default function App() {
 
             <div className="sort-controls">
               <strong style={{ color: 'var(--text)', alignSelf: 'center' }}>Ordenar por:</strong>
-              {['prioridad', 'id', 'nombre', 'monto'].map(campo => (
-                <button key={campo} className={`btn-sort ${ordenarPor === campo ? 'active' : ''} ${ordenarPor === campo ? direccionOrden : ''}`} onClick={() => cambiarOrdenamiento(campo)}>{campo.charAt(0).toUpperCase() + campo.slice(1)}</button>
+              {[{val:'prioridad',label:'Prioridad'},{val:'codigo',label:'Código'},{val:'nombre',label:'Nombre'},{val:'monto',label:'Monto'}].map(({val,label}) => (
+                <button key={val} className={`btn-sort ${ordenarPor === val ? 'active' : ''} ${ordenarPor === val ? direccionOrden : ''}`} onClick={() => cambiarOrdenamiento(val)}>{label}</button>
               ))}
             </div>
 
@@ -2929,7 +2930,7 @@ export default function App() {
                   <table className={modoCompacto ? 'compact-mode' : ''}>
                     <thead><tr>
                       <th style={{ width:'32px' }}><input type="checkbox" onChange={toggleTodos} checked={clientesPaginados.length > 0 && clientesPaginados.every(c => clientesSeleccionados.includes(c.id))} style={{ cursor:'pointer' }} title="Seleccionar todos" /></th>
-                      <th style={{ width:'60px' }}>ID</th>
+                      <th style={{ width:'60px', display:'none' }}>ID</th>
                       <th style={{ width:'70px' }}>Código</th>
                       <th>Cliente</th>
                       {puedeVerTodo && <th style={{ width:'90px' }}>Agente</th>}
@@ -2944,7 +2945,7 @@ export default function App() {
                         return (
                           <tr key={cliente.id} className={`${estaSuspendido ? 'cliente-suspendido' : ''} ${clientesSeleccionados.includes(cliente.id) ? 'row-selected' : ''}`}>
                             <td><input type="checkbox" checked={clientesSeleccionados.includes(cliente.id)} onChange={() => toggleSeleccion(cliente.id)} style={{ cursor:'pointer' }} /></td>
-                            <td><div className="id-with-led"><span className={`status-led ${estaSuspendido ? 'suspended' : esClienteActivo(cliente) ? 'active' : 'inactive'}`}></span><strong>{cliente.id}</strong></div></td>
+                            <td style={{ display:'none' }}><div className="id-with-led"><span className={`status-led ${estaSuspendido ? 'suspended' : esClienteActivo(cliente) ? 'active' : 'inactive'}`}></span><strong>{cliente.id}</strong></div></td>
                             <td><strong style={{ fontFamily: 'var(--mono)', color: 'var(--accent)' }}>{cliente.codigoCliente || '—'}</strong></td>
                             <td>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
