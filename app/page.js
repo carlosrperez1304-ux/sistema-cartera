@@ -2969,15 +2969,15 @@ export default function App() {
 
                             <td>
                               {!tienePermiso('ver_montos') ? (
-                                <strong style={{ color: 'var(--text-muted)', letterSpacing: '0.1em' }}>***</strong>
+                                <span style={{ color: 'var(--text-muted)', letterSpacing: '0.1em', fontWeight: 700 }}>***</span>
                               ) : editingMontoId === cliente.id ? (
-                                <input type="number" value={tempMonto} onChange={(e) => setTempMonto(e.target.value)} onBlur={() => guardarMontoInline(cliente.id)} onKeyDown={(e) => { if (e.key === 'Enter') guardarMontoInline(cliente.id); else if (e.key === 'Escape') cancelarEdicionMonto(); }} autoFocus step="0.01" style={{ width: '100%', padding: '0.5rem', border: '2px solid #0ea5e9', borderRadius: '6px', fontSize: '1rem', fontWeight: 700 }} />
+                                <input type="number" value={tempMonto} onChange={(e) => setTempMonto(e.target.value)} onBlur={() => guardarMontoInline(cliente.id)} onKeyDown={(e) => { if (e.key === 'Enter') guardarMontoInline(cliente.id); else if (e.key === 'Escape') cancelarEdicionMonto(); }} autoFocus step="0.01" style={{ width: '90px', padding: '0.35rem 0.5rem', border: '2px solid #0ea5e9', borderRadius: '6px', fontSize: '0.9rem', fontWeight: 700 }} />
                               ) : (
                                 <div>
-                                  <strong onClick={() => !esModoPasado && iniciarEdicionMonto(cliente)} style={{ cursor: esModoPasado ? 'default' : 'pointer', padding: '0.4rem 0.5rem', borderRadius: '6px', display: 'inline-block' }} title={esModoPasado ? 'Solo lectura' : 'Click para editar monto'}>
+                                  <span onDoubleClick={() => !esModoPasado && iniciarEdicionMonto(cliente)} style={{ cursor: esModoPasado ? 'default' : 'text', fontWeight: 800, fontSize: '0.92rem', color: 'var(--text)', fontFamily: 'var(--mono)' }} title={esModoPasado ? '' : 'Doble clic para editar'}>
                                     {'$' + (parseFloat(cliente.monto) || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}
-                                  </strong>
-                                  {cliente.pagosRealizados && cliente.pagosRealizados.length > 0 && (() => { const s = calcularSaldoCliente(cliente); return <div style={{ fontSize: '0.7rem', marginTop: '0.1rem' }}><span style={{ color: '#059669', fontWeight: 700 }}>pagado: ${s.pagado.toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>{s.pendiente > 0 && <span style={{ color: '#ea580c', fontWeight: 700 }}> · pend: ${s.pendiente.toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>}</div>; })()}
+                                  </span>
+                                  {cliente.pagosRealizados && cliente.pagosRealizados.length > 0 && (() => { const s = calcularSaldoCliente(cliente); return <div style={{ fontSize: '0.68rem', marginTop: '0.15rem' }}><span style={{ color: '#059669', fontWeight: 700 }}>+${s.pagado.toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>{s.pendiente > 0 && <span style={{ color: '#ea580c', fontWeight: 700 }}> ${s.pendiente.toLocaleString('en-US', { maximumFractionDigits: 0 })} pend.</span>}</div>; })()}
                                 </div>
                               )}
                             </td>
