@@ -50,7 +50,7 @@ export async function POST(req) {
 
   const empresa_id = auth?.session?.user?.empresa_id || null;
   const baseQ = db().from('plantillas');
-  const { data, error } = (empresa_id ? baseQ.eq('empresa_id', empresa_id) : baseQ).insert({
+  const { data, error } = await (empresa_id ? baseQ.eq('empresa_id', empresa_id) : baseQ).insert({
     nombre: body.nombre,
     texto:  body.texto,
     orden:  body.orden ?? 99,
