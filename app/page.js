@@ -4833,6 +4833,46 @@ export default function App() {
                   </div>
                 </div>
 
+                {esAdmin && <div style={{ marginBottom: '1.5rem' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '0.75rem', paddingBottom: '0.4rem', borderBottom: '1px solid var(--border)', display:'flex', alignItems:'center', gap:'0.4rem' }}><FileText size={11}/> Datos de Empresa (Cotizaciones)</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Nombre Empresa</label>
+                        <input type="text" value={empresaActual?.nombre || ''} onChange={e => setEmpresaActual(prev => ({...prev, nombre: e.target.value}))} placeholder="Ej: 7 LABS SRL" style={{ padding: '0.45rem 0.7rem', border: '1px solid var(--border-2)', borderRadius: '7px', fontSize: '0.82rem', background: 'var(--surface-2)', color: 'var(--text)', width: '100%', boxSizing: 'border-box' }} />
+                      </div>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>RNC</label>
+                        <input type="text" value={empresaActual?.rnc || ''} onChange={e => setEmpresaActual(prev => ({...prev, rnc: e.target.value}))} placeholder="Ej: 130826986" style={{ padding: '0.45rem 0.7rem', border: '1px solid var(--border-2)', borderRadius: '7px', fontSize: '0.82rem', background: 'var(--surface-2)', color: 'var(--text)', width: '100%', boxSizing: 'border-box' }} />
+                      </div>
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Dirección</label>
+                      <input type="text" value={empresaActual?.direccion || ''} onChange={e => setEmpresaActual(prev => ({...prev, direccion: e.target.value}))} placeholder="Ej: CALLE C NO. 39 LAS PRADERAS" style={{ padding: '0.45rem 0.7rem', border: '1px solid var(--border-2)', borderRadius: '7px', fontSize: '0.82rem', background: 'var(--surface-2)', color: 'var(--text)', width: '100%', boxSizing: 'border-box' }} />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Ciudad</label>
+                        <input type="text" value={empresaActual?.ciudad || ''} onChange={e => setEmpresaActual(prev => ({...prev, ciudad: e.target.value}))} placeholder="Ej: Santo Domingo, Rep. Dom." style={{ padding: '0.45rem 0.7rem', border: '1px solid var(--border-2)', borderRadius: '7px', fontSize: '0.82rem', background: 'var(--surface-2)', color: 'var(--text)', width: '100%', boxSizing: 'border-box' }} />
+                      </div>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Teléfono</label>
+                        <input type="text" value={empresaActual?.telefono || ''} onChange={e => setEmpresaActual(prev => ({...prev, telefono: e.target.value}))} placeholder="Ej: 809-722-9225" style={{ padding: '0.45rem 0.7rem', border: '1px solid var(--border-2)', borderRadius: '7px', fontSize: '0.82rem', background: 'var(--surface-2)', color: 'var(--text)', width: '100%', boxSizing: 'border-box' }} />
+                      </div>
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Logo URL (imagen)</label>
+                      <input type="text" value={empresaActual?.logo_url || ''} onChange={e => setEmpresaActual(prev => ({...prev, logo_url: e.target.value}))} placeholder="https://..." style={{ padding: '0.45rem 0.7rem', border: '1px solid var(--border-2)', borderRadius: '7px', fontSize: '0.82rem', background: 'var(--surface-2)', color: 'var(--text)', width: '100%', boxSizing: 'border-box' }} />
+                    </div>
+                    <button className="btn btn-secondary" style={{ alignSelf: 'flex-end' }} onClick={async () => {
+                      if (!empresaActual?.id) return;
+                      const res = await fetch('/api/empresas', { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ id: empresaActual.id, nombre: empresaActual.nombre, direccion: empresaActual.direccion, telefono: empresaActual.telefono, rnc: empresaActual.rnc, logo_url: empresaActual.logo_url, ciudad: empresaActual.ciudad, activa: empresaActual.activa }) });
+                      if (res.ok) showToast('Datos de empresa guardados', 'success');
+                      else showToast('Error al guardar', 'error');
+                    }}>Guardar datos empresa</button>
+                  </div>
+                </div>}
+
                 <div style={{ marginTop: '0.5rem' }}>
                   <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => { setShowSettingsPanel(false); showToast('Configuración guardada', 'success'); }}>Guardar cambios</button>
                 </div>
