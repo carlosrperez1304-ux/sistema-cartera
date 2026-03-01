@@ -857,18 +857,18 @@ input::placeholder, textarea::placeholder { color: var(--text-light); }
   font-weight: 600;
 }
 
-/* ── All values dark — accent comes from left stripe, not text color ── */
-.stat-card.cotizado .stat-value,
-.stat-card.notificado .stat-value,
-.stat-card.pagado .stat-value,
-.stat-card.facturado .stat-value,
-.stat-card.vencido .stat-value,
-.stat-card.suspendido .stat-value,
-.stat-card.no-generaron .stat-value,
-.stat-card.activo .stat-value,
-.stat-card.por-vencer .stat-value,
-.stat-card.credito-vencido .stat-value,
-.stat-card.credito-pagado .stat-value { color: var(--text); }
+/* ── Colored values per state ── */
+.stat-card.cotizado .stat-value        { color: #ea580c; }
+.stat-card.notificado .stat-value      { color: #4f46e5; }
+.stat-card.pagado .stat-value          { color: #16a34a; }
+.stat-card.facturado .stat-value       { color: #0d9488; }
+.stat-card.vencido .stat-value         { color: #dc2626; }
+.stat-card.suspendido .stat-value      { color: #e11d48; }
+.stat-card.no-generaron .stat-value    { color: #64748b; }
+.stat-card.activo .stat-value          { color: #0891b2; }
+.stat-card.por-vencer .stat-value      { color: #d97706; }
+.stat-card.credito-vencido .stat-value { color: #dc2626; }
+.stat-card.credito-pagado .stat-value  { color: #16a34a; }
 
 /* ═══════════════════════════════════════════════════════════
    CONTROLS
