@@ -75,25 +75,25 @@
 
 /* ─── DARK MODE ─────────────────────────────────────────── */
 [data-theme='dark'] {
-  --brand:       #7c7de8;
-  --brand-2:     #6b6bdb;
-  --brand-glow:  rgba(124,125,232,0.2);
-  --brand-bg:    rgba(124,125,232,0.1);
+  --brand:       #D97706;
+  --brand-2:     #B45309;
+  --brand-glow:  rgba(217,119,6,0.2);
+  --brand-bg:    rgba(217,119,6,0.1);
 
-  --bg:        #0c0e17;
-  --surface:   #12151f;
-  --surface-2: #181b27;
-  --surface-3: #1e2232;
+  --bg:        #1C1917;
+  --surface:   #242120;
+  --surface-2: #2C2926;
+  --surface-3: #33302D;
 
-  --border:   #252838;
-  --border-2: #2e3244;
-  --border-3: #3a3f58;
+  --border:   #3C3835;
+  --border-2: #4A4744;
+  --border-3: #5C5855;
 
-  --text:       #e8eaf6;
-  --text-2:     #b0b5d4;
-  --text-muted: #7880a8;
-  --text-light: #4e5578;
-  --text-xlight:#353952;
+  --text:       #F5F0E8;
+  --text-2:     #D6CFC4;
+  --text-muted: #A89F94;
+  --text-light: #7A7068;
+  --text-xlight:#4A4540;
 
   --success-bg:    #052e16;
   --success-border:#14532d;
@@ -105,12 +105,12 @@
   --info-border:   #1e3a5f;
 }
 
-[data-theme='dark'] .topbar         { background: #08091230; backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); }
-[data-theme='dark'] .sidebar        { background: #0c0e17; border-right: 1px solid var(--border); }
-[data-theme='dark'] tbody tr:nth-child(even) { background: #181b27; }
+[data-theme='dark'] .topbar         { background: rgba(28,25,23,0.85); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); }
+[data-theme='dark'] .sidebar        { background: linear-gradient(180deg, #141210 0%, #1A1816 60%, #141210 100%); border-right: 1px solid var(--border); }
+[data-theme='dark'] tbody tr:nth-child(even) { background: #2C2926; }
 [data-theme='dark'] tbody tr:hover  { background: #1e2232 !important; }
-[data-theme='dark'] thead tr        { background: linear-gradient(135deg, #0d1526, #111c33); }
-[data-theme='dark'] .modal-content  { background: #12151f; border-color: var(--border); }
+[data-theme='dark'] thead tr        { background: linear-gradient(135deg, #1A1816, #242120); }
+[data-theme='dark'] .modal-content  { background: #242120; border-color: var(--border); }
 [data-theme='dark'] .form-group input,
 [data-theme='dark'] .form-group select,
 [data-theme='dark'] .form-group textarea { background: var(--surface-2); border-color: var(--border-2); color: var(--text); }
