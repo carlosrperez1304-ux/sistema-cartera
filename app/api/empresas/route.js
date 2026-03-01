@@ -71,7 +71,7 @@ export async function PATCH(req) {
   if (body.id) {
     const { error } = await db()
       .from('empresas')
-      .update({ nombre: body.nombre, activa: body.activa })
+      .update({ nombre: body.nombre, activa: body.activa, direccion: body.direccion, telefono: body.telefono, rnc: body.rnc, logo_url: body.logo_url, ciudad: body.ciudad, email: body.email })
       .eq('id', body.id);
     if (error) return Response.json({ error: error.message }, { status: 500 });
     return Response.json({ ok: true });

@@ -375,9 +375,10 @@ export default function App() {
   const [nuevaCotForm, setNuevaCotForm] = useState({ monto: '', estado: 'Cotizado', show: false });
   const [showGenCotModal, setShowGenCotModal] = useState(false);
   const [genCotCliente, setGenCotCliente] = useState(null);
-  const [cotItems, setCotItems] = useState([{ descripcion: '', cantidad: 1, precio: '' }]);
+  const [cotItems, setCotItems] = useState([{ codigo: '', descripcion: '', cantidad: 1, precio: '', um: 'UND' }]);
   const [cotNota, setCotNota] = useState('');
   const [cotValidez, setCotValidez] = useState(30);
+  const [cotConITBIS, setCotConITBIS] = useState(false);
   const [showNotifDocModal, setShowNotifDocModal] = useState(false);
   const [notifDocCliente, setNotifDocCliente] = useState(null);
   const [notifDocSeleccionado, setNotifDocSeleccionado] = useState(null);
@@ -1466,55 +1467,144 @@ export default function App() {
   const generarCotizacionPDF = () => {
     if (!genCotCliente) return;
     import('jspdf').then(({ default: jsPDF }) => {
-      import('jspdf-autotable').then((autotableModule) => { const autoTable = autotableModule.default || autotableModule;
+      import('jspdf-autotable').then((autotableModule) => {
+        const autoTable = autotableModule.default || autotableModule;
         const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
         const fecha = new Date();
-        const numCot = `COT-${genCotCliente.id}-${fecha.getFullYear()}${String(fecha.getMonth()+1).padStart(2,'0')}${String(fecha.getDate()).padStart(2,'0')}`;
-        // Cabecera
-        doc.setFillColor(15,28,63); doc.rect(0,0,210,42,'F');
-        doc.setTextColor(255,255,255); doc.setFontSize(22); doc.setFont(undefined,'bold');
-        doc.text('CartaMaster', 15, 17);
-        doc.setFontSize(10); doc.setFont(undefined,'normal');
-        doc.text('Cotización de Servicios', 15, 26);
-        doc.text(`Nº ${numCot}`, 15, 34);
-        doc.text(`Fecha: ${fecha.toLocaleDateString('es-DO')}`, 135, 26);
-        doc.text(`Válida por: ${cotValidez} días`, 135, 34);
-        // Datos cliente
-        doc.setTextColor(15,28,63); doc.setFontSize(11); doc.setFont(undefined,'bold');
-        doc.text('Cotizado para:', 15, 56);
-        doc.setFont(undefined,'normal'); doc.setFontSize(10);
-        doc.text(`Cliente: ${genCotCliente.nombre}`, 15, 65);
-        doc.text(`ID: ${genCotCliente.id}`, 15, 72);
-        if (genCotCliente.contacto) doc.text(`Contacto: ${genCotCliente.contacto}`, 15, 79);
-        // Tabla de items
-        const subtotal = cotItems.reduce((s, it) => s + (parseFloat(it.precio)||0) * (parseFloat(it.cantidad)||1), 0);
-        const itax = subtotal * 0.18;
-        const total = subtotal + itax;
+        const emp = empresaActual || {};
+        const numCot = String((emp.numero_cotizacion || 1)).padStart(6, '0');
+
+        // ── LOGO (si existe) ──
+        const pageW = 210;
+        const margin = 15;
+
+        if (emp.logo_url) {
+          try { doc.addImage(emp.logo_url, 'PNG', margin, 10, 35, 20); } catch(e) {}
+        }
+
+        // ── NOMBRE Y DATOS EMPRESA (arriba izquierda) ──
+        doc.setFont(undefined, 'bold');
+        doc.setFontSize(13);
+        doc.setTextColor(30, 30, 30);
+        doc.text(emp.nombre || 'Mi Empresa', margin + (emp.logo_url ? 38 : 0), 16);
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(80, 80, 80);
+        let dyEmp = 22;
+        if (emp.direccion) { doc.text(emp.direccion, margin + (emp.logo_url ? 38 : 0), dyEmp); dyEmp += 5; }
+        if (emp.ciudad)    { doc.text(emp.ciudad, margin + (emp.logo_url ? 38 : 0), dyEmp); dyEmp += 5; }
+        if (emp.telefono)  { doc.text(`Tel. ${emp.telefono}`, margin + (emp.logo_url ? 38 : 0), dyEmp); dyEmp += 5; }
+        if (emp.rnc)       { doc.text(`RNC: ${emp.rnc}`, margin + (emp.logo_url ? 38 : 0), dyEmp); }
+
+        // ── TÍTULO COTIZACIÓN (arriba derecha) ──
+        doc.setFont(undefined, 'bold');
+        doc.setFontSize(22);
+        doc.setTextColor(30, 30, 30);
+        doc.text('COTIZACION', pageW - margin, 18, { align: 'right' });
+
+        // ── TABLA FECHA / NUMERO ──
         autoTable(doc, {
-          startY: 90,
-          head: [['#', 'Descripción', 'Cant.', 'Precio Unit.', 'Total']],
-          body: cotItems.map((it, i) => {
-            const p = parseFloat(it.precio) || 0;
-            const q = parseFloat(it.cantidad) || 1;
-            return [i+1, it.descripcion, q, `$${p.toLocaleString('en-US',{minimumFractionDigits:2})}`, `$${(p*q).toLocaleString('en-US',{minimumFractionDigits:2})}`];
-          }),
-          styles: { fontSize: 9, cellPadding: 3 },
-          headStyles: { fillColor: [99,91,255], textColor: 255, fontStyle: 'bold' },
-          alternateRowStyles: { fillColor: [248,250,252] },
-          columnStyles: { 0:{cellWidth:10}, 2:{halign:'center'}, 3:{halign:'right'}, 4:{halign:'right',fontStyle:'bold'} },
-          margin: { left: 15, right: 15 },
+          startY: 32,
+          head: [['FECHA', 'NUMERO']],
+          body: [[fecha.toLocaleDateString('es-DO'), numCot]],
+          styles: { fontSize: 9, cellPadding: 2, halign: 'center' },
+          headStyles: { fillColor: [255,255,255], textColor: [30,30,30], fontStyle: 'bold', lineWidth: 0.3, lineColor: [180,180,180] },
+          bodyStyles: { lineWidth: 0.3, lineColor: [180,180,180] },
+          tableWidth: 70,
+          margin: { left: pageW - margin - 70 },
         });
-        let y = doc.lastAutoTable.finalY + 5;
-        // Totales
-        const totales = [['Subtotal', `$${subtotal.toLocaleString('en-US',{minimumFractionDigits:2})}`], ['ITBIS (18%)', `$${itax.toLocaleString('en-US',{minimumFractionDigits:2})}`], ['TOTAL', `$${total.toLocaleString('en-US',{minimumFractionDigits:2})}`]];
-        autoTable(doc, { startY: y, body: totales, styles: { fontSize: 9 }, columnStyles: { 0:{halign:'right',fontStyle:'bold',fillColor:[248,250,252]}, 1:{halign:'right',cellWidth:40} }, tableWidth: 100, margin: { left: 95 }, didParseCell: (d) => { if (d.row.index === 2) { d.cell.styles.fillColor = [15,28,63]; d.cell.styles.textColor = [255,255,255]; d.cell.styles.fontStyle = 'bold'; } } });
-        // Nota
-        if (cotNota) { y = doc.lastAutoTable.finalY + 8; doc.setFontSize(9); doc.setTextColor(100,116,139); doc.setFont(undefined,'italic'); doc.text(`Nota: ${cotNota}`, 15, y, { maxWidth: 180 }); }
-        // Footer
-        doc.setTextColor(148,163,184); doc.setFontSize(8); doc.setFont(undefined,'normal');
-        doc.text('Este documento es una cotización y no constituye una factura.', 15, 282);
-        doc.text(`Válida hasta: ${new Date(fecha.getTime() + cotValidez*86400000).toLocaleDateString('es-DO')}`, 15, 287);
-        // Guardar en sistema Y descargar
+
+        // ── TABLA CLIENTE ──
+        const yCliente = 46;
+        autoTable(doc, {
+          startY: yCliente,
+          head: [['CLIENTE:', 'CONTACTO', 'TIEMPO DE ENTREGA']],
+          body: [[genCotCliente.nombre, genCotCliente.contacto || '', `Válida ${cotValidez} días`]],
+          styles: { fontSize: 9, cellPadding: 3 },
+          headStyles: { fillColor: [255,255,255], textColor: [30,30,30], fontStyle: 'bold', lineWidth: 0.3, lineColor: [180,180,180] },
+          bodyStyles: { lineWidth: 0.3, lineColor: [180,180,180] },
+          margin: { left: margin, right: margin },
+        });
+
+        // ── TABLA VENDEDOR / CONDICIONES ──
+        const yVendedor = doc.lastAutoTable.finalY;
+        autoTable(doc, {
+          startY: yVendedor,
+          head: [['VENDEDOR', 'CONDICIONES', 'DESCTO %']],
+          body: [[emp.vendedor || session?.user?.nombre || 'Vendedor', 'CONTADO', '0.00']],
+          styles: { fontSize: 9, cellPadding: 3 },
+          headStyles: { fillColor: [255,255,255], textColor: [30,30,30], fontStyle: 'bold', lineWidth: 0.3, lineColor: [180,180,180] },
+          bodyStyles: { lineWidth: 0.3, lineColor: [180,180,180] },
+          margin: { left: margin, right: margin },
+        });
+
+        // ── TABLA DE ITEMS ──
+        const subtotal = cotItems.reduce((s, it) => s + (parseFloat(it.precio)||0) * (parseFloat(it.cantidad)||1), 0);
+        const descuento = 0;
+        const subTotal2 = subtotal - descuento;
+        const itax = subTotal2 * (cotConITBIS ? 0.18 : 0);
+        const total = subTotal2 + itax;
+
+        autoTable(doc, {
+          startY: doc.lastAutoTable.finalY + 2,
+          head: [['CODIGO', 'DESCRIPCION', 'CANTIDAD', 'U/M', 'PRECIO', 'TOTAL']],
+          body: [
+            ...cotItems.map((it) => {
+              const p = parseFloat(it.precio) || 0;
+              const q = parseFloat(it.cantidad) || 1;
+              return [it.codigo || '—', it.descripcion, q.toFixed(2), it.um || 'UND', p.toLocaleString('en-US',{minimumFractionDigits:2}), (p*q).toLocaleString('en-US',{minimumFractionDigits:2})];
+            }),
+            ...Array(Math.max(0, 10 - cotItems.length)).fill(['', '', '', '', '', '']),
+          ],
+          styles: { fontSize: 9, cellPadding: 3 },
+          headStyles: { fillColor: [255,255,255], textColor: [30,30,30], fontStyle: 'bold', lineWidth: 0.3, lineColor: [180,180,180] },
+          bodyStyles: { lineWidth: 0.3, lineColor: [180,180,180] },
+          columnStyles: {
+            0: { cellWidth: 22 },
+            2: { halign: 'right' },
+            3: { halign: 'center', cellWidth: 15 },
+            4: { halign: 'right' },
+            5: { halign: 'right', fontStyle: 'bold' },
+          },
+          margin: { left: margin, right: margin },
+        });
+
+        // ── TOTALES ──
+        const yTotales = doc.lastAutoTable.finalY;
+        autoTable(doc, {
+          startY: yTotales,
+          body: [
+            ['TOTAL BRUTO', subtotal.toLocaleString('en-US',{minimumFractionDigits:2})],
+            ['DESCUENTO', descuento.toLocaleString('en-US',{minimumFractionDigits:2})],
+            ['SUB TOTAL', subTotal2.toLocaleString('en-US',{minimumFractionDigits:2})],
+            [`ITBIS (18%)`, itax.toLocaleString('en-US',{minimumFractionDigits:2})],
+          ],
+          styles: { fontSize: 9, cellPadding: 2, lineWidth: 0.3, lineColor: [180,180,180] },
+          columnStyles: { 0: { halign: 'right', fontStyle: 'bold', cellWidth: 40 }, 1: { halign: 'right', cellWidth: 30 } },
+          tableWidth: 70,
+          margin: { left: pageW - margin - 70 },
+        });
+
+        // TOTAL FINAL
+        const yTotal = doc.lastAutoTable.finalY;
+        autoTable(doc, {
+          startY: yTotal,
+          body: [['TOTAL RD$', total.toLocaleString('en-US',{minimumFractionDigits:2})]],
+          styles: { fontSize: 11, cellPadding: 3, fontStyle: 'bold', lineWidth: 0.3, lineColor: [180,180,180] },
+          bodyStyles: { fillColor: [240,240,240] },
+          columnStyles: { 0: { halign: 'right', cellWidth: 40 }, 1: { halign: 'right', cellWidth: 30 } },
+          tableWidth: 70,
+          margin: { left: pageW - margin - 70 },
+        });
+
+        // ── NOTA ──
+        if (cotNota) {
+          const yNota = doc.lastAutoTable.finalY + 8;
+          doc.setFontSize(9); doc.setTextColor(100,116,139); doc.setFont(undefined,'italic');
+          doc.text(`Nota: ${cotNota}`, margin, yNota, { maxWidth: 180 });
+        }
+
+        // ── GUARDAR Y DESCARGAR ──
         const pdfNombre = `cotizacion-${genCotCliente.nombre.replace(/ /g,'-')}-${numCot}.pdf`;
         const base64 = doc.output('datauristring');
         const nueva = { id: Date.now(), nombre: pdfNombre, base64, fecha: new Date().toISOString(), monto: total, tipo: 'generado', numCot };
@@ -4488,12 +4578,22 @@ export default function App() {
                 <label style={{ fontSize: '0.73rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Líneas de servicio</label>
                 <button type="button" onClick={agregarItemCot} className="btn btn-secondary" style={{ padding: '0.25rem 0.65rem', fontSize: '0.75rem' }}>+ Agregar línea</button>
               </div>
+              {/* Header columnas */}
+              <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 60px 70px 90px 30px', gap: '0.4rem', marginBottom: '0.25rem' }}>
+                {['Código','Descripción','Cant.','U/M','Precio',''].map((h,i) => (
+                  <div key={i} style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: i >= 2 ? 'center' : 'left' }}>{h}</div>
+                ))}
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '240px', overflowY: 'auto' }}>
                 {cotItems.map((it, i) => (
-                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 70px 100px 30px', gap: '0.4rem', alignItems: 'center' }}>
-                    <input type="text" value={it.descripcion} onChange={e => actualizarItemCot(i,'descripcion',e.target.value)} placeholder="Descripción del servicio..." style={{ padding: '0.45rem 0.7rem', border: '1px solid var(--border2)', borderRadius: '7px', fontSize: '0.82rem', background: 'var(--surface2)', color: 'var(--text)', fontFamily: 'Plus Jakarta Sans, sans-serif' }} />
-                    <input type="number" value={it.cantidad} onChange={e => actualizarItemCot(i,'cantidad',e.target.value)} min="1" placeholder="Cant." style={{ padding: '0.45rem 0.5rem', border: '1px solid var(--border2)', borderRadius: '7px', fontSize: '0.82rem', background: 'var(--surface2)', color: 'var(--text)', textAlign: 'center', fontFamily: 'var(--mono)' }} />
-                    <input type="number" value={it.precio} onChange={e => actualizarItemCot(i,'precio',e.target.value)} placeholder="Precio" style={{ padding: '0.45rem 0.5rem', border: '1px solid var(--border2)', borderRadius: '7px', fontSize: '0.82rem', background: 'var(--surface2)', color: 'var(--text)', textAlign: 'right', fontFamily: 'var(--mono)' }} />
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '80px 1fr 60px 70px 90px 30px', gap: '0.4rem', alignItems: 'center' }}>
+                    <input type="text" value={it.codigo||''} onChange={e => actualizarItemCot(i,'codigo',e.target.value)} placeholder="000000" style={{ padding: '0.45rem 0.5rem', border: '1px solid var(--border2)', borderRadius: '7px', fontSize: '0.8rem', background: 'var(--surface2)', color: 'var(--text)', fontFamily: 'var(--mono)' }} />
+                    <input type="text" value={it.descripcion} onChange={e => actualizarItemCot(i,'descripcion',e.target.value)} placeholder="Descripción..." style={{ padding: '0.45rem 0.7rem', border: '1px solid var(--border2)', borderRadius: '7px', fontSize: '0.82rem', background: 'var(--surface2)', color: 'var(--text)' }} />
+                    <input type="number" value={it.cantidad} onChange={e => actualizarItemCot(i,'cantidad',e.target.value)} min="1" placeholder="1" style={{ padding: '0.45rem 0.5rem', border: '1px solid var(--border2)', borderRadius: '7px', fontSize: '0.82rem', background: 'var(--surface2)', color: 'var(--text)', textAlign: 'center', fontFamily: 'var(--mono)' }} />
+                    <select value={it.um||'UND'} onChange={e => actualizarItemCot(i,'um',e.target.value)} style={{ padding: '0.45rem 0.4rem', border: '1px solid var(--border2)', borderRadius: '7px', fontSize: '0.8rem', background: 'var(--surface2)', color: 'var(--text)' }}>
+                      {['UND','HRS','MES','KG','LT','M2','SERV'].map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                    <input type="number" value={it.precio} onChange={e => actualizarItemCot(i,'precio',e.target.value)} placeholder="0.00" style={{ padding: '0.45rem 0.5rem', border: '1px solid var(--border2)', borderRadius: '7px', fontSize: '0.82rem', background: 'var(--surface2)', color: 'var(--text)', textAlign: 'right', fontFamily: 'var(--mono)' }} />
                     {cotItems.length > 1 && <button type="button" onClick={() => eliminarItemCot(i)} style={{ width: '28px', height: '28px', borderRadius: '6px', border: '1px solid #fca5a5', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', fontSize: '0.8rem' }}>×</button>}
                   </div>
                 ))}
@@ -4501,12 +4601,20 @@ export default function App() {
               {/* Subtotales */}
               {(() => {
                 const sub = cotItems.reduce((s,it) => s + (parseFloat(it.precio)||0)*(parseFloat(it.cantidad)||1), 0);
-                const tax = sub * 0.18;
+                const tax = cotConITBIS ? sub * 0.18 : 0;
                 return (
-                  <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: 'var(--surface2)', borderRadius: '9px', display: 'flex', justifyContent: 'flex-end', gap: '1.5rem', fontSize: '0.83rem' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Subtotal: <strong>${sub.toLocaleString('en-US',{minimumFractionDigits:2})}</strong></span>
-                    <span style={{ color: 'var(--text-muted)' }}>ITBIS 18%: <strong>${tax.toLocaleString('en-US',{minimumFractionDigits:2})}</strong></span>
-                    <span style={{ color: 'var(--navy)', fontWeight: 800, fontSize: '0.95rem', fontFamily: 'var(--mono)' }}>Total: ${(sub+tax).toLocaleString('en-US',{minimumFractionDigits:2})}</span>
+                  <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: 'var(--surface2)', borderRadius: '9px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                        <input type="checkbox" checked={cotConITBIS} onChange={e => setCotConITBIS(e.target.checked)} />
+                        Aplicar ITBIS 18%
+                      </label>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1.5rem', fontSize: '0.83rem' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Subtotal: <strong>${sub.toLocaleString('en-US',{minimumFractionDigits:2})}</strong></span>
+                      {cotConITBIS && <span style={{ color: 'var(--text-muted)' }}>ITBIS 18%: <strong>${tax.toLocaleString('en-US',{minimumFractionDigits:2})}</strong></span>}
+                      <span style={{ color: 'var(--navy)', fontWeight: 800, fontSize: '0.95rem', fontFamily: 'var(--mono)' }}>Total: ${(sub+tax).toLocaleString('en-US',{minimumFractionDigits:2})}</span>
+                    </div>
                   </div>
                 );
               })()}
