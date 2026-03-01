@@ -775,89 +775,86 @@ input::placeholder, textarea::placeholder { color: var(--text-light); }
 ═══════════════════════════════════════════════════════════ */
 .dashboard {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 0.875rem;
   margin-bottom: 1.5rem;
 }
 
 .stat-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 1.15rem 1.35rem 1.1rem 1.55rem;
+  border: none;
+  border-radius: 16px;
+  padding: 1.25rem 1.4rem 1.2rem 1.4rem;
   position: relative;
   overflow: hidden;
-  transition: box-shadow 0.2s ease, transform 0.18s ease, border-color 0.15s ease;
-  box-shadow: 0 1px 2px rgba(20,22,37,0.04), 0 1px 4px rgba(20,22,37,0.03);
-  cursor: default;
+  transition: box-shadow 0.2s ease, transform 0.18s ease;
+  box-shadow: 0 2px 8px rgba(20,22,37,0.10), 0 1px 3px rgba(20,22,37,0.06);
+  cursor: pointer;
 }
 .stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(20,22,37,0.08), 0 2px 6px rgba(20,22,37,0.04);
-  border-color: var(--border-2);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(20,22,37,0.14), 0 3px 8px rgba(20,22,37,0.08);
 }
 
-/* ── Left accent stripe (subtle, replaces invasive top bar) ── */
+/* ── Top accent bar ── */
 .stat-card::before {
   content: '';
   position: absolute;
-  left: 0; top: 18%; bottom: 18%;
-  width: 3px;
-  border-radius: 0 2px 2px 0;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  border-radius: 16px 16px 0 0;
 }
 
-/* ── No more big circle ── */
 .stat-card::after { display: none; }
 
-/* ── Very subtle tinted backgrounds ── */
-.stat-card.cotizado     { background: linear-gradient(150deg, #fff9f6 0%, #ffffff 50%); }
-.stat-card.notificado   { background: linear-gradient(150deg, #f8f7ff 0%, #ffffff 50%); }
-.stat-card.pagado       { background: linear-gradient(150deg, #f3fdf8 0%, #ffffff 50%); }
-.stat-card.facturado    { background: linear-gradient(150deg, #f0fdfb 0%, #ffffff 50%); }
-.stat-card.vencido      { background: linear-gradient(150deg, #fff6f6 0%, #ffffff 50%); }
-.stat-card.suspendido   { background: linear-gradient(150deg, #fff5f7 0%, #ffffff 50%); }
-.stat-card.no-generaron { background: linear-gradient(150deg, #f9fafb 0%, #ffffff 50%); }
-.stat-card.activo       { background: linear-gradient(150deg, #f1fbff 0%, #ffffff 50%); }
-.stat-card.por-vencer   { background: linear-gradient(150deg, #fffdf0 0%, #ffffff 50%); }
-.stat-card.credito-vencido { background: linear-gradient(150deg, #fff6f6 0%, #ffffff 50%); }
-.stat-card.credito-pagado  { background: linear-gradient(150deg, #f3fdf8 0%, #ffffff 50%); }
+/* ── Colored backgrounds per state ── */
+.stat-card.cotizado     { background: linear-gradient(135deg, #fff4ed 0%, #fff8f4 100%); border: 1.5px solid #fed7aa; }
+.stat-card.notificado   { background: linear-gradient(135deg, #eff6ff 0%, #f5f8ff 100%); border: 1.5px solid #bfdbfe; }
+.stat-card.pagado       { background: linear-gradient(135deg, #f0fdf4 0%, #f5fdf7 100%); border: 1.5px solid #bbf7d0; }
+.stat-card.facturado    { background: linear-gradient(135deg, #f0fdfa 0%, #f5fefb 100%); border: 1.5px solid #99f6e4; }
+.stat-card.vencido      { background: linear-gradient(135deg, #fff1f2 0%, #fff5f6 100%); border: 1.5px solid #fecdd3; }
+.stat-card.suspendido   { background: linear-gradient(135deg, #fff1f2 0%, #fff5f6 100%); border: 1.5px solid #fecdd3; }
+.stat-card.no-generaron { background: linear-gradient(135deg, #f8fafc 0%, #f9fafb 100%); border: 1.5px solid #e2e8f0; }
+.stat-card.activo       { background: linear-gradient(135deg, #f0f9ff 0%, #f5fbff 100%); border: 1.5px solid #bae6fd; }
+.stat-card.por-vencer   { background: linear-gradient(135deg, #fffbeb 0%, #fefdf5 100%); border: 1.5px solid #fde68a; }
+.stat-card.credito-vencido { background: linear-gradient(135deg, #fff1f2 0%, #fff5f6 100%); border: 1.5px solid #fecdd3; }
+.stat-card.credito-pagado  { background: linear-gradient(135deg, #f0fdf4 0%, #f5fdf7 100%); border: 1.5px solid #bbf7d0; }
 
-/* ── Accent stripe colors ── */
-.stat-card.cotizado::before        { background: linear-gradient(180deg, #fb923c, #ea580c); }
-.stat-card.notificado::before      { background: linear-gradient(180deg, var(--brand-light), var(--brand)); }
-.stat-card.pagado::before          { background: linear-gradient(180deg, #34d399, #16a34a); }
-.stat-card.facturado::before       { background: linear-gradient(180deg, #2dd4bf, #0d9488); }
-.stat-card.vencido::before         { background: linear-gradient(180deg, #f87171, #dc2626); }
-.stat-card.suspendido::before      { background: linear-gradient(180deg, #fb7185, #e11d48); }
-.stat-card.no-generaron::before    { background: linear-gradient(180deg, #cbd5e1, #64748b); }
-.stat-card.activo::before          { background: linear-gradient(180deg, #38bdf8, #0891b2); }
-.stat-card.por-vencer::before      { background: linear-gradient(180deg, #fbbf24, #d97706); }
-.stat-card.credito-vencido::before { background: linear-gradient(180deg, #f87171, #dc2626); }
-.stat-card.credito-pagado::before  { background: linear-gradient(180deg, #34d399, #16a34a); }
+/* ── Top bar colors ── */
+.stat-card.cotizado::before        { background: linear-gradient(90deg, #fb923c, #ea580c); }
+.stat-card.notificado::before      { background: linear-gradient(90deg, #818cf8, #4f46e5); }
+.stat-card.pagado::before          { background: linear-gradient(90deg, #34d399, #16a34a); }
+.stat-card.facturado::before       { background: linear-gradient(90deg, #2dd4bf, #0d9488); }
+.stat-card.vencido::before         { background: linear-gradient(90deg, #f87171, #dc2626); }
+.stat-card.suspendido::before      { background: linear-gradient(90deg, #fb7185, #e11d48); }
+.stat-card.no-generaron::before    { background: linear-gradient(90deg, #94a3b8, #64748b); }
+.stat-card.activo::before          { background: linear-gradient(90deg, #38bdf8, #0891b2); }
+.stat-card.por-vencer::before      { background: linear-gradient(90deg, #fbbf24, #d97706); }
+.stat-card.credito-vencido::before { background: linear-gradient(90deg, #f87171, #dc2626); }
+.stat-card.credito-pagado::before  { background: linear-gradient(90deg, #34d399, #16a34a); }
 
 .stat-label {
-  font-size: 0.61rem;
-  color: var(--text-light);
-  font-weight: 700;
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.6rem;
   line-height: 1.3;
 }
 .stat-value {
-  font-size: 2rem;
-  font-weight: 800;
+  font-size: 2.2rem;
+  font-weight: 900;
   font-family: var(--mono);
   color: var(--text);
   line-height: 1;
   letter-spacing: -0.04em;
 }
 .stat-percentage {
-  font-size: 0.67rem;
-  color: var(--text-light);
-  margin-top: 0.4rem;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: 0.45rem;
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 /* ── All values dark — accent comes from left stripe, not text color ── */
