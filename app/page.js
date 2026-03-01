@@ -3041,6 +3041,12 @@ export default function App() {
                                       ))}
                                     </div>
                                   )}
+                                  {cliente.nota && (
+                                    <div onClick={() => abrirNotaModal(cliente)} title={cliente.nota} style={{ display:'inline-flex', alignItems:'center', gap:'0.3rem', marginTop:'0.2rem', cursor:'pointer', background:'#fef9c3', border:'1px solid #fde047', borderRadius:'5px', padding:'0.1rem 0.45rem', maxWidth:'220px' }}>
+                                      <StickyNote size={11} style={{ color:'#a16207', flexShrink:0 }}/>
+                                      <span style={{ fontSize:'0.68rem', fontWeight:600, color:'#92400e', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{cliente.nota.length > 35 ? cliente.nota.slice(0, 35) + '…' : cliente.nota}</span>
+                                    </div>
+                                  )}
                                 </div>
                                 <button onClick={() => { setTagClienteId(cliente.id); setTagInput(''); setShowTagModal(true); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem', opacity: 0.4, padding: '0 0.2rem' }} title="Agregar etiqueta"><Tag size={13}/></button>
                               </div>
