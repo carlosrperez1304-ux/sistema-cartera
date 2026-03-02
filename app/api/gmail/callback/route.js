@@ -4,15 +4,18 @@ export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get('code');
   const state = searchParams.get('state');
+  const error = searchParams.get('error');
 
+  console.log('Gmail callback - code:', !!code, 'state:', state, 'error:', error);
+
+  if (error) return Response.redirect(`${process.env.NEXTAUTH_URL}/?gmail_error=${error}`);
   if (!code) return Response.redirect(`${process.env.NEXTAUTH_URL}/?gmail_error=no_code`);
   if (!state) return Response.redirect(`${process.env.NEXTAUTH_URL}/?gmail_error=no_state`);
 
   try {
     const username = Buffer.from(state, 'base64').toString('utf8');
-    if (!username) return Response.redirect(`${process.env.NEXTAUTH_URL}/?gmail_error=invalid_state`);
+    console.log('Gmail callback - username:', username);
 
-    // Intercambiar code por token
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -26,10 +29,11 @@ export async function GET(req) {
     });
 
     const tokenData = await tokenRes.json();
-    if (!tokenData.access_token) return Response.redirect(`${process.env.NEXTAUTH_URL}/?gmail_error=no_token`);
+    console.log('Gmail callback - token error:', tokenData.error, 'has token:', !!tokenData.access_token);
 
-    // Guardar token en la BD
-    const { error } = await db().from('usuarios').update({
+    if (!tokenData.access_token) return Response.redirect(`${process.env.NEXTAUTH_URL}/?gmail_error=no_token_${tokenData.error}`);
+
+    const { error: dbError } = await db().from('usuarios').update({
       gmail_token: JSON.stringify({
         access_token: tokenData.access_token,
         refresh_token: tokenData.refresh_token,
@@ -37,10 +41,13 @@ export async function GET(req) {
       })
     }).eq('username', username);
 
-    if (error) return Response.redirect(`${process.env.NEXTAUTH_URL}/?gmail_error=db_error`);
+    console.log('Gmail callback - db error:', dbError);
+
+    if (dbError) return Response.redirect(`${process.env.NEXTAUTH_URL}/?gmail_error=db_${dbError.message}`);
 
     return Response.redirect(`${process.env.NEXTAUTH_URL}/?gmail_ok=1`);
   } catch(e) {
+    console.log('Gmail callback - exception:', e.message);
     return Response.redirect(`${process.env.NEXTAUTH_URL}/?gmail_error=${encodeURIComponent(e.message)}`);
   }
 }
