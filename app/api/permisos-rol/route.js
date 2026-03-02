@@ -7,7 +7,13 @@ export async function GET(req) {
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
 
   const { data, error } = await db().from('permisos_rol').select('rol, permiso, activo');
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  // Si la tabla aún no existe en Supabase, devolver objeto vacío (permisos por defecto)
+  if (error) {
+    if (error.message?.includes('does not exist') || error.code === '42P01') {
+      return Response.json({});
+    }
+    return Response.json({ error: error.message }, { status: 500 });
+  }
 
   const resultado = {};
   for (const { rol, permiso, activo } of (data || [])) {
