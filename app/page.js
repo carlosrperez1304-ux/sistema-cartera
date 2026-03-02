@@ -933,11 +933,11 @@ export default function App() {
   const cancelarEdicionCreditoMonto = () => { setEditingCreditoMontoId(null); setTempCreditoMonto(''); };
 
   const cargarGmail = async () => {
-    if (!session?.user?.accessToken) return;
     setGmailLoading(true);
     try {
       const res = await fetch('/api/gmail?max=15');
-      const data = res.ok ? await res.json() : { emails: [] };
+      const data = res.ok ? await res.json() : { emails: [], linked: false };
+      if (data.linked === false) { setGmailEmails([]); setGmailUnread(0); setGmailLoading(false); return; }
       setGmailEmails(data.emails || []);
       setGmailUnread((data.emails || []).filter(e => e.unread).length);
     } catch(e) {}
@@ -2098,7 +2098,7 @@ export default function App() {
             </button>
           )}
           {/* GMAIL */}
-          {session?.user?.accessToken && (
+          {(
             <div style={{ position: 'relative' }}>
               <button className="topbar-icon-btn" onClick={() => { setShowGmailPanel(v => !v); if (!showGmailPanel) cargarGmail(); }} title="Gmail" style={{ position: 'relative' }}>
                 <Mail size={16}/>
@@ -4943,6 +4943,34 @@ export default function App() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                       <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600 }}>RD$</span>
                       <input type="number" value={metaMensual || ''} onChange={e => setMetaMensual(parseFloat(e.target.value) || 0)} placeholder="0" style={{ width: '100px', padding: '0.35rem 0.5rem', border: '1px solid var(--border-2)', borderRadius: '7px', background: 'var(--surface-2)', color: 'var(--text)', fontSize: '0.85rem', fontFamily: 'var(--mono)' }} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* VINCULAR GMAIL */}
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '0.75rem', paddingBottom: '0.4rem', borderBottom: '1px solid var(--border)', display:'flex', alignItems:'center', gap:'0.4rem' }}><Mail size={11}/> Gmail</div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: 'var(--surface-2)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text)' }}>Vincular cuenta Gmail</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>Ver tus emails directamente en el sistema</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button className="btn btn-secondary" style={{ fontSize: '0.78rem' }} onClick={async () => {
+                        const res = await fetch('/api/gmail/auth');
+                        const data = await res.json();
+                        if (data.url) window.open(data.url, '_blank', 'width=500,height=600');
+                      }}>
+                        <Mail size={13}/> Vincular Gmail
+                      </button>
+                      <button className="btn btn-secondary" style={{ fontSize: '0.78rem', color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={async () => {
+                        await fetch('/api/gmail/auth', { method: 'DELETE' });
+                        setGmailEmails([]);
+                        setGmailUnread(0);
+                        showToast('Gmail desvinculado', 'success');
+                      }}>
+                        Desvincular
+                      </button>
                     </div>
                   </div>
                 </div>
