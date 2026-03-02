@@ -277,6 +277,10 @@ export default function App() {
   const [filter, setFilter] = useState('todos');
   const [showModal, setShowModal] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState(null);
+  const [showGmailPanel, setShowGmailPanel] = useState(false);
+  const [gmailEmails, setGmailEmails] = useState([]);
+  const [gmailLoading, setGmailLoading] = useState(false);
+  const [gmailUnread, setGmailUnread] = useState(0);
   const [graficasVisibles, setGraficasVisibles] = useState(true);
   const [showNotaModal, setShowNotaModal] = useState(false);
   const [showDescargaMesModal, setShowDescargaMesModal] = useState(false);
@@ -927,6 +931,18 @@ export default function App() {
     setEditingCreditoMontoId(null); setTempCreditoMonto('');
   };
   const cancelarEdicionCreditoMonto = () => { setEditingCreditoMontoId(null); setTempCreditoMonto(''); };
+
+  const cargarGmail = async () => {
+    if (!session?.user?.accessToken) return;
+    setGmailLoading(true);
+    try {
+      const res = await fetch('/api/gmail?max=15');
+      const data = res.ok ? await res.json() : { emails: [] };
+      setGmailEmails(data.emails || []);
+      setGmailUnread((data.emails || []).filter(e => e.unread).length);
+    } catch(e) {}
+    setGmailLoading(false);
+  };
 
   const abrirPagoModal = (cliente) => { setPagoClienteTarget(cliente); setPagoMonto(''); setShowPagoModal(true); };
   const cargarPagosPendientes = async () => {
@@ -2081,6 +2097,52 @@ export default function App() {
               <FileText size={16}/>
             </button>
           )}
+          {/* GMAIL */}
+          {session?.user?.accessToken && (
+            <div style={{ position: 'relative' }}>
+              <button className="topbar-icon-btn" onClick={() => { setShowGmailPanel(v => !v); if (!showGmailPanel) cargarGmail(); }} title="Gmail" style={{ position: 'relative' }}>
+                <Mail size={16}/>
+                {gmailUnread > 0 && <span style={{ position: 'absolute', top: '2px', right: '2px', minWidth: '16px', height: '16px', background: '#dc2626', borderRadius: '8px', fontSize: '0.6rem', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px' }}>{gmailUnread}</span>}
+              </button>
+              {showGmailPanel && (
+                <>
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 998 }} onClick={() => setShowGmailPanel(false)} />
+                  <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', width: '380px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)', zIndex: 999, overflow: 'hidden' }}>
+                    <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Mail size={15}/> Gmail
+                        {gmailUnread > 0 && <span style={{ background: '#dc2626', color: '#fff', fontSize: '0.65rem', fontWeight: 800, padding: '0.1rem 0.4rem', borderRadius: '8px' }}>{gmailUnread} nuevos</span>}
+                      </div>
+                      <button onClick={cargarGmail} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem' }}>
+                        <RefreshCw size={12}/> Actualizar
+                      </button>
+                    </div>
+                    <div style={{ maxHeight: '420px', overflowY: 'auto' }}>
+                      {gmailLoading ? (
+                        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}><Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }}/></div>
+                      ) : gmailEmails.length === 0 ? (
+                        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No hay emails</div>
+                      ) : gmailEmails.map(email => (
+                        <div key={email.id} style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border)', background: email.unread ? 'var(--surface-2)' : 'transparent', cursor: 'pointer' }}
+                          onClick={() => window.open(`https://mail.google.com/mail/u/0/#inbox/${email.id}`, '_blank')}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                            <div style={{ fontWeight: email.unread ? 700 : 500, fontSize: '0.82rem', color: 'var(--text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email.subject}</div>
+                            {email.unread && <span style={{ width: '8px', height: '8px', background: '#3b82f6', borderRadius: '50%', flexShrink: 0, marginTop: '4px' }}></span>}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email.from}</div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-light)', marginTop: '0.2rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email.snippet}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ padding: '0.65rem 1rem', borderTop: '1px solid var(--border)', textAlign: 'center' }}>
+                      <a href="https://mail.google.com" target="_blank" rel="noreferrer" style={{ fontSize: '0.78rem', color: 'var(--brand)', fontWeight: 700, textDecoration: 'none' }}>Abrir Gmail completo →</a>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           {/* CAMPANA DE NOTIFICACIONES */}
           <div style={{ position: 'relative' }}>
             <button className="topbar-icon-btn" onClick={() => setShowNotifPanel(v => !v)} title="Notificaciones" style={{ position: 'relative' }}>
