@@ -30,10 +30,12 @@ export async function GET(req) {
     query = query.eq('owner_id', username);
   }
 
-  if (delegationId) query = query.eq('delegation_id', parseInt(delegationId));
-  if (clientId)     query = query.eq('client_id', parseInt(clientId));
-  if (desde)        query = query.gte('created_at', desde);
-  if (hasta)        query = query.lte('created_at', hasta + 'T23:59:59Z');
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+  if (delegationId && !isNaN(parseInt(delegationId))) query = query.eq('delegation_id', parseInt(delegationId));
+  if (clientId     && !isNaN(parseInt(clientId)))     query = query.eq('client_id', parseInt(clientId));
+  if (desde && DATE_RE.test(desde)) query = query.gte('created_at', desde);
+  if (hasta && DATE_RE.test(hasta)) query = query.lte('created_at', hasta + 'T23:59:59Z');
 
   const { data, error } = await query;
   if (error) return Response.json({ error: error.message }, { status: 500 });

@@ -17,7 +17,7 @@ export async function POST(req) {
   const body = await req.json();
   const { pago_id, accion, motivo_rechazo } = body;
   if (!pago_id || !["aprobar", "rechazar"].includes(accion))
-    return Response.json({ error: "Datos invalidos" }, { status: 400 });
+    return Response.json({ error: "Datos inválidos" }, { status: 400 });
 
   const { data: pago } = await db().from("pagos").select("*").eq("id", pago_id).single();
   if (!pago) return Response.json({ error: "Pago no encontrado" }, { status: 404 });
@@ -27,8 +27,10 @@ export async function POST(req) {
     return Response.json({ error: "Solo se pueden validar pagos pendientes" }, { status: 400 });
 
   if (accion === "rechazar") {
-    if (!motivo_rechazo) return Response.json({ error: "Falta motivo de rechazo" }, { status: 400 });
-    await db().from("pagos").update({ estado: "rechazado", motivo_rechazo, validado_por: auth.session.user.username, validado_en: new Date().toISOString() }).eq("id", pago_id);
+    if (!motivo_rechazo || typeof motivo_rechazo !== 'string' || !motivo_rechazo.trim())
+      return Response.json({ error: "Falta motivo de rechazo" }, { status: 400 });
+    const motivoLimpio = motivo_rechazo.trim().slice(0, 500);
+    await db().from("pagos").update({ estado: "rechazado", motivo_rechazo: motivoLimpio, validado_por: auth.session.user.username, validado_en: new Date().toISOString() }).eq("id", pago_id);
     return Response.json({ ok: true });
   }
 
