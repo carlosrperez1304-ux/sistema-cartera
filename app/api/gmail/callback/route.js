@@ -1,16 +1,17 @@
 import { db } from '../../../../lib/supabase.js';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '../../../../lib/authOptions.js';
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get('code');
-  if (!code) return Response.redirect(`${process.env.NEXTAUTH_URL}/?gmail_error=no_code`);
+  const state = searchParams.get('state');
 
-  const session = await getServerSession(authOptions);
-  if (!session) return Response.redirect(`${process.env.NEXTAUTH_URL}/?gmail_error=no_session`);
+  if (!code) return Response.redirect(`${process.env.NEXTAUTH_URL}/?gmail_error=no_code`);
+  if (!state) return Response.redirect(`${process.env.NEXTAUTH_URL}/?gmail_error=no_state`);
 
   try {
+    const username = Buffer.from(state, 'base64').toString('utf8');
+    if (!username) return Response.redirect(`${process.env.NEXTAUTH_URL}/?gmail_error=invalid_state`);
+
     // Intercambiar code por token
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
@@ -23,20 +24,23 @@ export async function GET(req) {
         grant_type: 'authorization_code',
       }),
     });
+
     const tokenData = await tokenRes.json();
     if (!tokenData.access_token) return Response.redirect(`${process.env.NEXTAUTH_URL}/?gmail_error=no_token`);
 
-    // Guardar token en la base de datos
-    await db().from('usuarios').update({
+    // Guardar token en la BD
+    const { error } = await db().from('usuarios').update({
       gmail_token: JSON.stringify({
         access_token: tokenData.access_token,
         refresh_token: tokenData.refresh_token,
         expiry: Date.now() + (tokenData.expires_in * 1000),
       })
-    }).eq('username', session.user.username);
+    }).eq('username', username);
+
+    if (error) return Response.redirect(`${process.env.NEXTAUTH_URL}/?gmail_error=db_error`);
 
     return Response.redirect(`${process.env.NEXTAUTH_URL}/?gmail_ok=1`);
   } catch(e) {
-    return Response.redirect(`${process.env.NEXTAUTH_URL}/?gmail_error=${e.message}`);
+    return Response.redirect(`${process.env.NEXTAUTH_URL}/?gmail_error=${encodeURIComponent(e.message)}`);
   }
 }
