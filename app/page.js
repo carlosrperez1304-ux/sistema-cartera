@@ -932,6 +932,15 @@ export default function App() {
   };
   const cancelarEdicionCreditoMonto = () => { setEditingCreditoMontoId(null); setTempCreditoMonto(''); };
 
+  // Detectar gmail_ok en URL y cargar emails
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('gmail_ok')) {
+      cargarGmail();
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
   const cargarGmail = async () => {
     setGmailLoading(true);
     try {
