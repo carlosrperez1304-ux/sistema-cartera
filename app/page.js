@@ -2017,8 +2017,8 @@ export default function App() {
       <div className="login-container">
         <div className="login-box">
           <div className="login-header">
-            <div className="login-logo"><DollarSign size={32}/></div>
-            <h1 className="login-title">CartaMaster</h1>
+            <div className="login-logo"><BarChart2 size={32} strokeWidth={2}/></div>
+            <h1 className="login-title"><span className="logo-carta">Carta</span><span className="logo-master">Master</span></h1>
             <p className="login-subtitle">Sistema de Gestión de Cartera</p>
           </div>
           <form className="login-form" onSubmit={handleLogin}>
@@ -2058,8 +2058,12 @@ export default function App() {
             {showMobileMenu ? <X size={20}/> : <Menu size={20}/>}
           </button>
           <div className="topbar-logo">
-            <div className="dot">CM</div>
-            <span className="logo-text">CartaMaster</span>
+            <div className="dot">
+              <BarChart2 size={16} strokeWidth={2.5}/>
+            </div>
+            <span className="logo-text">
+              <span className="logo-carta">Carta</span><span className="logo-master">Master</span>
+            </span>
           </div>
         </div>
         <div className="topbar-right">
