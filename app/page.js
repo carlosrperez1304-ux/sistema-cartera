@@ -2068,8 +2068,10 @@ export default function App() {
         </div>
         <div className="topbar-right">
           {soloLectura && <span style={{ background: 'rgba(254,249,195,0.15)', color: '#fbbf24', fontSize: '0.67rem', padding: '0.2rem 0.55rem', borderRadius: '5px', fontWeight: 700, marginRight: '0.25rem', border: '1px solid rgba(251,191,36,0.25)' }}>Solo lectura</span>}
-          <button className="topbar-icon-btn" onClick={() => setShowBusquedaGlobal(true)} title="Buscar">
-            <Search size={16}/>
+          <button className="topbar-search-trigger" onClick={() => setShowBusquedaGlobal(true)} title="Buscar (F)">
+            <Search size={14}/>
+            <span className="search-trigger-label">Buscar...</span>
+            <kbd>F</kbd>
           </button>
           <button className="topbar-icon-btn" onClick={() => setDarkMode(!darkMode)} title="Modo oscuro">
             {darkMode ? <Sun size={16}/> : <Moon size={16}/>}
@@ -3987,42 +3989,84 @@ export default function App() {
 
           {/* Búsqueda Global */}
           {showBusquedaGlobal && (
-            <div className="modal show" onClick={e => { if (e.target === e.currentTarget) { setShowBusquedaGlobal(false); setBusquedaGlobal(''); }}}>
-              <div className="modal-content" style={{ maxWidth: '600px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                  <span style={{ fontSize: '1.3rem' }}>🔍</span>
-                  <input autoFocus type="text" placeholder="Buscar en cartera y créditos..." value={busquedaGlobal} onChange={e => setBusquedaGlobal(e.target.value)} style={{ flex: 1, padding: '0.75rem 1rem', border: '2px solid var(--accent)', borderRadius: '10px', fontSize: '1rem', background: 'var(--surface)', color: 'var(--text)', outline: 'none', fontFamily: 'Plus Jakarta Sans, sans-serif' }} />
-                  <button onClick={() => { setShowBusquedaGlobal(false); setBusquedaGlobal(''); }} className="close-btn">×</button>
+            <div className="global-search-overlay" onClick={e => { if (e.target === e.currentTarget) { setShowBusquedaGlobal(false); setBusquedaGlobal(''); }}}>
+              <div className="global-search-box">
+
+                {/* Input */}
+                <div className="global-search-input-row">
+                  <Search size={18} className="global-search-icon"/>
+                  <input
+                    autoFocus
+                    type="text"
+                    className="global-search-input"
+                    placeholder="Buscar cliente, crédito, contacto..."
+                    value={busquedaGlobal}
+                    onChange={e => setBusquedaGlobal(e.target.value)}
+                  />
+                  <button className="global-search-close" onClick={() => { setShowBusquedaGlobal(false); setBusquedaGlobal(''); }}>
+                    <X size={14}/>
+                  </button>
                 </div>
-                {busquedaGlobal.length > 1 && (() => {
-                  const term = busquedaGlobal.toLowerCase();
-                  const resClientes = clientes.filter(c => c.nombre.toLowerCase().includes(term) || c.id.toString().includes(term) || (c.contacto||'').includes(term));
-                  const resCreditos = creditos.filter(c => c.cliente.toLowerCase().includes(term) || c.numeroOrden.toLowerCase().includes(term));
-                  return (
-                    <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                      {resClientes.length > 0 && <>
-                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '0.5rem' }}>Cartera ({resClientes.length})</div>
-                        {resClientes.map(c => <div key={c.id} onClick={() => { setActiveTab('cartera'); setSearchTerm(c.nombre); setShowBusquedaGlobal(false); setBusquedaGlobal(''); }} style={{ padding: '0.65rem 0.9rem', background: 'var(--surface2)', borderRadius: '8px', marginBottom: '0.35rem', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div><strong>{c.nombre}</strong> <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>#{c.id}</span></div>
-                          <span className={`badge badge-${(c.estado||'').toLowerCase().replace(/ /g,'-')}`}>{c.estado}</span>
-                        </div>)}
-                      </>}
-                      {resCreditos.length > 0 && <>
-                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0.75rem 0 0.5rem' }}>Créditos ({resCreditos.length})</div>
-                        {resCreditos.map(c => <div key={c.id} onClick={() => { setActiveTab('credito'); setShowBusquedaGlobal(false); setBusquedaGlobal(''); }} style={{ padding: '0.65rem 0.9rem', background: 'var(--surface2)', borderRadius: '8px', marginBottom: '0.35rem', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div><strong>{c.cliente}</strong> <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Orden: {c.numeroOrden}</span></div>
-                          <span className={`badge badge-${(c.estado||'').toLowerCase().replace(/ /g,'-')}`}>{c.estado}</span>
-                        </div>)}
-                      </>}
-                      {resClientes.length === 0 && resCreditos.length === 0 && <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No se encontraron resultados para "{busquedaGlobal}"</div>}
+
+                {/* Results */}
+                <div className="global-search-body">
+                  {busquedaGlobal.length > 1 ? (() => {
+                    const term = busquedaGlobal.toLowerCase();
+                    const resClientes = clientes.filter(c => c.nombre.toLowerCase().includes(term) || c.id.toString().includes(term) || (c.contacto||'').includes(term));
+                    const resCreditos = creditos.filter(c => c.cliente.toLowerCase().includes(term) || c.numeroOrden.toLowerCase().includes(term));
+                    if (resClientes.length === 0 && resCreditos.length === 0) {
+                      return (
+                        <div className="global-search-empty">
+                          <Search size={30}/>
+                          <p>Sin resultados para <strong>"{busquedaGlobal}"</strong></p>
+                        </div>
+                      );
+                    }
+                    return (
+                      <>
+                        {resClientes.length > 0 && (
+                          <div className="global-search-section">
+                            <div className="global-search-section-label"><Users size={11}/> Cartera · {resClientes.length}</div>
+                            {resClientes.map(c => (
+                              <div key={c.id} className="global-search-result" onClick={() => { setActiveTab('cartera'); setSearchTerm(c.nombre); setShowBusquedaGlobal(false); setBusquedaGlobal(''); }}>
+                                <div className="global-search-result-info">
+                                  <span className="global-search-result-name">{c.nombre}</span>
+                                  <span className="global-search-result-sub">#{c.id}</span>
+                                </div>
+                                <span className={`badge badge-${(c.estado||'').toLowerCase().replace(/ /g,'-')}`}>{c.estado}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {resCreditos.length > 0 && (
+                          <div className="global-search-section">
+                            <div className="global-search-section-label"><CreditCard size={11}/> Créditos · {resCreditos.length}</div>
+                            {resCreditos.map(c => (
+                              <div key={c.id} className="global-search-result" onClick={() => { setActiveTab('credito'); setShowBusquedaGlobal(false); setBusquedaGlobal(''); }}>
+                                <div className="global-search-result-info">
+                                  <span className="global-search-result-name">{c.cliente}</span>
+                                  <span className="global-search-result-sub">Orden {c.numeroOrden}</span>
+                                </div>
+                                <span className={`badge badge-${(c.estado||'').toLowerCase().replace(/ /g,'-')}`}>{c.estado}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })() : (
+                    <div className="global-search-hint">
+                      Escribe al menos 2 caracteres para buscar
                     </div>
-                  );
-                })()}
-                {busquedaGlobal.length <= 1 && <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Escribe al menos 2 letras para buscar</div>}
-                <div style={{ marginTop: '1rem', fontSize: '0.75rem', color: 'var(--text-light)', display: 'flex', gap: '1rem' }}>
-                  <span><kbd style={{ background: 'var(--surface2)', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid var(--border2)' }}>ESC</kbd> cerrar</span>
-                  <span><kbd style={{ background: 'var(--surface2)', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid var(--border2)' }}>F</kbd> abrir búsqueda</span>
+                  )}
                 </div>
+
+                {/* Footer */}
+                <div className="global-search-footer">
+                  <span><kbd>ESC</kbd> cerrar</span>
+                  <span><kbd>F</kbd> abrir</span>
+                </div>
+
               </div>
             </div>
           )}
