@@ -3537,7 +3537,7 @@ export default function App() {
                 </div>
               ) : (
                 <div style={{ background:'var(--surface)', border:'2px dashed var(--border)', borderRadius:'14px', padding:'3rem', textAlign:'center' }}>
-                  <div style={{ fontSize:'2.5rem', marginBottom:'0.75rem' }}>🏦</div>
+                  <Briefcase size={40} style={{ color:'var(--text-muted)', marginBottom:'0.75rem' }}/>
                   <div style={{ fontWeight:700, fontSize:'0.95rem', color:'var(--text)', marginBottom:'0.4rem' }}>Sube el estado de cuenta del banco</div>
                   <div style={{ fontSize:'0.82rem', color:'var(--text-muted)' }}>Compatible con BHD, Reservas y Popular · Formato Excel (.xlsx)</div>
                 </div>
@@ -3997,14 +3997,14 @@ export default function App() {
                   return (
                     <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
                       {resClientes.length > 0 && <>
-                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '0.5rem' }}>📊 Cartera ({resClientes.length})</div>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '0.5rem' }}>Cartera ({resClientes.length})</div>
                         {resClientes.map(c => <div key={c.id} onClick={() => { setActiveTab('cartera'); setSearchTerm(c.nombre); setShowBusquedaGlobal(false); setBusquedaGlobal(''); }} style={{ padding: '0.65rem 0.9rem', background: 'var(--surface2)', borderRadius: '8px', marginBottom: '0.35rem', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div><strong>{c.nombre}</strong> <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>#{c.id}</span></div>
                           <span className={`badge badge-${(c.estado||'').toLowerCase().replace(/ /g,'-')}`}>{c.estado}</span>
                         </div>)}
                       </>}
                       {resCreditos.length > 0 && <>
-                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0.75rem 0 0.5rem' }}>💳 Créditos ({resCreditos.length})</div>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0.75rem 0 0.5rem' }}>Créditos ({resCreditos.length})</div>
                         {resCreditos.map(c => <div key={c.id} onClick={() => { setActiveTab('credito'); setShowBusquedaGlobal(false); setBusquedaGlobal(''); }} style={{ padding: '0.65rem 0.9rem', background: 'var(--surface2)', borderRadius: '8px', marginBottom: '0.35rem', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div><strong>{c.cliente}</strong> <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Orden: {c.numeroOrden}</span></div>
                           <span className={`badge badge-${(c.estado||'').toLowerCase().replace(/ /g,'-')}`}>{c.estado}</span>
