@@ -4086,35 +4086,113 @@ export default function App() {
 
           {/* Modal Crédito */}
           <div className={`modal ${showCreditoModal ? 'show' : ''}`}>
-            <div className="modal-content">
-              <div className="modal-header"><h2>{editingCredito ? 'Editar Crédito' : 'Nuevo Crédito'}</h2><button className="close-btn" onClick={cerrarCreditoModal}>×</button></div>
-              <form onSubmit={guardarCredito}>
-                <div className="form-group"><label>Número de Orden *</label><input type="text" value={creditoFormData.numeroOrden} onChange={(e) => setCreditoFormData({ ...creditoFormData, numeroOrden: e.target.value })} placeholder="Ej: ORD-2025-001" required /></div>
-                <div className="form-group autocomplete-container">
-                  <label>Cliente *</label>
-                  <input type="text" value={creditoFormData.cliente} onChange={(e) => manejarCambioCliente(e.target.value)} onKeyDown={manejarTecladoAutocomplete} placeholder="Escribe el nombre del cliente..." autoComplete="off" required />
-                  <small style={{ color: '#64748b', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block', display:'flex', alignItems:'center', gap:'0.3rem' }}><Info size={12}/> Escribe para ver sugerencias</small>
-                  {mostrarAutocomplete && clientesFiltradosAuto.length > 0 && <div className="autocomplete-dropdown">{clientesFiltradosAuto.map((cliente, index) => <div key={cliente.id} className={`autocomplete-item ${index === selectedAutoIndex ? 'selected' : ''}`} onClick={() => seleccionarClienteAutocomplete(cliente)} onMouseEnter={() => setSelectedAutoIndex(index)}><span className="cliente-nombre">{cliente.nombre}</span><span className="cliente-id">ID: {cliente.id}</span></div>)}</div>}
+            <div className="modal-content" style={{ maxWidth: '620px', width: '95vw', padding: 0, borderRadius: '16px', overflow: 'hidden' }}>
+
+              {/* Header */}
+              <div style={{ background: 'linear-gradient(135deg, #1a2d1a 0%, #1e3d2f 100%)', padding: '1.25rem 1.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    {editingCredito ? <><Pencil size={15}/> Editar Crédito</> : <><CreditCard size={15}/> Nuevo Crédito</>}
+                  </h2>
+                  {editingCredito && <div style={{ fontSize: '0.75rem', color: '#86efac', marginTop: '0.2rem' }}>ID #{creditoFormData.id} · Orden {creditoFormData.numeroOrden || '—'}</div>}
                 </div>
-                <div className="form-group"><label>Monto del Crédito *</label><input type="number" value={creditoFormData.monto} onChange={(e) => setCreditoFormData({ ...creditoFormData, monto: e.target.value })} step="0.01" required /></div>
+                <button onClick={cerrarCreditoModal} style={{ color: '#fff', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <X size={16}/>
+                </button>
+              </div>
+
+              {/* Body */}
+              <form onSubmit={guardarCredito} style={{ padding: '1.5rem 1.75rem', display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '75vh', overflowY: 'auto' }}>
+
+                {/* Fila 1: Orden + Cliente */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group"><label>Fecha de Inicio *</label><input type="date" value={creditoFormData.fechaInicio} onChange={(e) => { const nd = { ...creditoFormData, fechaInicio: e.target.value }; if (nd.fechaVencimiento) { const i = new Date(e.target.value); const f = new Date(nd.fechaVencimiento); nd.plazoMeses = Math.max(1, ((f.getFullYear() - i.getFullYear()) * 12) + (f.getMonth() - i.getMonth())).toString(); } setCreditoFormData(nd); }} required /></div>
-                  <div className="form-group"><label>Fecha de Vencimiento *</label><input type="date" value={creditoFormData.fechaVencimiento} onChange={(e) => { const nd = { ...creditoFormData, fechaVencimiento: e.target.value }; if (nd.fechaInicio) { const i = new Date(nd.fechaInicio); const f = new Date(e.target.value); nd.plazoMeses = Math.max(1, ((f.getFullYear() - i.getFullYear()) * 12) + (f.getMonth() - i.getMonth())).toString(); } setCreditoFormData(nd); }} required /></div>
+                  <div style={{ margin: 0 }}>
+                    <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Número de Orden *</label>
+                    <input type="text" value={creditoFormData.numeroOrden} onChange={(e) => setCreditoFormData({ ...creditoFormData, numeroOrden: e.target.value })} placeholder="Ej: 144001" required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+                  </div>
+                  <div style={{ margin: 0 }}>
+                    <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Estado *</label>
+                    <select value={creditoFormData.estado} onChange={(e) => setCreditoFormData({ ...creditoFormData, estado: e.target.value })} required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', background: '#fff', boxSizing: 'border-box' }}>
+                      {['Activo','Por Vencer','Vencido','Pagado'].map(e => <option key={e} value={e}>{e}</option>)}
+                    </select>
+                  </div>
                 </div>
-                {creditoFormData.fechaInicio && creditoFormData.fechaVencimiento && <div style={{ padding: '0.9rem', background: 'rgba(0,212,170,0.08)', border: '1px solid rgba(0,212,170,0.2)', borderRadius: '10px', marginBottom: '1rem', fontSize: '0.88rem', fontWeight: 600, color: '#64748b', display:'flex', alignItems:'center', gap:'0.3rem' }}><Clock size={14}/> Plazo calculado: <span style={{ color: '#0ea5e9', fontWeight: 800, fontSize: '1.1rem' }}>{creditoFormData.plazoMeses || '0'} {creditoFormData.plazoMeses === '1' ? 'mes' : 'meses'}</span></div>}
-                <div className="form-group"><label>Estado *</label><select value={creditoFormData.estado} onChange={(e) => setCreditoFormData({ ...creditoFormData, estado: e.target.value })} required>{['Activo','Por Vencer','Vencido','Pagado'].map(e => <option key={e} value={e}>{e}</option>)}</select></div>
-                <div className="form-group"><label>Comentario</label><textarea value={creditoFormData.comentario} onChange={(e) => setCreditoFormData({ ...creditoFormData, comentario: e.target.value })} /></div>
+
+                {/* Cliente con autocomplete */}
+                <div style={{ margin: 0 }} className="autocomplete-container">
+                  <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Cliente *</label>
+                  <input type="text" value={creditoFormData.cliente} onChange={(e) => manejarCambioCliente(e.target.value)} onKeyDown={manejarTecladoAutocomplete} placeholder="Escribe el nombre del cliente..." autoComplete="off" required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+                  {mostrarAutocomplete && clientesFiltradosAuto.length > 0 && (
+                    <div className="autocomplete-dropdown">
+                      {clientesFiltradosAuto.map((cliente, index) => (
+                        <div key={cliente.id} className={`autocomplete-item ${index === selectedAutoIndex ? 'selected' : ''}`} onClick={() => seleccionarClienteAutocomplete(cliente)} onMouseEnter={() => setSelectedAutoIndex(index)}>
+                          <span className="cliente-nombre">{cliente.nombre}</span>
+                          <span className="cliente-id">ID: {cliente.id}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Monto */}
+                <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '10px', padding: '1rem' }}>
+                  <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Monto del Crédito *</label>
+                  <input type="number" value={creditoFormData.monto} onChange={(e) => setCreditoFormData({ ...creditoFormData, monto: e.target.value })} step="0.01" placeholder="Ej: 129600" required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '1rem', fontWeight: 700, boxSizing: 'border-box', background: '#fff' }} />
+                </div>
+
+                {/* Fechas */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div style={{ margin: 0 }}>
+                    <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Fecha de Inicio *</label>
+                    <input type="date" value={creditoFormData.fechaInicio} onChange={(e) => { const nd = { ...creditoFormData, fechaInicio: e.target.value }; if (nd.fechaVencimiento) { const i = new Date(e.target.value); const f = new Date(nd.fechaVencimiento); nd.plazoMeses = Math.max(1, ((f.getFullYear() - i.getFullYear()) * 12) + (f.getMonth() - i.getMonth())).toString(); } setCreditoFormData(nd); }} required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+                  </div>
+                  <div style={{ margin: 0 }}>
+                    <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Fecha de Vencimiento *</label>
+                    <input type="date" value={creditoFormData.fechaVencimiento} onChange={(e) => { const nd = { ...creditoFormData, fechaVencimiento: e.target.value }; if (nd.fechaInicio) { const i = new Date(nd.fechaInicio); const f = new Date(e.target.value); nd.plazoMeses = Math.max(1, ((f.getFullYear() - i.getFullYear()) * 12) + (f.getMonth() - i.getMonth())).toString(); } setCreditoFormData(nd); }} required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+                  </div>
+                </div>
+
+                {/* Plazo calculado */}
+                {creditoFormData.fechaInicio && creditoFormData.fechaVencimiento && (
+                  <div style={{ padding: '0.75rem 1rem', background: 'rgba(14,165,233,0.07)', border: '1px solid rgba(14,165,233,0.2)', borderRadius: '9px', fontSize: '0.85rem', fontWeight: 600, color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Clock size={14} style={{ color: '#0ea5e9' }}/>
+                    Plazo calculado:
+                    <span style={{ color: '#0ea5e9', fontWeight: 800, fontSize: '1rem' }}>{creditoFormData.plazoMeses || '0'} {creditoFormData.plazoMeses === '1' ? 'mes' : 'meses'}</span>
+                  </div>
+                )}
+
+                {/* Comentario */}
+                <div style={{ margin: 0 }}>
+                  <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Comentario</label>
+                  <textarea value={creditoFormData.comentario} onChange={(e) => setCreditoFormData({ ...creditoFormData, comentario: e.target.value })} style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box', resize: 'vertical', minHeight: '70px', fontFamily: 'inherit' }} />
+                </div>
+
+                {/* Abonos */}
                 {creditoFormData.monto && parseFloat(creditoFormData.monto) > 0 && (
                   <div className="abonos-section">
-                    <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem', display:'flex', alignItems:'center', gap:'0.4rem' }}><DollarSign size={15}/> Abonos</h3>
+                    <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><DollarSign size={14}/> Abonos</h3>
                     <div className="saldo-info">
                       {[['Total', 'total', '#0284c7'], ['Abonado', 'abonado', '#059669'], ['Pendiente', 'pendiente', '#f97316']].map(([label, key, color]) => { const s = calcularSaldosCredito(creditoFormData.monto, creditoFormData.abonos); return <div key={key} className="saldo-item"><label>{label}</label><div className="valor" style={{ color }}>${s[key].toFixed(2)}</div></div>; })}
                     </div>
-                    <div className="abono-input-group"><input type="number" value={nuevoAbono} onChange={(e) => setNuevoAbono(e.target.value)} placeholder="Monto del abono..." step="0.01" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); agregarAbono(); } }} /><button type="button" onClick={agregarAbono} style={{display:'flex',alignItems:'center',gap:'0.3rem'}}><Plus size={13}/> Agregar</button></div>
-                    {creditoFormData.abonos && creditoFormData.abonos.length > 0 && creditoFormData.abonos.map(abono => <div key={abono.id} className="abono-item"><div><div className="abono-monto">${abono.monto.toFixed(2)}</div><div className="abono-fecha">{abono.fechaFormato}</div></div><button type="button" onClick={() => eliminarAbono(abono.id)}>✕</button></div>)}
+                    <div className="abono-input-group">
+                      <input type="number" value={nuevoAbono} onChange={(e) => setNuevoAbono(e.target.value)} placeholder="Monto del abono..." step="0.01" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); agregarAbono(); } }} />
+                      <button type="button" onClick={agregarAbono} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Plus size={13}/> Agregar</button>
+                    </div>
+                    {creditoFormData.abonos && creditoFormData.abonos.length > 0 && creditoFormData.abonos.map(abono => (
+                      <div key={abono.id} className="abono-item">
+                        <div><div className="abono-monto">${abono.monto.toFixed(2)}</div><div className="abono-fecha">{abono.fechaFormato}</div></div>
+                        <button type="button" onClick={() => eliminarAbono(abono.id)}><X size={13}/></button>
+                      </div>
+                    ))}
                   </div>
                 )}
-                <div className="form-actions"><button type="button" className="btn btn-secondary" onClick={cerrarCreditoModal}>Cancelar</button><button type="submit" className="btn btn-primary">{editingCredito ? 'Actualizar' : 'Guardar'}</button></div>
+
+                {/* Acciones */}
+                <div className="form-actions">
+                  <button type="button" className="btn btn-secondary" onClick={cerrarCreditoModal}>Cancelar</button>
+                  <button type="submit" className="btn btn-primary">{editingCredito ? 'Actualizar Crédito' : 'Guardar Crédito'}</button>
+                </div>
+
               </form>
             </div>
           </div>
