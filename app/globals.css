@@ -1581,8 +1581,8 @@ tr.row-selected:hover { background: #dbeafe !important; }
   margin-bottom: 0.3rem;
   letter-spacing: -0.035em;
 }
-.login-title .logo-carta  { font-weight: 300; opacity: 0.7; }
-.login-title .logo-master { font-weight: 800; }
+.login-title .logo-carta  { font-weight: 300; color: #334155; }
+.login-title .logo-master { font-weight: 800; color: #5b5bd6; }
 .login-subtitle { font-size: 0.85rem; color: var(--text-muted); font-weight: 400; }
 
 .login-form { display: flex; flex-direction: column; gap: 1rem; }
