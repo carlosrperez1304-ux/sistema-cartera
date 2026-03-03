@@ -4828,7 +4828,8 @@ export default function App() {
             </div>
             <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--surface-2)', borderRadius: '8px', fontSize: '0.82rem' }}>
               <div style={{ fontWeight: 700, color: 'var(--text)', marginBottom: '0.25rem' }}>{gmailReply.subject}</div>
-              <div style={{ color: 'var(--text-muted)' }}>De: {gmailReply.from}</div>
+              <div style={{ color: 'var(--text-muted)', marginBottom: '0.5rem' }}>De: {gmailReply.from}</div>
+              {gmailReply.snippet && <div style={{ color: 'var(--text-light)', fontSize: '0.78rem', borderTop: '1px solid var(--border)', paddingTop: '0.5rem', fontStyle: 'italic', maxHeight: '80px', overflowY: 'auto' }}>{gmailReply.snippet}</div>}
             </div>
             <div className="form-group">
               <label>Tu respuesta</label>
