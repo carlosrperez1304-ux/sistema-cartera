@@ -57,6 +57,7 @@ export async function GET(req) {
         const get = (name) => headers.find(h => h.name === name)?.value || '';
         return {
           id: msg.id,
+          threadId: msgData.threadId || msg.id,
           subject: get('Subject') || '(Sin asunto)',
           from: get('From'),
           date: get('Date'),

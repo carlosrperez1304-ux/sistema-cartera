@@ -500,7 +500,6 @@ export default function App() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ empresa_id: session?.user?.empresa_id })
         });
-        showToast(`Cierre automático de ${obtenerNombreMes(ultimoMes)} completado`, 'success');
         return true;
       }
       return false;
