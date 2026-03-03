@@ -89,6 +89,7 @@ export async function POST(req) {
     comentario:        creditoData.comentario ? sanitize(creditoData.comentario, 500) : null,
     historial:         creditoData.historial       || [],
     creado_por:        auth.session.user.username,
+    empresa_id:        auth.session.user.empresa_id || null,
     updated_at:        new Date().toISOString(),
   };
   if (!isNaN(parsedId) && parsedId > 0) insertRow.id = parsedId;
