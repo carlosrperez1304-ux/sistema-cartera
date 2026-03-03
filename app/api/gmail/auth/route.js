@@ -7,7 +7,7 @@ export async function GET(req) {
 
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const redirectUri = `${process.env.NEXTAUTH_URL}/api/gmail/callback`;
-  const scope = 'https://www.googleapis.com/auth/gmail.readonly';
+  const scope = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send';
   const state = Buffer.from(auth.session.user.username).toString('base64');
 
   const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&access_type=offline&prompt=consent&state=${state}`;

@@ -191,6 +191,17 @@ export default function App() {
       const tagsMapa = {};
       todos.forEach(c => { if (c.tags?.length > 0) tagsMapa[c.id] = c.tags; });
       setTags(prev => ({ ...tagsMapa, ...prev }));
+      // Cierre automático de mes
+      const huboReinicio = await cierreAutomaticoMes(todos, creditos);
+      if (huboReinicio) {
+        // Recargar clientes con montos reiniciados
+        const [resC2, resDelC2] = await Promise.all([fetch('/api/clientes'), fetch('/api/delegacion-clientes')]);
+        const propios2 = resC2.ok ? await resC2.json() : [];
+        const delegados2 = resDelC2.ok ? await resDelC2.json() : [];
+        const mapa2 = new Map();
+        [...(Array.isArray(propios2) ? propios2 : []), ...(Array.isArray(delegados2) ? delegados2 : [])].forEach(c => mapa2.set(c.id, c));
+        setClientes([...mapa2.values()]);
+      }
     } catch { /* offline — mantener datos en pantalla */ }
   }, []);
 
@@ -281,6 +292,9 @@ export default function App() {
   const [gmailEmails, setGmailEmails] = useState([]);
   const [gmailLoading, setGmailLoading] = useState(false);
   const [gmailUnread, setGmailUnread] = useState(0);
+  const [gmailReply, setGmailReply] = useState(null);
+  const [gmailReplyBody, setGmailReplyBody] = useState('');
+  const [gmailSending, setGmailSending] = useState(false);
   const [graficasVisibles, setGraficasVisibles] = useState(true);
   const [showNotaModal, setShowNotaModal] = useState(false);
   const [showDescargaMesModal, setShowDescargaMesModal] = useState(false);
@@ -455,6 +469,45 @@ export default function App() {
   const obtenerMesActual = () => {
     const hoy = new Date();
     return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+  };
+
+  // ── Cierre automático de mes ──────────────────────────────
+  const cierreAutomaticoMes = async (clientesActuales, creditosActuales) => {
+    try {
+      const mesActual = obtenerMesActual();
+      // Verificar si ya existe snapshot de este mes
+      const res = await fetch('/api/historial-meses');
+      const historial = await res.json();
+      const mesesGuardados = historial.map(h => h.mes_key);
+      // Buscar el último mes guardado
+      const ultimoMes = mesesGuardados.sort().reverse()[0];
+      // Si el último mes guardado es diferente al actual, hacer cierre
+      if (ultimoMes && ultimoMes !== mesActual && !mesesGuardados.includes(mesActual)) {
+        // Guardar snapshot del mes anterior
+        const snapshotDatos = {
+          clientes: JSON.parse(JSON.stringify(clientesActuales)),
+          creditos: JSON.parse(JSON.stringify(creditosActuales)),
+          fechaGuardado: new Date().toISOString()
+        };
+        await fetch('/api/historial-meses', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mes_key: ultimoMes, datos: snapshotDatos })
+        });
+        // Reiniciar montos y estados de todos los clientes
+        await fetch('/api/clientes/reiniciar-mes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ empresa_id: session?.user?.empresa_id })
+        });
+        showToast(`Cierre automático de ${obtenerNombreMes(ultimoMes)} completado`, 'success');
+        return true;
+      }
+      return false;
+    } catch(e) {
+      console.error('Error en cierre automático:', e);
+      return false;
+    }
   };
 
   const [mesVisualizando, setMesVisualizando] = useState(() => {
@@ -939,6 +992,12 @@ export default function App() {
       cargarGmail();
       window.history.replaceState({}, '', window.location.pathname);
     }
+  }, []);
+
+  // Auto-actualizar Gmail cada 3 minutos
+  useEffect(() => {
+    const interval = setInterval(() => { cargarGmail(); }, 3 * 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
 
   const cargarGmail = async () => {
@@ -2132,14 +2191,19 @@ export default function App() {
                       ) : gmailEmails.length === 0 ? (
                         <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No hay emails</div>
                       ) : gmailEmails.map(email => (
-                        <div key={email.id} style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border)', background: email.unread ? 'var(--surface-2)' : 'transparent', cursor: 'pointer' }}
-                          onClick={() => window.open(`https://mail.google.com/mail/u/0/#inbox/${email.id}`, '_blank')}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                        <div key={email.id} style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border)', background: email.unread ? 'var(--surface-2)' : 'transparent' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}
+                            onClick={() => window.open(`https://mail.google.com/mail/u/0/#inbox/${email.id}`, '_blank')}>
                             <div style={{ fontWeight: email.unread ? 700 : 500, fontSize: '0.82rem', color: 'var(--text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email.subject}</div>
                             {email.unread && <span style={{ width: '8px', height: '8px', background: '#3b82f6', borderRadius: '50%', flexShrink: 0, marginTop: '4px' }}></span>}
                           </div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email.from}</div>
                           <div style={{ fontSize: '0.72rem', color: 'var(--text-light)', marginTop: '0.2rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email.snippet}</div>
+                          <div style={{ marginTop: '0.4rem' }}>
+                            <button onClick={() => { setGmailReply(email); setGmailReplyBody(''); setShowGmailPanel(false); }} style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem', borderRadius: '5px', border: '1px solid var(--border-2)', background: 'var(--surface-2)', color: 'var(--text-muted)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                              <Send size={10}/> Responder
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -2237,7 +2301,7 @@ export default function App() {
                 {obtenerMesesDisponibles().map(mes => <option key={mes} value={mes}>{obtenerNombreMes(mes)}{mes === obtenerMesActual() ? ' (Actual)' : ''}</option>)}
               </select>
               {!esModoPasado ? (
-                <button onClick={() => setShowDescargaMesModal(true)} style={{ width: '100%', padding: '0.45rem', background: 'rgba(249,115,22,0.15)', color: '#fb923c', border: '1px solid rgba(249,115,22,0.25)', borderRadius: '7px', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer' }}>Guardar Mes</button>
+
               ) : (
                 <div style={{ padding: '0.35rem 0.6rem', background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.18)', borderRadius: '6px', fontSize: '0.73rem', fontWeight: 600, color: 'rgba(249,115,22,0.7)', textAlign: 'center' }}>Solo Lectura</div>
               )}
@@ -4751,6 +4815,47 @@ export default function App() {
             <div className="form-actions">
               <button className="btn btn-secondary" onClick={() => setShowGenCotModal(false)}>Cancelar</button>
               <button className="btn btn-primary" onClick={generarCotizacionPDF}><FileText size={13}/> Generar y Descargar PDF</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL RESPONDER GMAIL */}
+      {gmailReply && (
+        <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setGmailReply(null); }}>
+          <div className="modal-content" style={{ maxWidth: '560px' }}>
+            <div className="modal-header">
+              <h2><Mail size={15}/> Responder email</h2>
+              <button className="close-btn" onClick={() => setGmailReply(null)}>×</button>
+            </div>
+            <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--surface-2)', borderRadius: '8px', fontSize: '0.82rem' }}>
+              <div style={{ fontWeight: 700, color: 'var(--text)', marginBottom: '0.25rem' }}>{gmailReply.subject}</div>
+              <div style={{ color: 'var(--text-muted)' }}>De: {gmailReply.from}</div>
+            </div>
+            <div className="form-group">
+              <label>Tu respuesta</label>
+              <textarea value={gmailReplyBody} onChange={e => setGmailReplyBody(e.target.value)} rows={6} placeholder="Escribe tu respuesta aquí..." style={{ width: '100%', resize: 'vertical' }} />
+            </div>
+            <div className="form-actions">
+              <button className="btn btn-secondary" onClick={() => setGmailReply(null)}>Cancelar</button>
+              <button className="btn btn-primary" disabled={gmailSending || !gmailReplyBody.trim()} onClick={async () => {
+                setGmailSending(true);
+                try {
+                  const to = gmailReply.from.match(/<(.+)>/) ? gmailReply.from.match(/<(.+)>/)[1] : gmailReply.from;
+                  const subject = gmailReply.subject.startsWith('Re:') ? gmailReply.subject : `Re: ${gmailReply.subject}`;
+                  const res = await fetch('/api/gmail/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ to, subject, body: gmailReplyBody, threadId: gmailReply.threadId }),
+                  });
+                  const data = await res.json();
+                  if (data.ok) { showToast('Email enviado', 'success'); setGmailReply(null); }
+                  else showToast(data.error || 'Error al enviar', 'error');
+                } catch(e) { showToast('Error al enviar', 'error'); }
+                setGmailSending(false);
+              }}>
+                {gmailSending ? <Loader2 size={13} style={{animation:'spin 1s linear infinite'}}/> : <Send size={13}/>} Enviar
+              </button>
             </div>
           </div>
         </div>
