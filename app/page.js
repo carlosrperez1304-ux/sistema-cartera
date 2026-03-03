@@ -2300,9 +2300,7 @@ export default function App() {
               <select value={mesVisualizando} onChange={(e) => setMesVisualizando(e.target.value)} style={{ width: '100%', padding: '0.45rem 0.6rem', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '7px', color: 'rgba(255,255,255,0.75)', fontSize: '0.78rem', fontWeight: 500, cursor: 'pointer', marginBottom: '0.45rem' }}>
                 {obtenerMesesDisponibles().map(mes => <option key={mes} value={mes}>{obtenerNombreMes(mes)}{mes === obtenerMesActual() ? ' (Actual)' : ''}</option>)}
               </select>
-              {!esModoPasado ? (
-
-              ) : (
+              {esModoPasado && (
                 <div style={{ padding: '0.35rem 0.6rem', background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.18)', borderRadius: '6px', fontSize: '0.73rem', fontWeight: 600, color: 'rgba(249,115,22,0.7)', textAlign: 'center' }}>Solo Lectura</div>
               )}
             </div>
