@@ -627,7 +627,7 @@ textarea:disabled {
   padding: 1.75rem;
   overflow-x: hidden;
   min-width: 0;
-  background: var(--bg);
+  background: #0f1729;
   animation: contentFadeIn 0.22s ease both;
 }
 
@@ -828,12 +828,12 @@ textarea:disabled {
   position: relative;
   overflow: hidden;
   transition: box-shadow 0.2s ease, transform 0.18s ease;
-  box-shadow: 0 2px 8px rgba(20,22,37,0.10), 0 1px 3px rgba(20,22,37,0.06);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25), 0 1px 0 rgba(255,255,255,0.06);
   cursor: pointer;
 }
 .stat-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 12px 32px rgba(20,22,37,0.14), 0 3px 8px rgba(20,22,37,0.08);
+  box-shadow: 0 14px 36px rgba(0,0,0,0.35), 0 3px 8px rgba(0,0,0,0.2);
 }
 
 /* ── Top accent bar ── */
@@ -988,10 +988,10 @@ textarea:disabled {
 ═══════════════════════════════════════════════════════════ */
 .table-container {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(255,255,255,0.08);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.35), 0 1px 0 rgba(255,255,255,0.04);
 }
 .table-wrapper { overflow-x: auto; }
 
@@ -1644,7 +1644,7 @@ tr.row-selected:hover { background: #dbeafe !important; }
 }
 .login-btn {
   padding: 0.9rem;
-  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
   color: white;
   border: none;
   border-radius: 10px;
@@ -1655,12 +1655,12 @@ tr.row-selected:hover { background: #dbeafe !important; }
   font-family: inherit;
   letter-spacing: -0.01em;
   margin-top: 0.25rem;
-  box-shadow: 0 4px 20px rgba(79,70,229,0.5);
+  box-shadow: 0 4px 20px rgba(79,70,229,0.4);
 }
 .login-btn:hover {
+  background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
   transform: translateY(-1px);
-  filter: brightness(1.1);
-  box-shadow: 0 8px 32px rgba(79,70,229,0.65);
+  box-shadow: 0 8px 28px rgba(79,70,229,0.55);
 }
 .login-btn:active { transform: scale(0.99); }
 

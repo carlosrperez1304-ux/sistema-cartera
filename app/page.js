@@ -2298,6 +2298,12 @@ export default function App() {
       <div className="main-layout">
         {/* SIDEBAR */}
         <div className={`sidebar${showMobileMenu ? ' mobile-open' : ''}`}>
+          <div style={{ padding: '1.2rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0 }}>
+            <div style={{ width: '28px', height: '28px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(99,102,241,0.4)' }}>
+              <BarChart2 size={14} color="#fff"/>
+            </div>
+            <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#fff', letterSpacing: '-0.02em' }}>Carta<span style={{ color: '#818cf8' }}>Master</span></span>
+          </div>
           <div className="sidebar-section">
             <div className="sidebar-label">Gestión</div>
             <div className={`sidebar-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}><span className="icon"><LayoutGrid size={14}/></span> Inicio</div>
