@@ -193,17 +193,6 @@ export default function App() {
       const tagsMapa = {};
       todos.forEach(c => { if (c.tags?.length > 0) tagsMapa[c.id] = c.tags; });
       setTags(prev => ({ ...tagsMapa, ...prev }));
-      // Cierre automático de mes
-      const huboReinicio = await cierreAutomaticoMes(todos, creditos);
-      if (huboReinicio) {
-        // Recargar clientes con montos reiniciados
-        const [resC2, resDelC2] = await Promise.all([fetch('/api/clientes'), fetch('/api/delegacion-clientes')]);
-        const propios2 = resC2.ok ? await resC2.json() : [];
-        const delegados2 = resDelC2.ok ? await resDelC2.json() : [];
-        const mapa2 = new Map();
-        [...(Array.isArray(propios2) ? propios2 : []), ...(Array.isArray(delegados2) ? delegados2 : [])].forEach(c => mapa2.set(c.id, c));
-        setClientes([...mapa2.values()]);
-      }
     } catch { /* offline — mantener datos en pantalla */ }
   }, []);
 
@@ -214,6 +203,35 @@ export default function App() {
       if (Array.isArray(data)) setCreditos(data);
     } catch { /* offline — mantener datos en pantalla */ }
   }, []);
+
+  // Cierre automático de mes — solo en montaje inicial, separado de cargarClientes
+  // para no ejecutarse en cada evento Realtime y evitar condiciones de carrera
+  useEffect(() => {
+    if (!session?.user) return;
+    const ejecutarCierre = async () => {
+      try {
+        const [resC, resDelC, resCreditos] = await Promise.all([
+          fetch('/api/clientes'),
+          fetch('/api/delegacion-clientes'),
+          fetch('/api/creditos'),
+        ]);
+        const propios   = resC.ok      ? await resC.json()      : [];
+        const delegados = resDelC.ok   ? await resDelC.json()   : [];
+        const creds     = resCreditos.ok ? await resCreditos.json() : [];
+        const mapa = new Map();
+        [...(Array.isArray(propios) ? propios : []),
+         ...(Array.isArray(delegados) ? delegados : [])].forEach(c => mapa.set(c.id, c));
+        const todos = [...mapa.values()];
+        const huboReinicio = await cierreAutomaticoMes(todos, Array.isArray(creds) ? creds : []);
+        if (huboReinicio) {
+          cargarClientes();
+          cargarCreditos();
+        }
+      } catch { /* sin conexión — ignorar cierre */ }
+    };
+    ejecutarCierre();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.username]);
 
   // Carga inicial + suscripción Supabase Realtime
   useEffect(() => {
@@ -227,22 +245,34 @@ export default function App() {
     const supabase = getSupabaseBrowser();
     if (!supabase) return; // anon key no configurada — sin realtime
 
+    // Debounce para evitar múltiples cargas simultáneas cuando Realtime
+    // dispara ráfagas de eventos (ej: cierre de mes actualiza N clientes a la vez)
+    let timerClientes;
+    let timerCreditos;
+    const debouncedClientes = () => {
+      clearTimeout(timerClientes);
+      timerClientes = setTimeout(() => cargarClientes(), 600);
+    };
+    const debouncedCreditos = () => {
+      clearTimeout(timerCreditos);
+      timerCreditos = setTimeout(() => cargarCreditos(), 600);
+    };
+
     const channel = supabase
       .channel('cartera-realtime')
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'clientes' },
-        () => cargarClientes()
+        debouncedClientes
       )
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'creditos' },
-        () => cargarCreditos()
+        debouncedCreditos
       )
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'delegations' },
         () => {
-          // Un cambio en delegaciones afecta qué clientes son visibles
-          cargarClientes();
-          cargarCreditos();
+          debouncedClientes();
+          debouncedCreditos();
         }
       )
       .subscribe((status) => {
@@ -252,6 +282,8 @@ export default function App() {
       });
 
     return () => {
+      clearTimeout(timerClientes);
+      clearTimeout(timerCreditos);
       supabase.removeChannel(channel);
     };
   }, [session?.user?.username, cargarClientes, cargarCreditos]);
