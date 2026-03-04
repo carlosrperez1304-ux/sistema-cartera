@@ -2108,7 +2108,96 @@ export default function App() {
   if (!isAuthenticated && !session) {
     return (
       <div className="login-container">
-        <div className="login-box">
+        {/* Fondo animado con gráficas */}
+        <div style={{ position: 'fixed', inset: 0, zIndex: 0, background: '#0a0f1e', overflow: 'hidden' }}>
+          <svg width="100%" height="100%" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="line1grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#4f46e5" stopOpacity="0"/>
+                <stop offset="50%" stopColor="#4f46e5" stopOpacity="0.8"/>
+                <stop offset="100%" stopColor="#4f46e5" stopOpacity="0"/>
+              </linearGradient>
+              <linearGradient id="line2grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#7c3aed" stopOpacity="0"/>
+                <stop offset="50%" stopColor="#7c3aed" stopOpacity="0.6"/>
+                <stop offset="100%" stopColor="#7c3aed" stopOpacity="0"/>
+              </linearGradient>
+              <linearGradient id="line3grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#d97706" stopOpacity="0"/>
+                <stop offset="50%" stopColor="#d97706" stopOpacity="0.5"/>
+                <stop offset="100%" stopColor="#d97706" stopOpacity="0"/>
+              </linearGradient>
+              <linearGradient id="fillgrad1" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.15"/>
+                <stop offset="100%" stopColor="#4f46e5" stopOpacity="0"/>
+              </linearGradient>
+              <linearGradient id="fillgrad2" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#7c3aed" stopOpacity="0.1"/>
+                <stop offset="100%" stopColor="#7c3aed" stopOpacity="0"/>
+              </linearGradient>
+              <linearGradient id="fillgrad3" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#d97706" stopOpacity="0.08"/>
+                <stop offset="100%" stopColor="#d97706" stopOpacity="0"/>
+              </linearGradient>
+              <radialGradient id="glow1" cx="30%" cy="20%" r="40%">
+                <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.15"/>
+                <stop offset="100%" stopColor="#4f46e5" stopOpacity="0"/>
+              </radialGradient>
+              <radialGradient id="glow2" cx="70%" cy="30%" r="35%">
+                <stop offset="0%" stopColor="#7c3aed" stopOpacity="0.1"/>
+                <stop offset="100%" stopColor="#7c3aed" stopOpacity="0"/>
+              </radialGradient>
+            </defs>
+
+            {/* Grid lines */}
+            {[150,300,450,600,750].map((y, i) => (
+              <line key={`h${i}`} x1="0" y1={y} x2="1440" y2={y} stroke="rgba(255,255,255,0.03)" strokeWidth="1"/>
+            ))}
+            {[180,360,540,720,900,1080,1260].map((x, i) => (
+              <line key={`v${i}`} x1={x} y1="0" x2={x} y2="900" stroke="rgba(255,255,255,0.03)" strokeWidth="1"/>
+            ))}
+
+            {/* Línea 1 — Índigo (principal) */}
+            <path d="M0,650 C180,620 240,400 360,380 C480,360 520,500 600,480 C680,460 720,300 840,250 C960,200 1000,350 1080,320 C1160,290 1300,180 1440,160 L1440,900 L0,900 Z" fill="url(#fillgrad1)">
+              <animateTransform attributeName="transform" type="translate" values="0,0;-20,15;0,0" dur="8s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1"/>
+            </path>
+            <path d="M0,650 C180,620 240,400 360,380 C480,360 520,500 600,480 C680,460 720,300 840,250 C960,200 1000,350 1080,320 C1160,290 1300,180 1440,160" fill="none" stroke="url(#line1grad)" strokeWidth="2.5">
+              <animateTransform attributeName="transform" type="translate" values="0,0;-20,15;0,0" dur="8s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1"/>
+            </path>
+
+            {/* Línea 2 — Morado */}
+            <path d="M0,750 C120,700 200,550 320,500 C440,450 500,600 620,570 C740,540 800,400 900,370 C1000,340 1100,450 1200,420 C1300,390 1380,300 1440,280 L1440,900 L0,900 Z" fill="url(#fillgrad2)">
+              <animateTransform attributeName="transform" type="translate" values="0,0;15,-10;0,0" dur="11s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1"/>
+            </path>
+            <path d="M0,750 C120,700 200,550 320,500 C440,450 500,600 620,570 C740,540 800,400 900,370 C1000,340 1100,450 1200,420 C1300,390 1380,300 1440,280" fill="none" stroke="url(#line2grad)" strokeWidth="2">
+              <animateTransform attributeName="transform" type="translate" values="0,0;15,-10;0,0" dur="11s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1"/>
+            </path>
+
+            {/* Línea 3 — Ámbar */}
+            <path d="M0,820 C200,780 280,650 400,620 C520,590 580,700 700,670 C820,640 880,520 980,490 C1080,460 1180,560 1280,530 C1360,510 1410,440 1440,420" fill="none" stroke="url(#line3grad)" strokeWidth="1.5">
+              <animateTransform attributeName="transform" type="translate" values="0,0;-10,20;0,0" dur="14s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1"/>
+            </path>
+
+            {/* Puntos picos — Línea 1 */}
+            {[[360,380],[600,480],[840,250],[1080,320],[1440,160]].map(([x,y], i) => (
+              <circle key={`p1${i}`} cx={x} cy={y} r="3.5" fill="#4f46e5" opacity="0.7">
+                <animate attributeName="opacity" values="0.7;1;0.7" dur={`${3+i}s`} repeatCount="indefinite"/>
+                <animate attributeName="r" values="3.5;5;3.5" dur={`${3+i}s`} repeatCount="indefinite"/>
+              </circle>
+            ))}
+
+            {/* Puntos picos — Línea 2 */}
+            {[[320,500],[620,570],[900,370],[1200,420]].map(([x,y], i) => (
+              <circle key={`p2${i}`} cx={x} cy={y} r="3" fill="#7c3aed" opacity="0.6">
+                <animate attributeName="opacity" values="0.6;1;0.6" dur={`${4+i}s`} repeatCount="indefinite"/>
+              </circle>
+            ))}
+
+            <rect width="1440" height="900" fill="url(#glow1)"/>
+            <rect width="1440" height="900" fill="url(#glow2)"/>
+          </svg>
+        </div>
+        <div className="login-box" style={{ position: 'relative', zIndex: 2 }}>
           <div className="login-header">
             <div className="login-logo"><BarChart2 size={34} strokeWidth={2}/></div>
             <h1 className="login-title"><span className="logo-carta">Carta</span><span className="logo-master">Master</span></h1>
@@ -2127,7 +2216,7 @@ export default function App() {
             <button type="submit" className="login-btn">Iniciar Sesión</button>
           </form>
         </div>
-        <p className="login-footer">© 2026 CartaMaster · Todos los derechos reservados</p>
+        <p className="login-footer" style={{ position: 'relative', zIndex: 2 }}>© 2026 CartaMaster · Todos los derechos reservados</p>
       </div>
     );
   }
