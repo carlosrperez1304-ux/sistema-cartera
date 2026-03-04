@@ -1005,7 +1005,7 @@ export default function App() {
   const cargarGmail = async (q = '') => {
     setGmailLoading(true);
     try {
-      const res = await fetch();
+      const res = await fetch(`/api/gmail${q ? `?q=${encodeURIComponent(q)}` : ''}`);
       const data = res.ok ? await res.json() : { emails: [], linked: false };
       if (data.linked === false) { setGmailEmails([]); setGmailUnread(0); setGmailLoading(false); return; }
       setGmailEmails(data.emails || []);
