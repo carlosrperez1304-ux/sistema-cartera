@@ -2481,16 +2481,7 @@ export default function App() {
           </div>{/* fin sidebar-scroll */}
 
           {/*  User footer — siempre fijo abajo  */}
-          <div className="sidebar-user-footer" style={{ cursor: 'pointer' }} onClick={() => {
-            fetch('/api/mi-perfil').then(r => r.json()).then(d => {
-              setPerfilData(d);
-              setPerfilNombre(d.nombre || '');
-              setPerfilPassActual('');
-              setPerfilPassNueva('');
-              setPerfilPassConfirm('');
-            }).catch(() => {});
-            setShowUserPanel(true);
-          }}>
+          <div className="sidebar-user-footer">
             <div className="sidebar-user-avatar">
               {(currentUser || session?.user?.name || 'U').charAt(0).toUpperCase()}
             </div>
@@ -2498,7 +2489,7 @@ export default function App() {
               <div className="sidebar-user-name">{currentUser || session?.user?.name || 'Usuario'}</div>
               <div className="sidebar-user-role">{esAdmin ? 'Administrador' : esEditor ? 'Editor' : 'Viewer'}{empresaActual ? ` · ${empresaActual.nombre}` : ''}</div>
             </div>
-            <div className="sidebar-user-actions" onClick={e => e.stopPropagation()}>
+            <div className="sidebar-user-actions">
               {tienePermiso('acceder_configuracion') && <button className="sidebar-icon-btn" onClick={() => { setSettingsSection('config'); setShowSettingsPanel(true); }} title="Configuración">
                 <Settings size={14}/>
               </button>}
@@ -5209,149 +5200,155 @@ export default function App() {
         </div>
       )}
 
-      {/* ══════════ PANEL DE USUARIO (pantalla completa) ══════════ */}
-      {showUserPanel && (
+      {/* ══════════ PANEL GESTIÓN DE USUARIOS (pantalla completa) ══════════ */}
+      {showUserPanel && esAdmin && (
         <div style={{ position:'fixed', inset:0, zIndex:900, background:'var(--bg)', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+
           {/* Header */}
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'1.1rem 1.5rem', borderBottom:'1px solid var(--border)', background:'var(--surface)', flexShrink:0 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'1rem 1.5rem', borderBottom:'1px solid var(--border)', background:'var(--surface)', flexShrink:0 }}>
             <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
-              <div style={{ width:38, height:38, borderRadius:'50%', background:'linear-gradient(135deg,#4f46e5,#7c3aed)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:'1.05rem', flexShrink:0 }}>
-                {(currentUser||session?.user?.name||'U').charAt(0).toUpperCase()}
+              <div style={{ width:36, height:36, borderRadius:10, background:'rgba(99,102,241,0.1)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <Users size={18} color="#6366f1"/>
               </div>
               <div>
-                <div style={{ fontWeight:700, fontSize:'1rem', color:'var(--text)' }}>Mi Perfil</div>
-                <div style={{ fontSize:'0.75rem', color:'var(--text-muted)' }}>Gestiona tu cuenta y seguridad</div>
+                <div style={{ fontWeight:700, fontSize:'1rem', color:'var(--text)' }}>Gestión de Usuarios</div>
+                <div style={{ fontSize:'0.72rem', color:'var(--text-muted)' }}>
+                  {Object.keys(usuarios).length} usuario{Object.keys(usuarios).length !== 1 ? 's' : ''} registrado{Object.keys(usuarios).length !== 1 ? 's' : ''}
+                </div>
               </div>
             </div>
-            <button onClick={() => setShowUserPanel(false)} style={{ border:'none', background:'none', cursor:'pointer', color:'var(--text-muted)', padding:'0.4rem', borderRadius:'8px', display:'flex', alignItems:'center' }}>
+            <button onClick={() => { setShowUserPanel(false); setUsuarioEditando(null); setUsuarioForm({ username:'', nombre:'', pass:'', rol:'viewer' }); }}
+              style={{ border:'none', background:'none', cursor:'pointer', color:'var(--text-muted)', padding:'0.4rem', borderRadius:'8px', display:'flex', alignItems:'center' }}>
               <X size={20}/>
             </button>
           </div>
 
-          {/* Body */}
-          <div style={{ flex:1, overflowY:'auto', padding:'2rem', display:'flex', justifyContent:'center' }}>
-            <div style={{ width:'100%', maxWidth:620, display:'flex', flexDirection:'column', gap:'1.5rem' }}>
+          {/* Body — lista izquierda / formulario derecha */}
+          <div style={{ flex:1, overflow:'hidden', display:'grid', gridTemplateColumns:'1fr 380px' }}>
 
-              {/* Tarjeta — Información personal */}
-              <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:'1.5rem', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
-                <div style={{ fontWeight:700, fontSize:'0.85rem', color:'var(--text)', marginBottom:'1.2rem', display:'flex', alignItems:'center', gap:'0.5rem' }}>
-                  <div style={{ width:28, height:28, background:'rgba(99,102,241,0.1)', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center' }}><Users size={14} color="#6366f1"/></div>
-                  Información personal
-                </div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem' }}>
-                  <div>
-                    <label style={{ fontSize:'0.72rem', fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:'0.35rem' }}>Usuario</label>
-                    <div style={{ padding:'0.5rem 0.75rem', background:'var(--surface-2)', borderRadius:8, fontSize:'0.87rem', fontWeight:600, color:'var(--text)', border:'1px solid var(--border)' }}>
-                      {perfilData?.username || currentUser || '—'}
-                    </div>
-                  </div>
-                  <div>
-                    <label style={{ fontSize:'0.72rem', fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:'0.35rem' }}>Rol</label>
-                    <div style={{ padding:'0.5rem 0.75rem', background:'var(--surface-2)', borderRadius:8, fontSize:'0.87rem', fontWeight:600, color:'var(--text)', border:'1px solid var(--border)' }}>
-                      {perfilData?.rol === 'admin' ? 'Administrador' : perfilData?.rol === 'editor' ? 'Editor' : perfilData?.rol === 'agente_cobro' ? 'Agente de Cobro' : perfilData?.rol === 'contabilidad' ? 'Contabilidad' : perfilData?.rol === 'supervisor_cobro' ? 'Supervisor Cobro' : perfilData?.rol === 'supervisor_contabilidad' ? 'Supervisor Contabilidad' : perfilData?.rol || 'Viewer'}
-                    </div>
-                  </div>
-                  <div style={{ gridColumn:'1/-1' }}>
-                    <label style={{ fontSize:'0.72rem', fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:'0.35rem' }}>Nombre visible</label>
-                    <input value={perfilNombre} onChange={e => setPerfilNombre(e.target.value)} placeholder="Tu nombre completo" style={{ width:'100%', padding:'0.5rem 0.75rem', background:'var(--surface)', border:'1.5px solid var(--border-2)', borderRadius:8, fontSize:'0.87rem', color:'var(--text)', outline:'none', boxSizing:'border-box' }}/>
-                  </div>
-                  {perfilData?.email && (
-                    <div style={{ gridColumn:'1/-1' }}>
-                      <label style={{ fontSize:'0.72rem', fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:'0.35rem' }}>Correo electrónico</label>
-                      <div style={{ padding:'0.5rem 0.75rem', background:'var(--surface-2)', borderRadius:8, fontSize:'0.87rem', color:'var(--text)', border:'1px solid var(--border)', display:'flex', alignItems:'center', gap:'0.5rem' }}>
-                        <Mail size={13} color="var(--text-muted)"/> {perfilData.email}
+            {/* Columna izquierda — lista de usuarios */}
+            <div style={{ overflowY:'auto', padding:'1.5rem', borderRight:'1px solid var(--border)' }}>
+              <div style={{ display:'flex', flexDirection:'column', gap:'0.5rem' }}>
+                {Object.entries(usuarios).map(([key, u]) => (
+                  <div key={key} style={{ display:'grid', gridTemplateColumns:'auto 1fr auto', gap:'0.75rem', alignItems:'center', padding:'0.85rem 1rem', background: key === usuarioEditando ? 'rgba(99,102,241,0.06)' : 'var(--surface)', border:`2px solid ${key === usuarioEditando ? 'var(--brand)' : key === currentUser ? 'var(--border-2)' : 'var(--border)'}`, borderRadius:'12px', transition:'border-color 0.15s' }}>
+                    {(() => { const av = getAvatar(u.nombre || key); return <div className="avatar avatar-sm" style={{ background: av.color }}>{av.letra}</div>; })()}
+                    <div style={{ minWidth:0 }}>
+                      <div style={{ fontWeight:700, fontSize:'0.88rem', display:'flex', alignItems:'center', gap:'0.5rem', flexWrap:'wrap' }}>
+                        <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{u.nombre || key}</span>
+                        {key === currentUser && <span style={{ background:'var(--brand)', color:'white', borderRadius:'20px', padding:'0.1rem 0.5rem', fontSize:'0.62rem', fontWeight:800, flexShrink:0 }}>TÚ</span>}
+                        {(() => {
+                          const ROL_LABEL = { admin:'Admin', editor:'Editor', agente_cobro:'Agente Cobro', contabilidad:'Contabilidad', supervisor_cobro:'Sup. Cobro', supervisor_contabilidad:'Sup. Contabilidad', viewer:'Viewer' };
+                          const esOp = ['editor','agente_cobro','contabilidad','supervisor_cobro','supervisor_contabilidad'].includes(u.rol);
+                          const bg = u.rol==='admin' ? '#fef9c3' : esOp ? '#f0fdf4' : '#f0f9ff';
+                          const bd = u.rol==='admin' ? '#fde047' : esOp ? '#86efac' : '#bae6fd';
+                          const cl = u.rol==='admin' ? '#713f12' : esOp ? '#166534' : '#075985';
+                          return <span style={{ background:bg, border:`1px solid ${bd}`, borderRadius:'20px', padding:'0.1rem 0.5rem', fontSize:'0.68rem', fontWeight:700, color:cl, flexShrink:0 }}>{ROL_LABEL[u.rol] || u.rol}</span>;
+                        })()}
                       </div>
+                      <div style={{ fontSize:'0.73rem', color:'var(--text-muted)', fontFamily:'var(--mono)', marginTop:'0.15rem' }}>@{key}</div>
                     </div>
-                  )}
-                </div>
-                <button onClick={async () => {
-                  if (!perfilNombre.trim()) return;
-                  setPerfilSaving(true);
-                  try {
-                    const res = await fetch('/api/mi-perfil', { method:'PATCH', headers:{'Content-Type':'application/json','x-csrf-token':'1'}, body: JSON.stringify({ nombre: perfilNombre }) });
-                    const d = await res.json();
-                    if (d.ok) showToast('Nombre actualizado', 'success');
-                    else showToast(d.error || 'Error', 'error');
-                  } catch { showToast('Error de conexión', 'error'); }
-                  setPerfilSaving(false);
-                }} style={{ marginTop:'1.1rem', padding:'0.5rem 1.2rem', background:'#6366f1', color:'#fff', border:'none', borderRadius:8, fontWeight:600, fontSize:'0.83rem', cursor:'pointer', opacity: perfilSaving ? 0.7 : 1 }}>
-                  {perfilSaving ? 'Guardando…' : 'Guardar nombre'}
-                </button>
-              </div>
-
-              {/* Tarjeta — Seguridad */}
-              <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:'1.5rem', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
-                <div style={{ fontWeight:700, fontSize:'0.85rem', color:'var(--text)', marginBottom:'1.2rem', display:'flex', alignItems:'center', gap:'0.5rem' }}>
-                  <div style={{ width:28, height:28, background:'rgba(239,68,68,0.08)', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center' }}><Lock size={14} color="#ef4444"/></div>
-                  Seguridad — Cambiar contraseña
-                </div>
-                <div style={{ display:'flex', flexDirection:'column', gap:'0.9rem' }}>
-                  {[
-                    { label:'Contraseña actual', val:perfilPassActual, set:setPerfilPassActual },
-                    { label:'Nueva contraseña', val:perfilPassNueva, set:setPerfilPassNueva },
-                    { label:'Confirmar nueva contraseña', val:perfilPassConfirm, set:setPerfilPassConfirm },
-                  ].map(({ label, val, set }) => (
-                    <div key={label}>
-                      <label style={{ fontSize:'0.72rem', fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:'0.35rem' }}>{label}</label>
-                      <div style={{ position:'relative' }}>
-                        <input type={perfilShowPass ? 'text' : 'password'} value={val} onChange={e => set(e.target.value)} style={{ width:'100%', padding:'0.5rem 2.2rem 0.5rem 0.75rem', background:'var(--surface)', border:'1.5px solid var(--border-2)', borderRadius:8, fontSize:'0.87rem', color:'var(--text)', outline:'none', boxSizing:'border-box' }}/>
-                        <button type="button" onClick={() => setPerfilShowPass(v => !v)} style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', border:'none', background:'none', cursor:'pointer', color:'var(--text-muted)', display:'flex', alignItems:'center' }}>
-                          {perfilShowPass ? <EyeOff size={14}/> : <Eye size={14}/>}
-                        </button>
-                      </div>
+                    <div style={{ display:'flex', gap:'0.35rem', flexShrink:0 }}>
+                      <button onClick={() => editarUsuario(key)} title="Editar" style={{ padding:'0.35rem 0.65rem', border:'1px solid var(--border-2)', borderRadius:'7px', background:'var(--surface-2)', cursor:'pointer', color:'var(--text-muted)', display:'flex', alignItems:'center' }}><Pencil size={13}/></button>
+                      {key !== currentUser && (
+                        <button onClick={() => eliminarUsuario(key)} title="Eliminar" style={{ padding:'0.35rem 0.65rem', border:'1px solid #fca5a5', borderRadius:'7px', background:'#fee2e2', color:'#dc2626', cursor:'pointer', display:'flex', alignItems:'center' }}><Trash2 size={13}/></button>
+                      )}
                     </div>
-                  ))}
-                  <div style={{ fontSize:'0.73rem', color:'var(--text-muted)', background:'var(--surface-2)', padding:'0.6rem 0.75rem', borderRadius:8 }}>
-                    Mínimo 8 caracteres · Al menos una mayúscula · Al menos un número
                   </div>
-                </div>
-                <button onClick={async () => {
-                  if (!perfilPassActual || !perfilPassNueva || !perfilPassConfirm) { showToast('Completa todos los campos', 'error'); return; }
-                  if (perfilPassNueva !== perfilPassConfirm) { showToast('Las contraseñas nuevas no coinciden', 'error'); return; }
-                  setPerfilSaving(true);
-                  try {
-                    const res = await fetch('/api/mi-perfil', { method:'PATCH', headers:{'Content-Type':'application/json','x-csrf-token':'1'}, body: JSON.stringify({ passActual: perfilPassActual, passNueva: perfilPassNueva }) });
-                    const d = await res.json();
-                    if (d.ok) { showToast('Contraseña actualizada', 'success'); setPerfilPassActual(''); setPerfilPassNueva(''); setPerfilPassConfirm(''); }
-                    else showToast(d.error || 'Error', 'error');
-                  } catch { showToast('Error de conexión', 'error'); }
-                  setPerfilSaving(false);
-                }} style={{ marginTop:'1.1rem', padding:'0.5rem 1.2rem', background:'#ef4444', color:'#fff', border:'none', borderRadius:8, fontWeight:600, fontSize:'0.83rem', cursor:'pointer', opacity: perfilSaving ? 0.7 : 1 }}>
-                  {perfilSaving ? 'Guardando…' : 'Cambiar contraseña'}
-                </button>
+                ))}
+                {Object.keys(usuarios).length === 0 && (
+                  <div style={{ textAlign:'center', padding:'3rem 1rem', color:'var(--text-muted)' }}>
+                    <Users size={36} style={{ opacity:0.25, display:'block', margin:'0 auto 0.75rem' }}/>
+                    No hay usuarios registrados aún
+                  </div>
+                )}
               </div>
-
-              {/* Tarjeta — Última conexión */}
-              <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:'1.5rem', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
-                <div style={{ fontWeight:700, fontSize:'0.85rem', color:'var(--text)', marginBottom:'1rem', display:'flex', alignItems:'center', gap:'0.5rem' }}>
-                  <div style={{ width:28, height:28, background:'rgba(22,163,74,0.08)', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center' }}><Clock size={14} color="#16a34a"/></div>
-                  Actividad de sesión
-                </div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem' }}>
-                  <div style={{ padding:'0.85rem 1rem', background:'var(--surface-2)', borderRadius:10, border:'1px solid var(--border)' }}>
-                    <div style={{ fontSize:'0.68rem', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:'0.4rem' }}>Sesión actual</div>
-                    <div style={{ fontSize:'0.83rem', fontWeight:600, color:'var(--text)' }}>Activa ahora</div>
-                    <div style={{ fontSize:'0.72rem', color:'var(--text-muted)', marginTop:'0.2rem' }}>{new Date().toLocaleDateString('es-DO', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}</div>
-                  </div>
-                  <div style={{ padding:'0.85rem 1rem', background:'var(--surface-2)', borderRadius:10, border:'1px solid var(--border)' }}>
-                    <div style={{ fontSize:'0.68rem', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:'0.4rem' }}>Última conexión anterior</div>
-                    {perfilData?.ultimaConexion ? (
-                      <>
-                        <div style={{ fontSize:'0.83rem', fontWeight:600, color:'var(--text)' }}>{new Date(perfilData.ultimaConexion).toLocaleDateString('es-DO', { day:'2-digit', month:'short', year:'numeric' })}</div>
-                        <div style={{ fontSize:'0.72rem', color:'var(--text-muted)', marginTop:'0.2rem' }}>{new Date(perfilData.ultimaConexion).toLocaleTimeString('es-DO', { hour:'2-digit', minute:'2-digit' })}</div>
-                      </>
-                    ) : <div style={{ fontSize:'0.83rem', color:'var(--text-muted)' }}>Sin registro previo</div>}
-                  </div>
-                </div>
-              </div>
-
-              {/* Cerrar sesión */}
-              <button onClick={() => { window._manualLogout = true; setShowUserPanel(false); signOut({ callbackUrl: '/' }); setTimeout(() => { window.location.href = '/'; }, 500); }}
-                style={{ padding:'0.65rem 1.2rem', background:'transparent', color:'var(--danger)', border:'1.5px solid var(--danger)', borderRadius:10, fontWeight:600, fontSize:'0.85rem', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem' }}>
-                <LogOut size={15}/> Cerrar sesión
-              </button>
-
             </div>
+
+            {/* Columna derecha — formulario crear/editar */}
+            <div style={{ overflowY:'auto', padding:'1.5rem', background:'var(--surface)' }}>
+
+              {/* Indicador modo */}
+              <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', marginBottom:'1.25rem', paddingBottom:'0.75rem', borderBottom:'1px solid var(--border)' }}>
+                <div style={{ width:8, height:8, borderRadius:'50%', background: usuarioEditando ? '#f97316' : 'var(--brand)', flexShrink:0 }}></div>
+                <div style={{ fontSize:'0.72rem', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.08em' }}>
+                  {usuarioEditando ? `Editando · ${usuarioEditando}` : 'Nuevo usuario'}
+                </div>
+                {usuarioEditando && (
+                  <button onClick={() => { setUsuarioEditando(null); setUsuarioForm({ username:'', nombre:'', pass:'', rol:'viewer' }); }}
+                    style={{ marginLeft:'auto', fontSize:'0.7rem', color:'var(--text-muted)', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>
+                    Cancelar
+                  </button>
+                )}
+              </div>
+
+              <div style={{ display:'flex', flexDirection:'column', gap:'1rem' }}>
+                <div className="form-group" style={{ margin:0 }}>
+                  <label>Usuario <span style={{ color:'var(--danger)', fontSize:'0.7rem' }}>*</span></label>
+                  <input type="text" value={usuarioForm.username} onChange={e => setUsuarioForm(p => ({ ...p, username: e.target.value.toUpperCase() }))}
+                    placeholder="Ej: JPEREZ" disabled={!!usuarioEditando} style={{ textTransform:'uppercase', opacity: usuarioEditando ? 0.6 : 1 }}/>
+                </div>
+                <div className="form-group" style={{ margin:0 }}>
+                  <label>Nombre completo</label>
+                  <input type="text" value={usuarioForm.nombre} onChange={e => setUsuarioForm(p => ({ ...p, nombre: e.target.value }))} placeholder="Ej: Juan Pérez"/>
+                </div>
+                <div className="form-group" style={{ margin:0 }}>
+                  <label>
+                    Contraseña {!usuarioEditando && <span style={{ color:'var(--danger)', fontSize:'0.7rem' }}>*</span>}
+                    {usuarioEditando && <span style={{ color:'var(--text-muted)', fontSize:'0.68rem' }}> (vacío = no cambiar)</span>}
+                  </label>
+                  <div style={{ position:'relative' }}>
+                    <input type={showPassActual ? 'text' : 'password'} value={usuarioForm.pass} onChange={e => setUsuarioForm(p => ({ ...p, pass: e.target.value }))}
+                      placeholder={usuarioEditando ? 'Dejar vacío para no cambiar' : 'Mín. 8 chars, 1 mayúscula, 1 número'}
+                      style={{ paddingRight:'2.5rem' }}/>
+                    <button type="button" onClick={() => setShowPassActual(v => !v)}
+                      style={{ position:'absolute', right:'0.5rem', top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', display:'flex', alignItems:'center' }}>
+                      {showPassActual ? <EyeOff size={15}/> : <Eye size={15}/>}
+                    </button>
+                  </div>
+                  {usuarioForm.pass && (() => {
+                    const p = usuarioForm.pass;
+                    const ok = cond => ({ color: cond ? '#16a34a' : '#dc2626', fontSize:'0.68rem' });
+                    return (
+                      <div style={{ marginTop:'0.3rem', display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
+                        <span style={ok(p.length >= 8)}>{'●'} 8+ caracteres</span>
+                        <span style={ok(/[A-Z]/.test(p))}>{'●'} Mayúscula</span>
+                        <span style={ok(/[0-9]/.test(p))}>{'●'} Número</span>
+                      </div>
+                    );
+                  })()}
+                </div>
+                <div className="form-group" style={{ margin:0 }}>
+                  <label>Rol</label>
+                  <select value={usuarioForm.rol} onChange={e => setUsuarioForm(p => ({ ...p, rol: e.target.value }))} style={{ fontWeight:500 }}>
+                    <option value="admin">Administrador</option>
+                    <option value="editor">Editor</option>
+                    <option value="agente_cobro">Agente de Cobro</option>
+                    <option value="contabilidad">Contabilidad</option>
+                    <option value="supervisor_cobro">Supervisor de Cobro</option>
+                    <option value="supervisor_contabilidad">Supervisor de Contabilidad</option>
+                    <option value="viewer">Viewer</option>
+                  </select>
+                </div>
+                <button className="btn btn-primary" onClick={guardarUsuario} style={{ width:'100%' }}
+                  disabled={!usuarioForm.username.trim() || (!usuarioEditando && !usuarioForm.pass) || !!validarPassUI(usuarioForm.pass)}>
+                  {usuarioEditando ? <><Save size={13}/> Actualizar usuario</> : <><Plus size={13}/> Crear usuario</>}
+                </button>
+              </div>
+
+              <div style={{ marginTop:'1.5rem', background:'#f0f9ff', border:'1px solid #bae6fd', borderRadius:'10px', padding:'0.85rem 1rem', fontSize:'0.76rem', color:'#075985' }}>
+                <strong>Roles disponibles:</strong>
+                <ul style={{ marginTop:'0.35rem', paddingLeft:'1.2rem', lineHeight:1.9 }}>
+                  <li><strong>Administrador</strong> — acceso total: clientes, créditos, usuarios y auditoría</li>
+                  <li><strong>Editor</strong> — crea y edita clientes/créditos; sin acceso a usuarios ni auditoría</li>
+                  <li><strong>Agente de Cobro / Contabilidad</strong> — acceso limitado según permisos</li>
+                  <li><strong>Viewer</strong> — solo lectura</li>
+                </ul>
+                <div style={{ marginTop:'0.5rem', color:'#059669', fontWeight:600, display:'flex', alignItems:'center', gap:'0.4rem' }}>
+                  <CheckCircle size={13}/> Los usuarios se guardan en el servidor — acceso desde cualquier dispositivo
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       )}
@@ -5369,7 +5366,7 @@ export default function App() {
                 Preferencias
               </button>
               {esAdmin && (
-                <button className={`settings-nav-item ${settingsSection === 'usuarios' ? 'active' : ''}`} onClick={() => setSettingsSection('usuarios')}>
+                <button className={`settings-nav-item`} onClick={() => { setShowSettingsPanel(false); cargarUsuarios(); setShowUserPanel(true); }}>
                   <Users size={14}/>
                   Usuarios
                 </button>
