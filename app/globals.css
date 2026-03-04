@@ -83,18 +83,6 @@
   --mono: 'JetBrains Mono', monospace;
 }
 
-/* ─── LIGHT MODE BASE ────────────────────────────────────── */
-body {
-  background: var(--bg);
-  color: var(--text);
-}
-
-.card, .stat-card, [class*='card'] {
-  background: var(--surface);
-  border-color: var(--border);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-}
-
 /* ─── DARK MODE ─────────────────────────────────────────── */
 [data-theme='dark'] {
   --brand:       #818cf8;
