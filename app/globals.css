@@ -1064,6 +1064,9 @@ tr.row-selected:hover { background: #dbeafe !important; }
 [data-theme='dark'] tr.row-selected { background: #0a1628 !important; }
 [data-theme='dark'] tbody tr:nth-child(even) { background: var(--surface-2); }
 [data-theme='dark'] tbody tr:hover { background: var(--surface-3) !important; }
+[data-theme='dark'] tr.cliente-suspendido { background: rgba(153,27,27,0.2) !important; border-left: 3px solid var(--danger-light); }
+[data-theme='dark'] tr.cliente-suspendido td { color: #fca5a5 !important; }
+[data-theme='dark'] tr.cliente-suspendido:hover { background: rgba(153,27,27,0.3) !important; }
 
 /* ═══════════════════════════════════════════════════════════
    BADGES
@@ -1092,6 +1095,21 @@ tr.row-selected:hover { background: #dbeafe !important; }
 .badge-credito-vencido { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
 .badge-credito-pagado  { background: #dcfce7; color: #14532d; border-color: #86efac; }
 @keyframes pulseBadge { 0%,100%{opacity:1} 50%{opacity:0.65} }
+
+/* ── Badges en dark mode ── */
+[data-theme='dark'] .badge-cotizado     { background: rgba(194,65,12,0.2);  color: #fdba74; border-color: rgba(194,65,12,0.4); }
+[data-theme='dark'] .badge-notificado   { background: rgba(91,33,182,0.25); color: #c4b5fd; border-color: rgba(139,92,246,0.4); }
+[data-theme='dark'] .badge-pagado       { background: rgba(20,83,45,0.3);   color: #86efac; border-color: rgba(34,197,94,0.4); }
+[data-theme='dark'] .badge-facturado    { background: rgba(19,78,74,0.3);   color: #5eead4; border-color: rgba(20,184,166,0.4); }
+[data-theme='dark'] .badge-vencido      { background: rgba(153,27,27,0.3);  color: #fca5a5; border-color: rgba(239,68,68,0.4); }
+[data-theme='dark'] .badge-no-generaron { background: var(--surface-2);     color: #E2E8F0; border-color: var(--border-2); }
+[data-theme='dark'] .badge-activo       { background: rgba(21,94,117,0.3);  color: #67e8f9; border-color: rgba(6,182,212,0.4); }
+[data-theme='dark'] .badge-por-vencer   { background: rgba(120,53,15,0.3);  color: #fde68a; border-color: rgba(217,119,6,0.4); }
+[data-theme='dark'] .badge-credito-vencido { background: rgba(153,27,27,0.3);  color: #fca5a5; border-color: rgba(239,68,68,0.4); }
+[data-theme='dark'] .badge-credito-pagado  { background: rgba(20,83,45,0.3);   color: #86efac; border-color: rgba(34,197,94,0.4); }
+[data-theme='dark'] .fecha-badge { background: var(--surface-2); color: #E2E8F0; border-color: var(--border); }
+/* Catch-all: cualquier .badge que no haya sido sobrescrito arriba */
+[data-theme='dark'] .badge { color: #E2E8F0; }
 
 /* ═══════════════════════════════════════════════════════════
    LED STATUS
