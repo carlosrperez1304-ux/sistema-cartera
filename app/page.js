@@ -405,6 +405,14 @@ export default function App() {
   const [metaMensual, setMetaMensual] = useState(0);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
+  const [showUserPanel, setShowUserPanel] = useState(false);
+  const [perfilData, setPerfilData] = useState(null);
+  const [perfilNombre, setPerfilNombre] = useState('');
+  const [perfilPassActual, setPerfilPassActual] = useState('');
+  const [perfilPassNueva, setPerfilPassNueva] = useState('');
+  const [perfilPassConfirm, setPerfilPassConfirm] = useState('');
+  const [perfilShowPass, setPerfilShowPass] = useState(false);
+  const [perfilSaving, setPerfilSaving] = useState(false);
   const [empresas, setEmpresas] = useState([]);
   const [empresaActual, setEmpresaActual] = useState(null);
   const [empresaForm, setEmpresaForm] = useState({ nombre: '', slug: '' });
@@ -2419,12 +2427,15 @@ export default function App() {
       <div className="main-layout">
         {/* SIDEBAR */}
         <div className={`sidebar${showMobileMenu ? ' mobile-open' : ''}`}>
-          <div style={{ padding: '1.2rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0 }}>
+          {/* Logo — fuera del scroll, siempre visible */}
+          <div style={{ padding: '1.1rem 1rem', borderBottom: '1px solid #e0dfd8', display: 'flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0 }}>
             <div style={{ width: '28px', height: '28px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(99,102,241,0.4)' }}>
               <BarChart2 size={14} color="#fff"/>
             </div>
-            <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#fff', letterSpacing: '-0.02em' }}>Carta<span style={{ color: '#818cf8' }}>Master</span></span>
+            <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#3d3c35', letterSpacing: '-0.02em' }}>Carta<span style={{ color: '#6366f1' }}>Master</span></span>
           </div>
+          {/* Zona scrollable */}
+          <div className="sidebar-scroll">
           <div className="sidebar-section">
             <div className="sidebar-label">Gestión</div>
             <div className={`sidebar-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}><span className="icon"><LayoutGrid size={14}/></span> Inicio</div>
@@ -2467,8 +2478,19 @@ export default function App() {
             </div>
           </div>
 
-          {/*  User footer — Claude style  */}
-          <div className="sidebar-user-footer">
+          </div>{/* fin sidebar-scroll */}
+
+          {/*  User footer — siempre fijo abajo  */}
+          <div className="sidebar-user-footer" style={{ cursor: 'pointer' }} onClick={() => {
+            fetch('/api/mi-perfil').then(r => r.json()).then(d => {
+              setPerfilData(d);
+              setPerfilNombre(d.nombre || '');
+              setPerfilPassActual('');
+              setPerfilPassNueva('');
+              setPerfilPassConfirm('');
+            }).catch(() => {});
+            setShowUserPanel(true);
+          }}>
             <div className="sidebar-user-avatar">
               {(currentUser || session?.user?.name || 'U').charAt(0).toUpperCase()}
             </div>
@@ -2476,7 +2498,7 @@ export default function App() {
               <div className="sidebar-user-name">{currentUser || session?.user?.name || 'Usuario'}</div>
               <div className="sidebar-user-role">{esAdmin ? 'Administrador' : esEditor ? 'Editor' : 'Viewer'}{empresaActual ? ` · ${empresaActual.nombre}` : ''}</div>
             </div>
-            <div className="sidebar-user-actions">
+            <div className="sidebar-user-actions" onClick={e => e.stopPropagation()}>
               {tienePermiso('acceder_configuracion') && <button className="sidebar-icon-btn" onClick={() => { setSettingsSection('config'); setShowSettingsPanel(true); }} title="Configuración">
                 <Settings size={14}/>
               </button>}
@@ -5183,6 +5205,153 @@ export default function App() {
               </div>
             )}
             <div className="form-actions"><button className="btn btn-secondary" onClick={() => setShowTagModal(false)}>Cerrar</button></div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════ PANEL DE USUARIO (pantalla completa) ══════════ */}
+      {showUserPanel && (
+        <div style={{ position:'fixed', inset:0, zIndex:900, background:'var(--bg)', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+          {/* Header */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'1.1rem 1.5rem', borderBottom:'1px solid var(--border)', background:'var(--surface)', flexShrink:0 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
+              <div style={{ width:38, height:38, borderRadius:'50%', background:'linear-gradient(135deg,#4f46e5,#7c3aed)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:'1.05rem', flexShrink:0 }}>
+                {(currentUser||session?.user?.name||'U').charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <div style={{ fontWeight:700, fontSize:'1rem', color:'var(--text)' }}>Mi Perfil</div>
+                <div style={{ fontSize:'0.75rem', color:'var(--text-muted)' }}>Gestiona tu cuenta y seguridad</div>
+              </div>
+            </div>
+            <button onClick={() => setShowUserPanel(false)} style={{ border:'none', background:'none', cursor:'pointer', color:'var(--text-muted)', padding:'0.4rem', borderRadius:'8px', display:'flex', alignItems:'center' }}>
+              <X size={20}/>
+            </button>
+          </div>
+
+          {/* Body */}
+          <div style={{ flex:1, overflowY:'auto', padding:'2rem', display:'flex', justifyContent:'center' }}>
+            <div style={{ width:'100%', maxWidth:620, display:'flex', flexDirection:'column', gap:'1.5rem' }}>
+
+              {/* Tarjeta — Información personal */}
+              <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:'1.5rem', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
+                <div style={{ fontWeight:700, fontSize:'0.85rem', color:'var(--text)', marginBottom:'1.2rem', display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                  <div style={{ width:28, height:28, background:'rgba(99,102,241,0.1)', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center' }}><Users size={14} color="#6366f1"/></div>
+                  Información personal
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem' }}>
+                  <div>
+                    <label style={{ fontSize:'0.72rem', fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:'0.35rem' }}>Usuario</label>
+                    <div style={{ padding:'0.5rem 0.75rem', background:'var(--surface-2)', borderRadius:8, fontSize:'0.87rem', fontWeight:600, color:'var(--text)', border:'1px solid var(--border)' }}>
+                      {perfilData?.username || currentUser || '—'}
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ fontSize:'0.72rem', fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:'0.35rem' }}>Rol</label>
+                    <div style={{ padding:'0.5rem 0.75rem', background:'var(--surface-2)', borderRadius:8, fontSize:'0.87rem', fontWeight:600, color:'var(--text)', border:'1px solid var(--border)' }}>
+                      {perfilData?.rol === 'admin' ? 'Administrador' : perfilData?.rol === 'editor' ? 'Editor' : perfilData?.rol === 'agente_cobro' ? 'Agente de Cobro' : perfilData?.rol === 'contabilidad' ? 'Contabilidad' : perfilData?.rol === 'supervisor_cobro' ? 'Supervisor Cobro' : perfilData?.rol === 'supervisor_contabilidad' ? 'Supervisor Contabilidad' : perfilData?.rol || 'Viewer'}
+                    </div>
+                  </div>
+                  <div style={{ gridColumn:'1/-1' }}>
+                    <label style={{ fontSize:'0.72rem', fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:'0.35rem' }}>Nombre visible</label>
+                    <input value={perfilNombre} onChange={e => setPerfilNombre(e.target.value)} placeholder="Tu nombre completo" style={{ width:'100%', padding:'0.5rem 0.75rem', background:'var(--surface)', border:'1.5px solid var(--border-2)', borderRadius:8, fontSize:'0.87rem', color:'var(--text)', outline:'none', boxSizing:'border-box' }}/>
+                  </div>
+                  {perfilData?.email && (
+                    <div style={{ gridColumn:'1/-1' }}>
+                      <label style={{ fontSize:'0.72rem', fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:'0.35rem' }}>Correo electrónico</label>
+                      <div style={{ padding:'0.5rem 0.75rem', background:'var(--surface-2)', borderRadius:8, fontSize:'0.87rem', color:'var(--text)', border:'1px solid var(--border)', display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                        <Mail size={13} color="var(--text-muted)"/> {perfilData.email}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <button onClick={async () => {
+                  if (!perfilNombre.trim()) return;
+                  setPerfilSaving(true);
+                  try {
+                    const res = await fetch('/api/mi-perfil', { method:'PATCH', headers:{'Content-Type':'application/json','x-csrf-token':'1'}, body: JSON.stringify({ nombre: perfilNombre }) });
+                    const d = await res.json();
+                    if (d.ok) showToast('Nombre actualizado', 'success');
+                    else showToast(d.error || 'Error', 'error');
+                  } catch { showToast('Error de conexión', 'error'); }
+                  setPerfilSaving(false);
+                }} style={{ marginTop:'1.1rem', padding:'0.5rem 1.2rem', background:'#6366f1', color:'#fff', border:'none', borderRadius:8, fontWeight:600, fontSize:'0.83rem', cursor:'pointer', opacity: perfilSaving ? 0.7 : 1 }}>
+                  {perfilSaving ? 'Guardando…' : 'Guardar nombre'}
+                </button>
+              </div>
+
+              {/* Tarjeta — Seguridad */}
+              <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:'1.5rem', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
+                <div style={{ fontWeight:700, fontSize:'0.85rem', color:'var(--text)', marginBottom:'1.2rem', display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                  <div style={{ width:28, height:28, background:'rgba(239,68,68,0.08)', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center' }}><Lock size={14} color="#ef4444"/></div>
+                  Seguridad — Cambiar contraseña
+                </div>
+                <div style={{ display:'flex', flexDirection:'column', gap:'0.9rem' }}>
+                  {[
+                    { label:'Contraseña actual', val:perfilPassActual, set:setPerfilPassActual },
+                    { label:'Nueva contraseña', val:perfilPassNueva, set:setPerfilPassNueva },
+                    { label:'Confirmar nueva contraseña', val:perfilPassConfirm, set:setPerfilPassConfirm },
+                  ].map(({ label, val, set }) => (
+                    <div key={label}>
+                      <label style={{ fontSize:'0.72rem', fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:'0.35rem' }}>{label}</label>
+                      <div style={{ position:'relative' }}>
+                        <input type={perfilShowPass ? 'text' : 'password'} value={val} onChange={e => set(e.target.value)} style={{ width:'100%', padding:'0.5rem 2.2rem 0.5rem 0.75rem', background:'var(--surface)', border:'1.5px solid var(--border-2)', borderRadius:8, fontSize:'0.87rem', color:'var(--text)', outline:'none', boxSizing:'border-box' }}/>
+                        <button type="button" onClick={() => setPerfilShowPass(v => !v)} style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', border:'none', background:'none', cursor:'pointer', color:'var(--text-muted)', display:'flex', alignItems:'center' }}>
+                          {perfilShowPass ? <EyeOff size={14}/> : <Eye size={14}/>}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <div style={{ fontSize:'0.73rem', color:'var(--text-muted)', background:'var(--surface-2)', padding:'0.6rem 0.75rem', borderRadius:8 }}>
+                    Mínimo 8 caracteres · Al menos una mayúscula · Al menos un número
+                  </div>
+                </div>
+                <button onClick={async () => {
+                  if (!perfilPassActual || !perfilPassNueva || !perfilPassConfirm) { showToast('Completa todos los campos', 'error'); return; }
+                  if (perfilPassNueva !== perfilPassConfirm) { showToast('Las contraseñas nuevas no coinciden', 'error'); return; }
+                  setPerfilSaving(true);
+                  try {
+                    const res = await fetch('/api/mi-perfil', { method:'PATCH', headers:{'Content-Type':'application/json','x-csrf-token':'1'}, body: JSON.stringify({ passActual: perfilPassActual, passNueva: perfilPassNueva }) });
+                    const d = await res.json();
+                    if (d.ok) { showToast('Contraseña actualizada', 'success'); setPerfilPassActual(''); setPerfilPassNueva(''); setPerfilPassConfirm(''); }
+                    else showToast(d.error || 'Error', 'error');
+                  } catch { showToast('Error de conexión', 'error'); }
+                  setPerfilSaving(false);
+                }} style={{ marginTop:'1.1rem', padding:'0.5rem 1.2rem', background:'#ef4444', color:'#fff', border:'none', borderRadius:8, fontWeight:600, fontSize:'0.83rem', cursor:'pointer', opacity: perfilSaving ? 0.7 : 1 }}>
+                  {perfilSaving ? 'Guardando…' : 'Cambiar contraseña'}
+                </button>
+              </div>
+
+              {/* Tarjeta — Última conexión */}
+              <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, padding:'1.5rem', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
+                <div style={{ fontWeight:700, fontSize:'0.85rem', color:'var(--text)', marginBottom:'1rem', display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                  <div style={{ width:28, height:28, background:'rgba(22,163,74,0.08)', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center' }}><Clock size={14} color="#16a34a"/></div>
+                  Actividad de sesión
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem' }}>
+                  <div style={{ padding:'0.85rem 1rem', background:'var(--surface-2)', borderRadius:10, border:'1px solid var(--border)' }}>
+                    <div style={{ fontSize:'0.68rem', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:'0.4rem' }}>Sesión actual</div>
+                    <div style={{ fontSize:'0.83rem', fontWeight:600, color:'var(--text)' }}>Activa ahora</div>
+                    <div style={{ fontSize:'0.72rem', color:'var(--text-muted)', marginTop:'0.2rem' }}>{new Date().toLocaleDateString('es-DO', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}</div>
+                  </div>
+                  <div style={{ padding:'0.85rem 1rem', background:'var(--surface-2)', borderRadius:10, border:'1px solid var(--border)' }}>
+                    <div style={{ fontSize:'0.68rem', fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:'0.4rem' }}>Última conexión anterior</div>
+                    {perfilData?.ultimaConexion ? (
+                      <>
+                        <div style={{ fontSize:'0.83rem', fontWeight:600, color:'var(--text)' }}>{new Date(perfilData.ultimaConexion).toLocaleDateString('es-DO', { day:'2-digit', month:'short', year:'numeric' })}</div>
+                        <div style={{ fontSize:'0.72rem', color:'var(--text-muted)', marginTop:'0.2rem' }}>{new Date(perfilData.ultimaConexion).toLocaleTimeString('es-DO', { hour:'2-digit', minute:'2-digit' })}</div>
+                      </>
+                    ) : <div style={{ fontSize:'0.83rem', color:'var(--text-muted)' }}>Sin registro previo</div>}
+                  </div>
+                </div>
+              </div>
+
+              {/* Cerrar sesión */}
+              <button onClick={() => { window._manualLogout = true; setShowUserPanel(false); signOut({ callbackUrl: '/' }); setTimeout(() => { window.location.href = '/'; }, 500); }}
+                style={{ padding:'0.65rem 1.2rem', background:'transparent', color:'var(--danger)', border:'1.5px solid var(--danger)', borderRadius:10, fontWeight:600, fontSize:'0.85rem', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem' }}>
+                <LogOut size={15}/> Cerrar sesión
+              </button>
+
+            </div>
           </div>
         </div>
       )}
