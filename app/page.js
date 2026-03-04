@@ -2110,7 +2110,7 @@ export default function App() {
       <div className="login-container">
         <div className="login-box">
           <div className="login-header">
-            <div className="login-logo"><BarChart2 size={32} strokeWidth={2}/></div>
+            <div className="login-logo"><BarChart2 size={34} strokeWidth={2}/></div>
             <h1 className="login-title"><span className="logo-carta">Carta</span><span className="logo-master">Master</span></h1>
             <p className="login-subtitle">Sistema de Gestión de Cartera</p>
           </div>
@@ -2127,6 +2127,7 @@ export default function App() {
             <button type="submit" className="login-btn">Iniciar Sesión</button>
           </form>
         </div>
+        <p className="login-footer">© 2026 CartaMaster · Todos los derechos reservados</p>
       </div>
     );
   }
