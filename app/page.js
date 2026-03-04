@@ -2457,7 +2457,7 @@ export default function App() {
             {esContabilidad && <div className={`sidebar-item ${activeTab === 'validar_pagos' ? 'active' : ''}`} onClick={() => { setActiveTab('validar_pagos'); cargarPagosPendientes(); }}><span className="icon"><Check size={14}/></span> Validar Pagos{pagosPendientesCount > 0 && <span style={{ marginLeft:'6px', background:'#f97316', color:'#fff', borderRadius:'10px', padding:'0 6px', fontSize:'0.7rem', fontWeight:700 }}>{pagosPendientesCount}</span>}</div>}
             <div className="sidebar-item" onClick={() => { setArchivosEnProceso([]); setShowCargaMasivaModal(true); }}><span className="icon"><Upload size={14}/></span> Carga Masiva PDF</div>
             <div className="sidebar-item" onClick={() => setShowPlantillasModal(true)}><span className="icon"><MessageSquare size={14}/></span> Plantillas WA</div>
-            {esAdmin && <div className="sidebar-item" onClick={() => { cargarUsuarios(); cargarUsuariosAdmin(); setShowUserPanel(true); }}><span className="icon"><Users size={14}/></span> Usuarios</div>}
+            {esAdmin && <div className={`sidebar-item ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => { cargarUsuariosAdmin(); setActiveTab('usuarios'); }}><span className="icon"><Users size={14}/></span> Usuarios</div>}
           </div>
           <div className="sidebar-section">
             <div className="sidebar-label" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer' }} onClick={() => setShowExportMenu(v => !v)}>
@@ -4158,6 +4158,104 @@ export default function App() {
             </div>
           )}
 
+          {/* TAB USUARIOS */}
+          {esAdmin && <div className={`tab-content ${activeTab === 'usuarios' ? 'active' : ''}`}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1.25rem', flexWrap:'wrap', gap:'0.75rem' }}>
+              <div>
+                <h2 style={{ margin:0, fontWeight:800, fontSize:'1.15rem', color:'var(--text)', display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                  <Users size={18} color="#6366f1"/> Usuarios
+                </h2>
+                <p style={{ margin:'0.15rem 0 0', fontSize:'0.78rem', color:'var(--text-muted)' }}>
+                  {Object.keys(usuarios).length} usuario{Object.keys(usuarios).length !== 1 ? 's' : ''} registrado{Object.keys(usuarios).length !== 1 ? 's' : ''}
+                </p>
+              </div>
+              <button className="btn btn-primary" style={{ display:'flex', alignItems:'center', gap:'0.4rem', fontSize:'0.82rem' }}
+                onClick={() => { cargarUsuarios(); setUsuarioEditando(null); setUsuarioForm({ username:'', nombre:'', pass:'', rol:'viewer' }); setShowUsuariosModal(true); }}>
+                <Plus size={14}/> Nuevo usuario
+              </button>
+            </div>
+
+            <div style={{ overflowX:'auto', borderRadius:12, border:'1px solid var(--border)', background:'var(--surface)' }}>
+              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.84rem', minWidth:600 }}>
+                <thead>
+                  <tr style={{ background:'var(--surface-2)', borderBottom:'2px solid var(--border)' }}>
+                    <th style={{ padding:'0.7rem 1.1rem', textAlign:'left', fontWeight:700, fontSize:'0.69rem', color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', whiteSpace:'nowrap' }}>Usuario</th>
+                    <th style={{ padding:'0.7rem 1rem', textAlign:'left', fontWeight:700, fontSize:'0.69rem', color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em' }}>Email</th>
+                    <th style={{ padding:'0.7rem 1rem', textAlign:'left', fontWeight:700, fontSize:'0.69rem', color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em' }}>Cargo</th>
+                    <th style={{ padding:'0.7rem 1rem', textAlign:'left', fontWeight:700, fontSize:'0.69rem', color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', whiteSpace:'nowrap' }}>Último Login</th>
+                    <th style={{ padding:'0.7rem 1rem', width:'90px' }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(usuarios).map(([key, u], idx) => {
+                    const adm = usuariosAdmin[key] || {};
+                    const ROL_LABEL = { admin:'Administrador', editor:'Editor', agente_cobro:'Agente de Cobro', contabilidad:'Contabilidad', supervisor_cobro:'Supervisor Cobro', supervisor_contabilidad:'Supervisor Contabilidad', viewer:'Viewer' };
+                    const esOp = ['editor','agente_cobro','contabilidad','supervisor_cobro','supervisor_contabilidad'].includes(u.rol);
+                    const rolBg = u.rol==='admin' ? '#fef9c3' : esOp ? '#f0fdf4' : '#f0f9ff';
+                    const rolBd = u.rol==='admin' ? '#fde047' : esOp ? '#86efac' : '#bae6fd';
+                    const rolCl = u.rol==='admin' ? '#713f12' : esOp ? '#166534' : '#075985';
+                    const av = getAvatar(u.nombre || key);
+                    const login = adm.ultimoLogin ? new Date(adm.ultimoLogin) : null;
+                    const loginStr = login
+                      ? login.toLocaleDateString('es-DO', { day:'2-digit', month:'short', year:'numeric' }) + ' ' + login.toLocaleTimeString('es-DO', { hour:'2-digit', minute:'2-digit' })
+                      : '—';
+                    return (
+                      <tr key={key} style={{ borderBottom:'1px solid var(--border)', background: idx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.015)' }}>
+                        <td style={{ padding:'0.85rem 1.1rem' }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:'0.65rem' }}>
+                            <div className="avatar avatar-sm" style={{ background: av.color, flexShrink:0 }}>{av.letra}</div>
+                            <div>
+                              <div style={{ fontWeight:700, color:'var(--text)', display:'flex', alignItems:'center', gap:'0.4rem' }}>
+                                {u.nombre || key}
+                                {key === currentUser && <span style={{ background:'var(--brand)', color:'#fff', borderRadius:'20px', padding:'0.05rem 0.45rem', fontSize:'0.6rem', fontWeight:800 }}>TÚ</span>}
+                              </div>
+                              <div style={{ fontSize:'0.71rem', color:'var(--text-muted)', fontFamily:'var(--mono)' }}>@{key}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding:'0.85rem 1rem', color: adm.email ? 'var(--text)' : 'var(--text-xlight)', fontSize:'0.82rem' }}>
+                          {adm.email || '—'}
+                        </td>
+                        <td style={{ padding:'0.85rem 1rem' }}>
+                          <span style={{ background:rolBg, border:`1px solid ${rolBd}`, color:rolCl, borderRadius:'20px', padding:'0.2rem 0.7rem', fontSize:'0.72rem', fontWeight:700, whiteSpace:'nowrap' }}>
+                            {ROL_LABEL[u.rol] || u.rol}
+                          </span>
+                        </td>
+                        <td style={{ padding:'0.85rem 1rem', fontSize:'0.79rem', color: login ? 'var(--text)' : 'var(--text-xlight)', whiteSpace:'nowrap' }}>
+                          {loginStr}
+                        </td>
+                        <td style={{ padding:'0.85rem 1rem' }}>
+                          <div style={{ display:'flex', gap:'0.35rem', justifyContent:'flex-end' }}>
+                            <button title="Editar"
+                              onClick={() => { cargarUsuarios(); editarUsuario(key); setShowUsuariosModal(true); }}
+                              style={{ padding:'0.35rem 0.6rem', border:'1px solid var(--border-2)', borderRadius:'7px', background:'var(--surface-2)', cursor:'pointer', color:'var(--text-muted)', display:'flex', alignItems:'center' }}>
+                              <Pencil size={13}/>
+                            </button>
+                            {key !== currentUser && (
+                              <button title="Eliminar"
+                                onClick={() => eliminarUsuario(key)}
+                                style={{ padding:'0.35rem 0.6rem', border:'1px solid #fca5a5', borderRadius:'7px', background:'#fee2e2', color:'#dc2626', cursor:'pointer', display:'flex', alignItems:'center' }}>
+                                <Trash2 size={13}/>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {Object.keys(usuarios).length === 0 && (
+                    <tr>
+                      <td colSpan={5} style={{ padding:'3rem', textAlign:'center', color:'var(--text-muted)' }}>
+                        <Users size={32} style={{ opacity:0.2, display:'block', margin:'0 auto 0.75rem' }}/>
+                        No hay usuarios registrados
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>}
+
           {/* MODALES */}
           {/* Modal Cliente */}
           <div className={`modal ${showModal ? 'show' : ''}`}>
@@ -5204,125 +5302,6 @@ export default function App() {
               </div>
             )}
             <div className="form-actions"><button className="btn btn-secondary" onClick={() => setShowTagModal(false)}>Cerrar</button></div>
-          </div>
-        </div>
-      )}
-
-      {/* ══════════ PANEL GESTIÓN DE USUARIOS (pantalla completa) ══════════ */}
-      {showUserPanel && esAdmin && (
-        <div style={{ position:'fixed', inset:0, zIndex:900, background:'var(--bg)', display:'flex', flexDirection:'column', overflow:'hidden' }}>
-
-          {/* Header */}
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'1rem 1.5rem', borderBottom:'1px solid var(--border)', background:'var(--surface)', flexShrink:0 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
-              <div style={{ width:36, height:36, borderRadius:10, background:'rgba(99,102,241,0.1)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                <Users size={18} color="#6366f1"/>
-              </div>
-              <div>
-                <div style={{ fontWeight:700, fontSize:'1rem', color:'var(--text)' }}>Gestión de Usuarios</div>
-                <div style={{ fontSize:'0.72rem', color:'var(--text-muted)' }}>
-                  {Object.keys(usuarios).length} usuario{Object.keys(usuarios).length !== 1 ? 's' : ''} registrado{Object.keys(usuarios).length !== 1 ? 's' : ''}
-                </div>
-              </div>
-            </div>
-            <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
-              <button className="btn btn-primary" style={{ padding:'0.45rem 1rem', fontSize:'0.8rem', display:'flex', alignItems:'center', gap:'0.4rem' }}
-                onClick={() => { setUsuarioEditando(null); setUsuarioForm({ username:'', nombre:'', pass:'', rol:'viewer' }); setShowUsuariosModal(true); }}>
-                <Plus size={14}/> Nuevo usuario
-              </button>
-              <button onClick={() => setShowUserPanel(false)}
-                style={{ border:'none', background:'none', cursor:'pointer', color:'var(--text-muted)', padding:'0.4rem', borderRadius:'8px', display:'flex', alignItems:'center' }}>
-                <X size={20}/>
-              </button>
-            </div>
-          </div>
-
-          {/* Tabla de usuarios */}
-          <div style={{ flex:1, overflowY:'auto', padding:'1.5rem' }}>
-            <div style={{ overflowX:'auto', borderRadius:12, border:'1px solid var(--border)', background:'var(--surface)' }}>
-              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.84rem', minWidth:640 }}>
-                <thead>
-                  <tr style={{ background:'var(--surface-2)', borderBottom:'2px solid var(--border)' }}>
-                    <th style={{ padding:'0.7rem 1.1rem', textAlign:'left', fontWeight:700, fontSize:'0.69rem', color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', whiteSpace:'nowrap' }}>Usuario</th>
-                    <th style={{ padding:'0.7rem 1rem', textAlign:'left', fontWeight:700, fontSize:'0.69rem', color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', whiteSpace:'nowrap' }}>Email</th>
-                    <th style={{ padding:'0.7rem 1rem', textAlign:'left', fontWeight:700, fontSize:'0.69rem', color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', whiteSpace:'nowrap' }}>Cargo</th>
-                    <th style={{ padding:'0.7rem 1rem', textAlign:'left', fontWeight:700, fontSize:'0.69rem', color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.07em', whiteSpace:'nowrap' }}>Último Login</th>
-                    <th style={{ padding:'0.7rem 1rem', width:'90px' }}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(usuarios).map(([key, u], idx) => {
-                    const adm = usuariosAdmin[key] || {};
-                    const ROL_LABEL = { admin:'Administrador', editor:'Editor', agente_cobro:'Agente de Cobro', contabilidad:'Contabilidad', supervisor_cobro:'Supervisor Cobro', supervisor_contabilidad:'Supervisor Contabilidad', viewer:'Viewer' };
-                    const esOp = ['editor','agente_cobro','contabilidad','supervisor_cobro','supervisor_contabilidad'].includes(u.rol);
-                    const rolBg = u.rol==='admin' ? '#fef9c3' : esOp ? '#f0fdf4' : '#f0f9ff';
-                    const rolBd = u.rol==='admin' ? '#fde047' : esOp ? '#86efac' : '#bae6fd';
-                    const rolCl = u.rol==='admin' ? '#713f12' : esOp ? '#166534' : '#075985';
-                    const av = getAvatar(u.nombre || key);
-                    const login = adm.ultimoLogin ? new Date(adm.ultimoLogin) : null;
-                    const loginStr = login
-                      ? login.toLocaleDateString('es-DO', { day:'2-digit', month:'short', year:'numeric' }) + ' ' + login.toLocaleTimeString('es-DO', { hour:'2-digit', minute:'2-digit' })
-                      : '—';
-                    return (
-                      <tr key={key} style={{ borderBottom:'1px solid var(--border)', background: idx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.015)' }}>
-                        {/* Usuario */}
-                        <td style={{ padding:'0.85rem 1.1rem' }}>
-                          <div style={{ display:'flex', alignItems:'center', gap:'0.65rem' }}>
-                            <div className="avatar avatar-sm" style={{ background: av.color, flexShrink:0 }}>{av.letra}</div>
-                            <div>
-                              <div style={{ fontWeight:700, color:'var(--text)', display:'flex', alignItems:'center', gap:'0.4rem' }}>
-                                {u.nombre || key}
-                                {key === currentUser && <span style={{ background:'var(--brand)', color:'#fff', borderRadius:'20px', padding:'0.05rem 0.45rem', fontSize:'0.6rem', fontWeight:800 }}>TÚ</span>}
-                              </div>
-                              <div style={{ fontSize:'0.71rem', color:'var(--text-muted)', fontFamily:'var(--mono)' }}>@{key}</div>
-                            </div>
-                          </div>
-                        </td>
-                        {/* Email */}
-                        <td style={{ padding:'0.85rem 1rem', color: adm.email ? 'var(--text)' : 'var(--text-xlight)', fontSize:'0.82rem' }}>
-                          {adm.email || '—'}
-                        </td>
-                        {/* Cargo */}
-                        <td style={{ padding:'0.85rem 1rem' }}>
-                          <span style={{ background:rolBg, border:`1px solid ${rolBd}`, color:rolCl, borderRadius:'20px', padding:'0.2rem 0.7rem', fontSize:'0.72rem', fontWeight:700, whiteSpace:'nowrap' }}>
-                            {ROL_LABEL[u.rol] || u.rol}
-                          </span>
-                        </td>
-                        {/* Último Login */}
-                        <td style={{ padding:'0.85rem 1rem', fontSize:'0.79rem', color: login ? 'var(--text)' : 'var(--text-xlight)', whiteSpace:'nowrap' }}>
-                          {loginStr}
-                        </td>
-                        {/* Acciones */}
-                        <td style={{ padding:'0.85rem 1rem' }}>
-                          <div style={{ display:'flex', gap:'0.35rem', justifyContent:'flex-end' }}>
-                            <button title="Editar"
-                              onClick={() => { editarUsuario(key); setShowUsuariosModal(true); }}
-                              style={{ padding:'0.35rem 0.6rem', border:'1px solid var(--border-2)', borderRadius:'7px', background:'var(--surface-2)', cursor:'pointer', color:'var(--text-muted)', display:'flex', alignItems:'center' }}>
-                              <Pencil size={13}/>
-                            </button>
-                            {key !== currentUser && (
-                              <button title="Eliminar"
-                                onClick={() => eliminarUsuario(key)}
-                                style={{ padding:'0.35rem 0.6rem', border:'1px solid #fca5a5', borderRadius:'7px', background:'#fee2e2', color:'#dc2626', cursor:'pointer', display:'flex', alignItems:'center' }}>
-                                <Trash2 size={13}/>
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {Object.keys(usuarios).length === 0 && (
-                    <tr>
-                      <td colSpan={5} style={{ padding:'3rem', textAlign:'center', color:'var(--text-muted)' }}>
-                        <Users size={32} style={{ opacity:0.2, display:'block', margin:'0 auto 0.75rem' }}/>
-                        No hay usuarios registrados
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
           </div>
         </div>
       )}
