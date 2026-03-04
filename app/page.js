@@ -163,6 +163,7 @@ export default function App() {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    if (!session?.user) return;
     fetch('/api/historial-meses')
       .then(r => r.ok ? r.json() : [])
       .then(data => {
@@ -172,7 +173,7 @@ export default function App() {
       })
       .catch(() => {})
       .finally(() => setHydrated(true));
-  }, []);
+  }, [session?.user]);
 
   // — Funciones de carga separadas (estables con useCallback) —
   const cargarClientes = useCallback(async () => {
@@ -295,6 +296,8 @@ export default function App() {
   const [gmailReply, setGmailReply] = useState(null);
   const [gmailReplyBody, setGmailReplyBody] = useState('');
   const [gmailSending, setGmailSending] = useState(false);
+  const [gmailSelected, setGmailSelected] = useState(null);
+  const [gmailSearch, setGmailSearch] = useState('');
   const [graficasVisibles, setGraficasVisibles] = useState(true);
   const [showNotaModal, setShowNotaModal] = useState(false);
   const [showDescargaMesModal, setShowDescargaMesModal] = useState(false);
@@ -999,16 +1002,22 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  const cargarGmail = async () => {
+  const cargarGmail = async (q = '') => {
     setGmailLoading(true);
     try {
-      const res = await fetch('/api/gmail?max=15');
+      const res = await fetch();
       const data = res.ok ? await res.json() : { emails: [], linked: false };
       if (data.linked === false) { setGmailEmails([]); setGmailUnread(0); setGmailLoading(false); return; }
       setGmailEmails(data.emails || []);
       setGmailUnread((data.emails || []).filter(e => e.unread).length);
     } catch(e) {}
     setGmailLoading(false);
+  };
+
+  const marcarGmailLeido = async (id) => {
+    await fetch('/api/gmail', { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ id }) });
+    setGmailEmails(prev => prev.map(e => e.id === id ? {...e, unread: false} : e));
+    setGmailUnread(prev => Math.max(0, prev - 1));
   };
 
   const abrirPagoModal = (cliente) => { setPagoClienteTarget(cliente); setPagoMonto(''); setShowPagoModal(true); };
@@ -2162,35 +2171,70 @@ export default function App() {
               </button>
               {showGmailPanel && (
                 <>
-                  <div style={{ position: 'fixed', inset: 0, zIndex: 998 }} onClick={() => setShowGmailPanel(false)} />
-                  <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', width: '380px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)', zIndex: 999, overflow: 'hidden' }}>
-                    <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Mail size={15}/> Gmail
-                        {gmailUnread > 0 && <span style={{ background: '#dc2626', color: '#fff', fontSize: '0.65rem', fontWeight: 800, padding: '0.1rem 0.4rem', borderRadius: '8px' }}>{gmailUnread} nuevos</span>}
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 998 }} onClick={() => { setShowGmailPanel(false); setGmailSelected(null); }} />
+                  <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', width: '420px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', boxShadow: '0 12px 40px rgba(0,0,0,0.18)', zIndex: 999, overflow: 'hidden' }}>
+                    {/* Header */}
+                    <div style={{ padding: '0.9rem 1rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Mail size={16}/> Gmail
+                        {gmailUnread > 0 && <span style={{ background: '#dc2626', color: '#fff', fontSize: '0.65rem', fontWeight: 800, padding: '0.15rem 0.5rem', borderRadius: '10px' }}>{gmailUnread} nuevos</span>}
                       </div>
-                      <button onClick={cargarGmail} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem' }}>
-                        <RefreshCw size={12}/> Actualizar
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                        {gmailSelected && <button onClick={() => setGmailSelected(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.75rem' }}>← Volver</button>}
+                        <button onClick={() => cargarGmail(gmailSearch)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }} title="Actualizar"><RefreshCw size={13}/></button>
+                      </div>
                     </div>
-                    <div style={{ maxHeight: '420px', overflowY: 'auto' }}>
+                    {/* Búsqueda */}
+                    {!gmailSelected && (
+                      <div style={{ padding: '0.6rem 1rem', borderBottom: '1px solid var(--border)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--surface-2)', borderRadius: '8px', padding: '0.4rem 0.7rem', border: '1px solid var(--border)' }}>
+                          <Search size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }}/>
+                          <input type="text" value={gmailSearch} onChange={e => setGmailSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && cargarGmail(gmailSearch)} placeholder="Buscar emails..." style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.82rem', color: 'var(--text)', width: '100%' }}/>
+                          {gmailSearch && <button onClick={() => { setGmailSearch(''); cargarGmail(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0 }}>×</button>}
+                        </div>
+                      </div>
+                    )}
+                    {/* Lista o detalle */}
+                    <div style={{ maxHeight: '460px', overflowY: 'auto' }}>
                       {gmailLoading ? (
                         <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}><Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }}/></div>
+                      ) : gmailSelected ? (
+                        <div style={{ padding: '1rem' }}>
+                          <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text)', marginBottom: '0.5rem' }}>{gmailSelected.subject}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.75rem' }}>
+                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--brand)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.85rem', flexShrink: 0 }}>{(gmailSelected.fromName || gmailSelected.from || '?').charAt(0).toUpperCase()}</div>
+                            <div>
+                              <div style={{ fontWeight: 600, fontSize: '0.82rem', color: 'var(--text)' }}>{gmailSelected.fromName || gmailSelected.from}</div>
+                              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{gmailSelected.fromEmail}</div>
+                            </div>
+                          </div>
+                          <div style={{ fontSize: '0.82rem', color: 'var(--text)', lineHeight: 1.6, whiteSpace: 'pre-wrap', background: 'var(--surface-2)', padding: '0.75rem', borderRadius: '8px', maxHeight: '260px', overflowY: 'auto' }}>{gmailSelected.body || gmailSelected.snippet}</div>
+                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+                            <button onClick={() => { setGmailReply(gmailSelected); setGmailReplyBody(''); setShowGmailPanel(false); setGmailSelected(null); }} className="btn btn-primary" style={{ fontSize: '0.78rem', padding: '0.4rem 0.8rem' }}>
+                              <Send size={12}/> Responder
+                            </button>
+                            {gmailSelected.unread && (
+                              <button onClick={() => marcarGmailLeido(gmailSelected.id)} className="btn btn-secondary" style={{ fontSize: '0.78rem', padding: '0.4rem 0.8rem' }}>
+                                Marcar leído
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       ) : gmailEmails.length === 0 ? (
                         <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No hay emails</div>
                       ) : gmailEmails.map(email => (
-                        <div key={email.id} style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border)', background: email.unread ? 'var(--surface-2)' : 'transparent' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}
-                            onClick={() => window.open(`https://mail.google.com/mail/u/0/#inbox/${email.id}`, '_blank')}>
-                            <div style={{ fontWeight: email.unread ? 700 : 500, fontSize: '0.82rem', color: 'var(--text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email.subject}</div>
-                            {email.unread && <span style={{ width: '8px', height: '8px', background: '#3b82f6', borderRadius: '50%', flexShrink: 0, marginTop: '4px' }}></span>}
-                          </div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email.from}</div>
-                          <div style={{ fontSize: '0.72rem', color: 'var(--text-light)', marginTop: '0.2rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email.snippet}</div>
-                          <div style={{ marginTop: '0.4rem' }}>
-                            <button onClick={() => { setGmailReply(email); setGmailReplyBody(''); setShowGmailPanel(false); }} style={{ fontSize: '0.72rem', padding: '0.2rem 0.6rem', borderRadius: '5px', border: '1px solid var(--border-2)', background: 'var(--surface-2)', color: 'var(--text-muted)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                              <Send size={10}/> Responder
-                            </button>
+                        <div key={email.id} onClick={() => { setGmailSelected(email); if (email.unread) marcarGmailLeido(email.id); }}
+                          style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border)', background: email.unread ? 'var(--surface-2)' : 'transparent', cursor: 'pointer' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--brand)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.75rem', flexShrink: 0 }}>{(email.fromName || email.from || '?').charAt(0).toUpperCase()}</div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ fontWeight: email.unread ? 700 : 500, fontSize: '0.82rem', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '220px' }}>{email.fromName || email.from}</div>
+                                {email.unread && <span style={{ width: '7px', height: '7px', background: '#3b82f6', borderRadius: '50%', flexShrink: 0 }}></span>}
+                              </div>
+                              <div style={{ fontWeight: email.unread ? 600 : 400, fontSize: '0.78rem', color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email.subject}</div>
+                              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email.snippet}</div>
+                            </div>
                           </div>
                         </div>
                       ))}
