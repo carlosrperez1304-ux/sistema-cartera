@@ -12,23 +12,23 @@
   --brand-bg:     rgba(99,102,241,0.07);
 
   /* Backgrounds */
-  --bg:        #f4f4f8;
-  --bg-card:   #ffffff;
-  --surface:   #ffffff;
-  --surface-2: #f0f0f6;
-  --surface-3: #e8e8f2;
+  --bg:        #f5f4ef;
+  --bg-card:   #faf9f5;
+  --surface:   #faf9f5;
+  --surface-2: #f0efe9;
+  --surface-3: #e8e7e0;
 
   /* Borders */
-  --border:   #e2e2ec;
-  --border-2: #d0d0e0;
-  --border-3: #babacf;
+  --border:   #e0dfd8;
+  --border-2: #cccbc3;
+  --border-3: #b5b4ab;
 
   /* Text */
-  --text:       #1a1a2e;
-  --text-2:     #3a3a5c;
-  --text-muted: #6b6b8a;
-  --text-light: #9494b0;
-  --text-xlight:#c0c0d4;
+  --text:       #1a1915;
+  --text-2:     #3d3c35;
+  --text-muted: #6b6a62;
+  --text-light: #9a998f;
+  --text-xlight:#c2c1b7;
 
   /* Semantic */
   --success:       #16a34a;
@@ -203,7 +203,7 @@ html { -webkit-text-size-adjust: 100%; }
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: var(--bg);
+  background: #f5f4ef !important;
   color: var(--text);
   min-height: 100vh;
   display: flex;
