@@ -1203,11 +1203,11 @@ tr.row-selected:hover { background: #dbeafe !important; }
   cursor: pointer;
   transition: all 0.15s ease;
   font-size: 0.82rem;
-  opacity: 0.7;
 }
-.proceso-icon:hover:not(:disabled) { opacity: 1; }
-.proceso-icon.done { opacity: 1; }
 .proceso-icon:disabled { opacity: 0.25; cursor: not-allowed; }
+[data-theme='dark'] .proceso-icon { opacity: 0.7; }
+[data-theme='dark'] .proceso-icon:hover:not(:disabled) { opacity: 1; }
+[data-theme='dark'] .proceso-icon.done { opacity: 1; }
 
 .proceso-icon.cotizado:hover:not(:disabled) { border-color: #ea580c; color: #ea580c; background: #fff7ed; transform: scale(1.08); }
 .proceso-icon.cotizado.done { background: #fff7ed; border-color: #ea580c; color: #c2410c; box-shadow: 0 0 0 2px rgba(234,88,12,0.12); }
