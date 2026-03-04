@@ -163,7 +163,8 @@ export default function App() {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    if (!session?.user) return;
+    if (sessionStatus === 'loading') return;
+    if (!session?.user) { setHydrated(true); return; }
     fetch('/api/historial-meses')
       .then(r => r.ok ? r.json() : [])
       .then(data => {
@@ -173,7 +174,7 @@ export default function App() {
       })
       .catch(() => {})
       .finally(() => setHydrated(true));
-  }, [session?.user]);
+  }, [session?.user, sessionStatus]);
 
   // — Funciones de carga separadas (estables con useCallback) —
   const cargarClientes = useCallback(async () => {
