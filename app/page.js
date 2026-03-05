@@ -455,6 +455,10 @@ export default function App() {
   const [archivosEnProceso, setArchivosEnProceso] = useState([]);
   const [cargaMasivaProcesando, setCargaMasivaProcesando] = useState(false);
   const [clientesConDoc, setClientesConDoc] = useState(new Set()); // IDs que ya tienen documento
+  const [showGenMasivaModal, setShowGenMasivaModal] = useState(false);
+  const [genMasivaActivo, setGenMasivaActivo] = useState(false);
+  const [genMasivaProgreso, setGenMasivaProgreso] = useState({ total: 0, done: 0, ok: 0, error: 0 });
+  const [genMasivaLog, setGenMasivaLog] = useState([]);
 
   // ── Bitácora de Gestiones ────────────────────────────────
   const [gestiones, setGestiones] = useState({});
@@ -1761,6 +1765,92 @@ export default function App() {
     });
   };
 
+  // ─── GENERACIÓN MASIVA DE COTIZACIONES ───────────────────
+  const iniciarGenMasiva = async () => {
+    const emp = empresaActual || {};
+    const clientesConPlantilla = clientes.filter(c => COT_PLANTILLAS[c.id]);
+    if (!clientesConPlantilla.length) { showToast('No hay clientes con plantilla disponible', 'error'); return; }
+
+    setGenMasivaActivo(true);
+    setGenMasivaLog([]);
+    setGenMasivaProgreso({ total: clientesConPlantilla.length, done: 0, ok: 0, error: 0 });
+
+    const { default: jsPDF } = await import('jspdf');
+    const autotableModule = await import('jspdf-autotable');
+    const autoTable = autotableModule.default || autotableModule;
+
+    let numBase = emp.numero_cotizacion || 1;
+    let ok = 0, errores = 0;
+
+    for (const cliente of clientesConPlantilla) {
+      const items = COT_PLANTILLAS[cliente.id];
+      const numStr = String(numBase).padStart(6, '0');
+      const pageW = 210, margin = 15;
+      const fecha = new Date();
+
+      try {
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+        if (emp.logo_url) { try { doc.addImage(emp.logo_url, 'PNG', margin, 10, 35, 20); } catch(e) {} }
+
+        doc.setFont(undefined, 'bold'); doc.setFontSize(13); doc.setTextColor(30,30,30);
+        doc.text(emp.nombre || 'Mi Empresa', margin + (emp.logo_url ? 38 : 0), 16);
+        doc.setFont(undefined, 'normal'); doc.setFontSize(8); doc.setTextColor(80,80,80);
+        let dyEmp = 22;
+        if (emp.direccion) { doc.text(emp.direccion, margin + (emp.logo_url ? 38 : 0), dyEmp); dyEmp += 5; }
+        if (emp.ciudad)    { doc.text(emp.ciudad, margin + (emp.logo_url ? 38 : 0), dyEmp); dyEmp += 5; }
+        if (emp.telefono)  { doc.text(`Tel. ${emp.telefono}`, margin + (emp.logo_url ? 38 : 0), dyEmp); dyEmp += 5; }
+        if (emp.rnc)       { doc.text(`RNC: ${emp.rnc}`, margin + (emp.logo_url ? 38 : 0), dyEmp); }
+
+        doc.setFont(undefined, 'bold'); doc.setFontSize(22); doc.setTextColor(30,30,30);
+        doc.text('COTIZACION', pageW - margin, 18, { align: 'right' });
+
+        autoTable(doc, { startY: 32, head: [['FECHA','NUMERO']], body: [[fecha.toLocaleDateString('es-DO'), numStr]], styles: { fontSize:9, cellPadding:2, halign:'center' }, headStyles: { fillColor:[255,255,255], textColor:[30,30,30], fontStyle:'bold', lineWidth:0.3, lineColor:[180,180,180] }, bodyStyles: { lineWidth:0.3, lineColor:[180,180,180] }, tableWidth:70, margin: { left: pageW - margin - 70 } });
+        autoTable(doc, { startY: 46, head: [['CLIENTE:','CONTACTO','TIEMPO DE ENTREGA']], body: [[cliente.nombre, cliente.contacto || '', 'Válida 30 días']], styles: { fontSize:9, cellPadding:3 }, headStyles: { fillColor:[255,255,255], textColor:[30,30,30], fontStyle:'bold', lineWidth:0.3, lineColor:[180,180,180] }, bodyStyles: { lineWidth:0.3, lineColor:[180,180,180] }, margin: { left:margin, right:margin } });
+        autoTable(doc, { startY: doc.lastAutoTable.finalY, head: [['VENDEDOR','CONDICIONES','DESCTO %']], body: [[emp.vendedor || session?.user?.nombre || 'Vendedor','CONTADO','0.00']], styles: { fontSize:9, cellPadding:3 }, headStyles: { fillColor:[255,255,255], textColor:[30,30,30], fontStyle:'bold', lineWidth:0.3, lineColor:[180,180,180] }, bodyStyles: { lineWidth:0.3, lineColor:[180,180,180] }, margin: { left:margin, right:margin } });
+
+        const subtotal = items.reduce((s, it) => s + (parseFloat(it.precio)||0) * (parseFloat(it.cantidad)||1), 0);
+        const total = subtotal;
+
+        autoTable(doc, { startY: doc.lastAutoTable.finalY + 2, head: [['CODIGO','DESCRIPCION','CANTIDAD','U/M','PRECIO','TOTAL']], body: [...items.map(it => { const p=parseFloat(it.precio)||0, q=parseFloat(it.cantidad)||1; return [it.codigo||'—', it.descripcion, q.toFixed(2), it.um||'UND', p.toLocaleString('en-US',{minimumFractionDigits:2}), (p*q).toLocaleString('en-US',{minimumFractionDigits:2})]; }), ...Array(Math.max(0,10-items.length)).fill(['','','','','',''])], styles:{fontSize:9,cellPadding:3}, headStyles:{fillColor:[255,255,255],textColor:[30,30,30],fontStyle:'bold',lineWidth:0.3,lineColor:[180,180,180]}, bodyStyles:{lineWidth:0.3,lineColor:[180,180,180]}, columnStyles:{0:{cellWidth:22},2:{halign:'right'},3:{halign:'center',cellWidth:15},4:{halign:'right'},5:{halign:'right',fontStyle:'bold'}}, margin:{left:margin,right:margin} });
+        autoTable(doc, { startY: doc.lastAutoTable.finalY, body: [['TOTAL BRUTO',subtotal.toLocaleString('en-US',{minimumFractionDigits:2})],['DESCUENTO','0.00'],['SUB TOTAL',subtotal.toLocaleString('en-US',{minimumFractionDigits:2})],['ITBIS (18%)','0.00']], styles:{fontSize:9,cellPadding:2,lineWidth:0.3,lineColor:[180,180,180]}, columnStyles:{0:{halign:'right',fontStyle:'bold',cellWidth:40},1:{halign:'right',cellWidth:30}}, tableWidth:70, margin:{left:pageW-margin-70} });
+        autoTable(doc, { startY: doc.lastAutoTable.finalY, body: [['TOTAL RD$',total.toLocaleString('en-US',{minimumFractionDigits:2})]], styles:{fontSize:11,cellPadding:3,fontStyle:'bold',lineWidth:0.3,lineColor:[180,180,180]}, bodyStyles:{fillColor:[240,240,240]}, columnStyles:{0:{halign:'right',cellWidth:40},1:{halign:'right',cellWidth:30}}, tableWidth:70, margin:{left:pageW-margin-70} });
+
+        doc.setFontSize(9); doc.setTextColor(100,116,139); doc.setFont(undefined,'italic');
+        doc.text('Nota: Precios sujetos a cambio sin previo aviso.', margin, doc.lastAutoTable.finalY + 8, { maxWidth: 180 });
+
+        const pdfNombre = `cotizacion-${cliente.nombre.replace(/ /g,'-')}-${numStr}.pdf`;
+        const base64 = doc.output('datauristring');
+
+        const res = await fetch(`/api/cotizaciones/${cliente.id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre: pdfNombre, base64, monto: total, fecha: fecha.toISOString(), estado: 'Cotizado', tipo: 'generado' }),
+        });
+
+        if (res.ok) {
+          ok++;
+          numBase++;
+          setCotizaciones(prev => ({ ...prev, [cliente.id]: [...(prev[cliente.id] || []), { id: Date.now() + ok, nombre: pdfNombre, base64, fecha: fecha.toISOString(), monto: total, tipo: 'generado', numCot: numStr }] }));
+          setGenMasivaLog(prev => [...prev, { cliente: cliente.nombre, estado: 'ok', monto: total }]);
+        } else {
+          errores++;
+          setGenMasivaLog(prev => [...prev, { cliente: cliente.nombre, estado: 'error', msg: `HTTP ${res.status}` }]);
+        }
+      } catch(e) {
+        errores++;
+        setGenMasivaLog(prev => [...prev, { cliente: cliente.nombre, estado: 'error', msg: e.message }]);
+      }
+
+      setGenMasivaProgreso({ total: clientesConPlantilla.length, done: ok + errores, ok, error: errores });
+      // Pequeña pausa para no saturar el navegador
+      await new Promise(r => setTimeout(r, 50));
+    }
+
+    setGenMasivaActivo(false);
+    showToast(`Generadas ${ok} cotizaciones${errores > 0 ? `, ${errores} errores` : ''}`, ok > 0 ? 'success' : 'error');
+  };
+
   // ─── CARGA MASIVA ─────────────────────────────────────────
   const detectarClientePorArchivo = (nombreArchivo) => {
     const nombre = nombreArchivo.toLowerCase().replace(/\.(pdf)$/i, '').replace(/[-_]/g, ' ');
@@ -2496,6 +2586,7 @@ export default function App() {
             {esContabilidad && tienePermiso('ver_conciliacion') && <div className={`sidebar-item ${activeTab === 'conciliacion' ? 'active' : ''}`} onClick={() => setActiveTab('conciliacion')}><span className="icon"><List size={14}/></span> Conciliación</div>}
             {esContabilidad && <div className={`sidebar-item ${activeTab === 'validar_pagos' ? 'active' : ''}`} onClick={() => { setActiveTab('validar_pagos'); cargarPagosPendientes(); }}><span className="icon"><Check size={14}/></span> Validar Pagos{pagosPendientesCount > 0 && <span style={{ marginLeft:'6px', background:'#f97316', color:'#fff', borderRadius:'10px', padding:'0 6px', fontSize:'0.7rem', fontWeight:700 }}>{pagosPendientesCount}</span>}</div>}
             <div className="sidebar-item" onClick={() => { abrirCargaMasiva(); }}><span className="icon"><Upload size={14}/></span> Carga Masiva PDF</div>
+            <div className="sidebar-item" onClick={() => { setShowGenMasivaModal(true); setGenMasivaLog([]); setGenMasivaProgreso({ total:0, done:0, ok:0, error:0 }); }}><span className="icon"><Rocket size={14}/></span> Generar Cotiz. Masivo</div>
             <div className="sidebar-item" onClick={() => setShowPlantillasModal(true)}><span className="icon"><MessageSquare size={14}/></span> Plantillas WA</div>
             {esAdmin && <div className={`sidebar-item ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => { cargarUsuariosAdmin(); setActiveTab('usuarios'); }}><span className="icon"><Users size={14}/></span> Usuarios</div>}
           </div>
@@ -6235,6 +6326,78 @@ export default function App() {
                 </button>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Generación Masiva de Cotizaciones */}
+      {showGenMasivaModal && (
+        <div className="modal-overlay" onClick={e => { if (!genMasivaActivo && e.target === e.currentTarget) setShowGenMasivaModal(false); }}>
+          <div className="modal-content" style={{ maxWidth: '560px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="modal-header">
+              <h2><Rocket size={15}/> Generación Masiva de Cotizaciones</h2>
+              {!genMasivaActivo && <button className="modal-close" onClick={() => setShowGenMasivaModal(false)}><X size={16}/></button>}
+            </div>
+
+            <div style={{ padding: '1.25rem', overflowY: 'auto', flex: 1 }}>
+              {/* Estado inicial — antes de empezar */}
+              {!genMasivaActivo && genMasivaProgreso.total === 0 && (
+                <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
+                  <Rocket size={40} style={{ color: 'var(--primary)', marginBottom: '0.75rem' }}/>
+                  <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text)', marginBottom: '0.5rem' }}>
+                    {clientes.filter(c => COT_PLANTILLAS[c.id]).length} clientes con plantilla lista
+                  </div>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                    Se generará una cotización PDF por cada cliente usando los conceptos, precios y cantidades del Excel cargado. Las cotizaciones se guardarán automáticamente en el sistema.
+                  </div>
+                  <button className="btn btn-primary" onClick={iniciarGenMasiva} style={{ fontSize: '0.9rem', padding: '0.6rem 1.5rem' }}>
+                    <Rocket size={14}/> Iniciar generación
+                  </button>
+                </div>
+              )}
+
+              {/* En progreso */}
+              {(genMasivaActivo || genMasivaProgreso.total > 0) && (
+                <div>
+                  {/* Barra de progreso */}
+                  <div style={{ marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
+                      <span>{genMasivaActivo ? 'Generando...' : 'Completado'}</span>
+                      <span>{genMasivaProgreso.done} / {genMasivaProgreso.total}</span>
+                    </div>
+                    <div style={{ background: 'var(--border)', borderRadius: '8px', height: '10px', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', borderRadius: '8px', background: 'var(--primary)', width: `${genMasivaProgreso.total > 0 ? Math.round(genMasivaProgreso.done / genMasivaProgreso.total * 100) : 0}%`, transition: 'width 0.3s ease' }}/>
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', fontSize: '0.78rem' }}>
+                      <span style={{ color: '#059669', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><CheckCircle size={12}/> {genMasivaProgreso.ok} generadas</span>
+                      {genMasivaProgreso.error > 0 && <span style={{ color: '#dc2626', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><XCircle size={12}/> {genMasivaProgreso.error} errores</span>}
+                      {genMasivaActivo && <span style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }}/> procesando...</span>}
+                    </div>
+                  </div>
+
+                  {/* Log de resultados */}
+                  <div style={{ maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                    {genMasivaLog.map((entry, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 0.7rem', borderRadius: '7px', background: entry.estado === 'ok' ? '#f0fdf4' : '#fef2f2', border: `1px solid ${entry.estado === 'ok' ? '#86efac' : '#fca5a5'}`, fontSize: '0.78rem' }}>
+                        {entry.estado === 'ok' ? <CheckCircle size={13} style={{ color: '#059669', flexShrink: 0 }}/> : <XCircle size={13} style={{ color: '#dc2626', flexShrink: 0 }}/>}
+                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text)' }}>{entry.cliente}</span>
+                        {entry.estado === 'ok' && <span style={{ fontWeight: 700, color: '#059669', flexShrink: 0 }}>RD${(entry.monto||0).toLocaleString('en-US',{minimumFractionDigits:2})}</span>}
+                        {entry.estado === 'error' && <span style={{ color: '#dc2626', flexShrink: 0 }}>{entry.msg}</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {!genMasivaActivo && genMasivaProgreso.done > 0 && (
+              <div className="form-actions" style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--border)' }}>
+                <button className="btn btn-secondary" onClick={() => setShowGenMasivaModal(false)}>Cerrar</button>
+                <button className="btn btn-primary" onClick={() => { setGenMasivaLog([]); setGenMasivaProgreso({ total:0, done:0, ok:0, error:0 }); iniciarGenMasiva(); }}>
+                  <RefreshCw size={13}/> Regenerar
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
