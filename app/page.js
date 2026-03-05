@@ -6344,15 +6344,24 @@ export default function App() {
               {!genMasivaActivo && genMasivaProgreso.total === 0 && (
                 <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
                   <Rocket size={40} style={{ color: 'var(--primary)', marginBottom: '0.75rem' }}/>
-                  <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text)', marginBottom: '0.5rem' }}>
-                    {clientes.filter(c => COT_PLANTILLAS[c.id]).length} clientes con plantilla lista
+                  <div style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--text)', marginBottom: '0.3rem' }}>
+                    {clientes.filter(c => COT_PLANTILLAS[c.id]).length} clientes listos para generar
                   </div>
-                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-                    Se generará una cotización PDF por cada cliente usando los conceptos, precios y cantidades del Excel cargado. Las cotizaciones se guardarán automáticamente en el sistema.
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                    {Object.keys(COT_PLANTILLAS).length} plantillas cargadas desde el Excel
                   </div>
-                  <button className="btn btn-primary" onClick={iniciarGenMasiva} style={{ fontSize: '0.9rem', padding: '0.6rem 1.5rem' }}>
-                    <Rocket size={14}/> Iniciar generación
-                  </button>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1.5rem', maxWidth: '380px', margin: '0 auto 1.5rem' }}>
+                    Se generará una cotización PDF por cada cliente con sus conceptos, cantidades y precios del Excel. Se guardan automáticamente, sin necesidad de descargarlas una a una.
+                  </div>
+                  {clientes.filter(c => COT_PLANTILLAS[c.id]).length === 0 ? (
+                    <div style={{ color: '#d97706', fontSize: '0.85rem', display:'flex', alignItems:'center', gap:'0.4rem', justifyContent:'center' }}>
+                      <AlertTriangle size={14}/> Cargando clientes... Intenta de nuevo en un momento.
+                    </div>
+                  ) : (
+                    <button className="btn btn-primary" onClick={iniciarGenMasiva} style={{ fontSize: '0.9rem', padding: '0.6rem 1.5rem' }}>
+                      <Rocket size={14}/> Iniciar generación ({clientes.filter(c => COT_PLANTILLAS[c.id]).length})
+                    </button>
+                  )}
                 </div>
               )}
 
