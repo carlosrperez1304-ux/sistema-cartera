@@ -48,6 +48,7 @@ export default function App() {
   const [auditEntries, setAuditEntries]       = useState([]);
   const [auditLoading, setAuditLoading]       = useState(false);
   const [auditFilter, setAuditFilter]         = useState('');
+  const [auditError, setAuditError]           = useState('');
 
   // Mobile menu
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -1883,11 +1884,28 @@ export default function App() {
     setShowAuditModal(true);
     setAuditLoading(true);
     setAuditFilter('');
+    setAuditError('');
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12000);
     try {
-      const res  = await fetch('/api/audit?lines=300');
+      const res  = await fetch('/api/audit?lines=150', { signal: controller.signal });
+      clearTimeout(timer);
       const data = await res.json();
-      setAuditEntries(data.entries || []);
-    } catch { setAuditEntries([]); }
+      if (!res.ok) {
+        setAuditError(data.error || `Error ${res.status}`);
+        setAuditEntries([]);
+      } else {
+        setAuditEntries(data.entries || []);
+      }
+    } catch (e) {
+      clearTimeout(timer);
+      if (e.name === 'AbortError') {
+        setAuditError('La consulta tardó demasiado (>12 s). Revisa la conexión con Supabase.');
+      } else {
+        setAuditError('Error de conexión al cargar la bitácora.');
+      }
+      setAuditEntries([]);
+    }
     setAuditLoading(false);
   };
 
@@ -5856,7 +5874,14 @@ export default function App() {
             {/* Lista de eventos */}
             <div style={{ maxHeight:'420px', overflowY:'auto', fontFamily:'monospace', fontSize:'0.73rem', background:'#0f172a', borderRadius:'10px', padding:'0.75rem', color:'#e2e8f0' }}>
               {auditLoading && <div style={{ textAlign:'center', color:'#94a3b8', padding:'2rem' }}>Cargando registros...</div>}
-              {!auditLoading && auditEntries.length === 0 && (
+              {!auditLoading && auditError && (
+                <div style={{ textAlign:'center', color:'#fca5a5', padding:'2rem' }}>
+                  <XCircle size={20} style={{ display:'block', margin:'0 auto 0.5rem', opacity:0.7 }}/>
+                  {auditError}
+                  <div style={{ marginTop:'0.5rem', fontSize:'0.7rem', color:'#64748b' }}>Haz clic en "Actualizar" para reintentar.</div>
+                </div>
+              )}
+              {!auditLoading && !auditError && auditEntries.length === 0 && (
                 <div style={{ textAlign:'center', color:'#64748b', padding:'2rem' }}>No hay registros de auditoría todavía.</div>
               )}
               {!auditLoading && auditEntries

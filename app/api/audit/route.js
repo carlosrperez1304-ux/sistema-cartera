@@ -14,8 +14,13 @@ export async function GET(req) {
   }
 
   const { searchParams } = new URL(req.url);
-  const lines = Math.min(parseInt(searchParams.get('lines') || '200', 10), 500);
+  const lines = Math.min(parseInt(searchParams.get('lines') || '100', 10), 300);
 
-  const entries = await readAuditLog(lines);
-  return Response.json({ entries, total: entries.length });
+  try {
+    const entries = await readAuditLog(lines);
+    return Response.json({ entries, total: entries.length });
+  } catch (err) {
+    console.error('[/api/audit]', err?.message);
+    return Response.json({ error: 'Error al leer la bitácora', entries: [], total: 0 }, { status: 500 });
+  }
 }
