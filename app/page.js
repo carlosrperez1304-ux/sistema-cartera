@@ -1861,11 +1861,13 @@ export default function App() {
       const cliente = clientes.find(c => c.id === id);
       if (cliente) return { cliente, confianza: 'alta', razon: `ID ${id} encontrado en el nombre` };
     }
-    // 2. Buscar por nombre del cliente (coincidencia completa)
-    const match = clientes.find(c => c.nombre && nombre.includes(c.nombre.toLowerCase().replace(/[-_]/g, ' ')));
+    // 2. Buscar por nombre completo — ordenar de mayor a menor longitud para evitar
+    //    que "Carlos" haga match antes que "Carlos Javier Rodriguez Fernandez"
+    const porLongitud = [...clientes].sort((a, b) => (b.nombre||'').length - (a.nombre||'').length);
+    const match = porLongitud.find(c => c.nombre && nombre.includes(c.nombre.toLowerCase().replace(/[-_]/g, ' ')));
     if (match) return { cliente: match, confianza: 'alta', razon: `Nombre "${match.nombre}" en el archivo` };
-    // 3. Buscar por primera palabra del nombre del cliente
-    const matchParcial = clientes.find(c => {
+    // 3. Coincidencia parcial — también por longitud descendente
+    const matchParcial = porLongitud.find(c => {
       const palabras = (c.nombre || '').toLowerCase().split(' ');
       return palabras.some(p => p.length > 3 && nombre.includes(p));
     });
