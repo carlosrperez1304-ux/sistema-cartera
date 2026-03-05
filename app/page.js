@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx';
 import { signIn, signOut, useSession } from 'next-auth/react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Pencil, Trash2, Plus, Download, Send, FolderOpen, Save, RefreshCw, CheckCircle, XCircle, AlertTriangle, HelpCircle, Info, Phone, MessageCircle, MapPin, Mail, Pin, DollarSign, ClipboardList, FileText, FileEdit, Archive, Tag, Sun, Moon, Eye, EyeOff, SlidersHorizontal, Clock, Loader2, Inbox, Ban, MessageSquare, BarChart2, Lock, Search, Calendar, Bell, Target, Palette, MoreVertical, Edit2, StickyNote, FileSearch, BookOpen, PauseCircle, PlayCircle, Menu, X, Settings, LogOut, UserPlus, CreditCard, Upload, ChevronDown, LayoutGrid, Users, ArrowLeftRight, List, Check, Briefcase, Rocket } from 'lucide-react';
+import COT_PLANTILLAS from '../lib/cotPlantillas.js';
 
 export default function App() {
   const { data: session, status: sessionStatus } = useSession({
@@ -1593,7 +1594,12 @@ export default function App() {
 
   const abrirGenCotModal = (cliente) => {
     setGenCotCliente(cliente);
-    setCotItems([{ descripcion: `Servicio — ${cliente.nombre}`, cantidad: 1, precio: parseFloat(cliente.monto) || '' }]);
+    const plantilla = COT_PLANTILLAS[cliente.id];
+    if (plantilla && plantilla.length > 0) {
+      setCotItems(plantilla.map(it => ({ ...it })));
+    } else {
+      setCotItems([{ descripcion: `Servicio — ${cliente.nombre}`, cantidad: 1, precio: parseFloat(cliente.monto) || '', um: 'UND' }]);
+    }
     setCotNota('Precios sujetos a cambio sin previo aviso.');
     setCotValidez(30);
     setShowGenCotModal(true);
