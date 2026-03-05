@@ -453,6 +453,7 @@ export default function App() {
   const [showCargaMasivaModal, setShowCargaMasivaModal] = useState(false);
   const [archivosEnProceso, setArchivosEnProceso] = useState([]);
   const [cargaMasivaProcesando, setCargaMasivaProcesando] = useState(false);
+  const [clientesConDoc, setClientesConDoc] = useState(new Set()); // IDs que ya tienen documento
 
   // ── Bitácora de Gestiones ────────────────────────────────
   const [gestiones, setGestiones] = useState({});
@@ -1792,14 +1793,17 @@ export default function App() {
       reader.onload = async (ev) => {
         const base64 = ev.target.result;
         const deteccion = detectarClientePorArchivo(file.name);
-        const montoDetectado = await extraerMontoPDF(base64);
+        const clienteAsignado = deteccion ? deteccion.cliente : null;
+        // Si el cliente ya tiene documento asignado → omitir automáticamente
+        const yaConDoc = clienteAsignado && clientesConDoc.has(clienteAsignado.id);
+        const montoDetectado = yaConDoc ? null : await extraerMontoPDF(base64);
         resolve({
           id: Date.now() + Math.random(),
           nombre: file.name,
-          base64,
+          base64: yaConDoc ? null : base64, // no guardamos el base64 si se va a omitir
           clienteDetectado: deteccion,
-          clienteAsignado: deteccion ? deteccion.cliente : null,
-          estado: deteccion ? (deteccion.confianza === 'alta' ? 'vinculado' : 'sugerido') : 'sin-vincular',
+          clienteAsignado,
+          estado: yaConDoc ? 'ya-tiene-doc' : deteccion ? (deteccion.confianza === 'alta' ? 'vinculado' : 'sugerido') : 'sin-vincular',
           montoDetectado,
         });
       };
@@ -1812,9 +1816,20 @@ export default function App() {
     setCargaMasivaProcesando(false);
   };
 
+  const abrirCargaMasiva = async () => {
+    setArchivosEnProceso([]);
+    setShowCargaMasivaModal(true);
+    try {
+      const res = await fetch('/api/cotizaciones/ids-con-doc');
+      const data = await res.json();
+      setClientesConDoc(new Set(data.ids || []));
+    } catch { setClientesConDoc(new Set()); }
+  };
+
   const confirmarCargaMasiva = () => {
-    let guardados = 0; let errores = 0;
+    let guardados = 0; let errores = 0; let omitidos = 0;
     archivosEnProceso.forEach(arch => {
+      if (arch.estado === 'ya-tiene-doc') { omitidos++; return; }
       if (!arch.base64 || !arch.clienteAsignado) { errores++; return; }
       const nueva = { id: Date.now() + Math.random(), nombre: arch.nombre, base64: arch.base64, fecha: new Date().toISOString(), monto: arch.montoDetectado || null, tipo: 'subido', estado: 'Cotizado' };
       setCotizaciones(prev => ({ ...prev, [arch.clienteAsignado.id]: [...(prev[arch.clienteAsignado.id] || []), nueva] }));
@@ -1828,7 +1843,8 @@ export default function App() {
     setArchivosEnProceso([]);
     const msg = [
       `${guardados} documento${guardados !== 1 ? 's' : ''} guardado${guardados !== 1 ? 's' : ''}`,
-      errores > 0 ? `${errores} sin vincular omitidos` : null,
+      omitidos > 0 ? `${omitidos} omitido${omitidos !== 1 ? 's' : ''} (ya tenían documento)` : null,
+      errores > 0 ? `${errores} sin vincular` : null,
     ].filter(Boolean).join(' · ');
     showToast(msg, guardados > 0 ? 'success' : 'error');
   };
@@ -2473,7 +2489,7 @@ export default function App() {
             {tienePermiso('acceder_delegaciones') && <div className={`sidebar-item ${activeTab === 'delegations' ? 'active' : ''}`} onClick={() => { setActiveTab('delegations'); cargarDelegations(); }} style={{ position: 'relative' }}><span className="icon"><ArrowLeftRight size={14}/></span> Delegations{delegationsPendientes.length > 0 && <span style={{ position: 'absolute', top: '6px', right: '8px', width: '8px', height: '8px', background: '#f97316', borderRadius: '50%' }}></span>}</div>}
             {esContabilidad && tienePermiso('ver_conciliacion') && <div className={`sidebar-item ${activeTab === 'conciliacion' ? 'active' : ''}`} onClick={() => setActiveTab('conciliacion')}><span className="icon"><List size={14}/></span> Conciliación</div>}
             {esContabilidad && <div className={`sidebar-item ${activeTab === 'validar_pagos' ? 'active' : ''}`} onClick={() => { setActiveTab('validar_pagos'); cargarPagosPendientes(); }}><span className="icon"><Check size={14}/></span> Validar Pagos{pagosPendientesCount > 0 && <span style={{ marginLeft:'6px', background:'#f97316', color:'#fff', borderRadius:'10px', padding:'0 6px', fontSize:'0.7rem', fontWeight:700 }}>{pagosPendientesCount}</span>}</div>}
-            <div className="sidebar-item" onClick={() => { setArchivosEnProceso([]); setShowCargaMasivaModal(true); }}><span className="icon"><Upload size={14}/></span> Carga Masiva PDF</div>
+            <div className="sidebar-item" onClick={() => { abrirCargaMasiva(); }}><span className="icon"><Upload size={14}/></span> Carga Masiva PDF</div>
             <div className="sidebar-item" onClick={() => setShowPlantillasModal(true)}><span className="icon"><MessageSquare size={14}/></span> Plantillas WA</div>
             {esAdmin && <div className={`sidebar-item ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => { cargarUsuariosAdmin(); setActiveTab('usuarios'); }}><span className="icon"><Users size={14}/></span> Usuarios</div>}
           </div>
@@ -2611,7 +2627,7 @@ export default function App() {
               {[
                 { label:'Nueva Cotización', icon:<ClipboardList size={22}/>, action:() => { setActiveTab('cartera'); abrirModal(); } },
                 { label:'Ver Agenda', icon:<Clock size={22}/>, action:() => setActiveTab('agenda') },
-                { label:'Carga Masiva PDF', icon:<FolderOpen size={22}/>, action:() => { setArchivosEnProceso([]); setShowCargaMasivaModal(true); } },
+                { label:'Carga Masiva PDF', icon:<FolderOpen size={22}/>, action:() => { abrirCargaMasiva(); } },
                 { label:'Exportar Excel', icon:<BarChart2 size={22}/>, action:exportarTodosExcel },
               ].map((a,i) => (
                 <button key={i} onClick={a.action} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'0.4rem', padding:'0.75rem', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'10px', cursor:'pointer', color:'var(--text)', fontSize:'0.75rem', fontWeight:600, transition:'all 0.15s' }}
@@ -2878,7 +2894,7 @@ export default function App() {
                   { label: 'Nuevo Cliente', icon: <UserPlus size={14}/>, action: () => { setActiveTab('cartera'); abrirModal(); }, primary: true, show: tienePermiso('crear_clientes') },
                   { label: 'Nuevo Crédito', icon: <CreditCard size={14}/>, action: () => setActiveTab('credito'), primary: true, show: tienePermiso('crear_creditos') },
                   { label: 'Agenda del Día', icon: <Calendar size={14}/>, action: () => setActiveTab('agenda'), show: true },
-                  { label: 'Carga Masiva PDF', icon: <FileText size={14}/>, action: () => { setArchivosEnProceso([]); setShowCargaMasivaModal(true); }, show: tienePermiso('subir_documentos') },
+                  { label: 'Carga Masiva PDF', icon: <FileText size={14}/>, action: () => { abrirCargaMasiva(); }, show: tienePermiso('subir_documentos') },
                   { label: 'Plantillas WA', icon: <MessageSquare size={14}/>, action: () => setShowPlantillasModal(true), show: true },
                   { label: 'Importar Excel', icon: <Upload size={14}/>, action: () => setShowImportModal(true), show: tienePermiso('crear_clientes') },
                   { label: 'Exportar PDF', icon: <Download size={14}/>, action: exportarPDF, show: tienePermiso('ver_reportes_pdf') },
@@ -3034,7 +3050,7 @@ export default function App() {
                 <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Genera, sube y envía documentos a tus clientes por WhatsApp</p>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <button className="btn btn-primary" style={{ fontSize: '0.78rem', padding: '0.4rem 0.9rem' }} onClick={() => { setArchivosEnProceso([]); setShowCargaMasivaModal(true); }}>
+                <button className="btn btn-primary" style={{ fontSize: '0.78rem', padding: '0.4rem 0.9rem' }} onClick={() => { abrirCargaMasiva(); }}>
                   <FolderOpen size={13} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Carga Masiva
                 </button>
                 <span style={{ background: 'var(--surface2)', border: '1px solid var(--border)', padding: '0.4rem 0.85rem', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
@@ -6122,6 +6138,7 @@ export default function App() {
                     { label: 'Vinculados', count: archivosEnProceso.filter(a => a.estado === 'vinculado').length, color: '#059669', bg: '#f0fdf4', border: '#86efac', icon: <CheckCircle size={12}/> },
                     { label: 'Sugeridos', count: archivosEnProceso.filter(a => a.estado === 'sugerido').length, color: '#d97706', bg: '#fffbeb', border: '#fde68a', icon: <AlertTriangle size={12}/> },
                     { label: 'Sin vincular', count: archivosEnProceso.filter(a => a.estado === 'sin-vincular').length, color: '#6b7280', bg: 'var(--surface2)', border: 'var(--border)', icon: <HelpCircle size={12}/> },
+                    { label: 'Ya con documento', count: archivosEnProceso.filter(a => a.estado === 'ya-tiene-doc').length, color: '#7c3aed', bg: '#f5f3ff', border: '#c4b5fd', icon: <Archive size={12}/> },
                     { label: 'Errores', count: archivosEnProceso.filter(a => a.estado === 'error').length, color: '#dc2626', bg: '#fef2f2', border: '#fca5a5', icon: <XCircle size={12}/> },
                   ].filter(b => b.count > 0).map(b => (
                     <span key={b.label} style={{ background: b.bg, border: `1px solid ${b.border}`, padding: '0.3rem 0.85rem', borderRadius: '20px', fontSize: '0.77rem', fontWeight: 700, color: b.color, display:'inline-flex', alignItems:'center', gap:'0.3rem' }}>
@@ -6141,16 +6158,20 @@ export default function App() {
                 {/* Tabla de archivos */}
                 <div style={{ maxHeight: '360px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.4rem', paddingRight: '0.2rem' }}>
                   {archivosEnProceso.map((arch, idx) => (
-                    <div key={arch.id || idx} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.75rem', alignItems: 'center', padding: '0.65rem 0.9rem', background: arch.estado === 'vinculado' ? '#f0fdf4' : arch.estado === 'sugerido' ? '#fffbeb' : arch.estado === 'error' ? '#fef2f2' : 'var(--surface2)', borderRadius: '9px', border: `1px solid ${arch.estado === 'vinculado' ? '#86efac' : arch.estado === 'sugerido' ? '#fde68a' : arch.estado === 'error' ? '#fca5a5' : 'var(--border)'}` }}>
+                    <div key={arch.id || idx} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.75rem', alignItems: 'center', padding: '0.65rem 0.9rem', background: arch.estado === 'vinculado' ? '#f0fdf4' : arch.estado === 'sugerido' ? '#fffbeb' : arch.estado === 'error' ? '#fef2f2' : arch.estado === 'ya-tiene-doc' ? '#f5f3ff' : 'var(--surface2)', borderRadius: '9px', border: `1px solid ${arch.estado === 'vinculado' ? '#86efac' : arch.estado === 'sugerido' ? '#fde68a' : arch.estado === 'error' ? '#fca5a5' : arch.estado === 'ya-tiene-doc' ? '#c4b5fd' : 'var(--border)'}` }}>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.2rem' }}>
                           <span style={{ flexShrink: 0 }}>
-                            {arch.estado === 'vinculado' ? <CheckCircle size={14} style={{color:'#059669'}}/> : arch.estado === 'sugerido' ? <AlertTriangle size={14} style={{color:'#d97706'}}/> : arch.estado === 'error' ? <XCircle size={14} style={{color:'#dc2626'}}/> : <HelpCircle size={14} style={{color:'#6b7280'}}/>}
+                            {arch.estado === 'vinculado' ? <CheckCircle size={14} style={{color:'#059669'}}/> : arch.estado === 'sugerido' ? <AlertTriangle size={14} style={{color:'#d97706'}}/> : arch.estado === 'error' ? <XCircle size={14} style={{color:'#dc2626'}}/> : arch.estado === 'ya-tiene-doc' ? <Archive size={14} style={{color:'#7c3aed'}}/> : <HelpCircle size={14} style={{color:'#6b7280'}}/>}
                           </span>
                           <span style={{ fontWeight: 600, fontSize: '0.82rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text)' }}>{arch.nombre}</span>
                         </div>
                         {arch.estado === 'error' ? (
                           <div style={{ fontSize: '0.72rem', color: '#dc2626', paddingLeft: '1.35rem' }}>{arch.error}</div>
+                        ) : arch.estado === 'ya-tiene-doc' ? (
+                          <div style={{ fontSize: '0.72rem', color: '#7c3aed', paddingLeft: '1.35rem', fontWeight: 600 }}>
+                            {arch.clienteAsignado?.nombre || arch.clienteDetectado?.razon || 'Cliente detectado'} — ya tiene documento, será omitido
+                          </div>
                         ) : (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', paddingLeft: '1.35rem' }}>
                             {arch.clienteDetectado ? (
@@ -6170,7 +6191,7 @@ export default function App() {
                           </div>
                         )}
                       </div>
-                      {arch.estado !== 'error' && (
+                      {arch.estado !== 'error' && arch.estado !== 'ya-tiene-doc' && (
                         <select
                           value={arch.clienteAsignado?.id || ''}
                           onChange={e => {
