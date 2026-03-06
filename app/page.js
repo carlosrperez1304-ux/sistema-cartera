@@ -2111,8 +2111,8 @@ export default function App() {
     return (h >= 0 && h < 12) ? 'Buenos Días' : 'Buenas Tardes';
   };
   const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const getMesFactura = () => { const d = new Date(); return `${MESES[d.getMonth()].toUpperCase()} ${d.getFullYear()}`; };
-  const getMesLimite = () => { const d = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 15); return `15 DE ${MESES[d.getMonth()].toUpperCase()} ${d.getFullYear()}`; };
+  const getMesFactura = () => { const d = new Date(); const p = new Date(d.getFullYear(), d.getMonth() - 1, 1); return `${MESES[p.getMonth()].toUpperCase()} ${p.getFullYear()}`; };
+  const getMesLimite = () => { const d = new Date(); return `15 DE ${MESES[d.getMonth()].toUpperCase()} ${d.getFullYear()}`; };
   const getMsgFactura = (cliente) => `Saludos ${getSaludo()}!\n\nLa factura por *EL MES DE ${getMesFactura()}*📃 ha sido generada.\n\n💠Recordandole: que la misma tiene un plazo hasta el dia ${getMesLimite()} para el pago.\n\n💰 Monto a pagar: *$${(parseFloat(cliente.monto)||0).toLocaleString('en-US',{minimumFractionDigits:2})}*\n\n⚠LOS PAGOS SE REALIZAN A NUESTRAS CUENTAS DE BANCOS⚠\n\nCUENTAS:\nA nombre: 7LABS\n🟢Reservas: 248 013348 5\n🔵Popular:     782 6584 05\n🟢BHD:         1587 811 0015\n\n🧾RNC: 130-82698-6`;
 
   const aplicarPlantilla = (texto, cliente) => texto
