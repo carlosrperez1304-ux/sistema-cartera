@@ -48,7 +48,7 @@ app.on('window-all-closed', () => {
 });
 
 // ── IPC: copiar PDF al portapapeles y abrir WhatsApp Desktop ─
-ipcMain.handle('send-pdf-whatsapp', async (event, { base64, filename, phone }) => {
+ipcMain.handle('send-pdf-whatsapp', async (event, { base64, filename, phone, message }) => {
   try {
     // 1. Decodificar base64 y guardar como PDF temporal
     const cleanB64 = base64.includes(',') ? base64.split(',')[1] : base64;
@@ -66,10 +66,13 @@ ipcMain.handle('send-pdf-whatsapp', async (event, { base64, filename, phone }) =
       );
     });
 
-    // 3. Abrir WhatsApp Desktop con el número del cliente
+    // 3. Abrir WhatsApp Desktop con el número y el mensaje pre-llenado
     const num = (phone || '').replace(/\D/g, '');
     if (num) {
-      await shell.openExternal(`whatsapp://send?phone=${num}`);
+      const url = message
+        ? `whatsapp://send?phone=${num}&text=${encodeURIComponent(message)}`
+        : `whatsapp://send?phone=${num}`;
+      await shell.openExternal(url);
     }
 
     return { ok: true };

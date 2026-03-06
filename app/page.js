@@ -1617,7 +1617,7 @@ export default function App() {
       }
       setShowNotifDocModal(false);
       if (doc.base64) {
-        const result = await window.electronAPI.sendPDFWhatsApp(doc.base64, doc.nombre, num);
+        const result = await window.electronAPI.sendPDFWhatsApp(doc.base64, doc.nombre, num, notifDocMensaje);
         if (result.ok) {
           showToast('PDF copiado al portapapeles — Ctrl+V en WhatsApp para pegarlo', 'success');
         } else {
