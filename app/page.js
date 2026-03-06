@@ -329,6 +329,7 @@ export default function App() {
   const [filter, setFilter] = useState('todos');
   const [showModal, setShowModal] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState(null);
+  const [menuAbiertoDir, setMenuAbiertoDir] = useState('down');
   const [showGmailPanel, setShowGmailPanel] = useState(false);
   const [gmailEmails, setGmailEmails] = useState([]);
   const [gmailLoading, setGmailLoading] = useState(false);
@@ -338,7 +339,7 @@ export default function App() {
   const [gmailSending, setGmailSending] = useState(false);
   const [gmailSelected, setGmailSelected] = useState(null);
   const [gmailSearch, setGmailSearch] = useState('');
-  const [graficasVisibles, setGraficasVisibles] = useState(true);
+  const [graficasVisibles, setGraficasVisibles] = useState(false);
   const [showNotaModal, setShowNotaModal] = useState(false);
   const [showDescargaMesModal, setShowDescargaMesModal] = useState(false);
   const [notaClienteId, setNotaClienteId] = useState(null);
@@ -347,7 +348,7 @@ export default function App() {
   const [formData, setFormData] = useState({ id: '', codigoCliente: '', nombre: '', contacto: '', estado: 'Cotizado', fechaCotizacion: '', fechaNotificacion: '', fechaPago: '', fechaFacturacion: '', fechaSuspension: '', mes: '', año: '', monto: '', comentario: '', historial: [] });
   const [pdfCargando, setPdfCargando] = useState(false);
   const [pdfError,    setPdfError]    = useState('');
-  const [activeTab, setActiveTab] = useState('cartera');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [darkMode, setDarkMode] = useState(false);
   const [vistaCards, setVistaCards] = useState(false);
 
@@ -835,7 +836,7 @@ export default function App() {
       resultado = resultado.filter(c => c.creadoPor.toLowerCase() === myUsername);
     }
     if (filtroAgente) resultado = resultado.filter(c => c.creadoPor === filtroAgente);
-    if (searchTerm) resultado = resultado.filter(c => c.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || (c.contacto || '').includes(searchTerm) || c.id.toString().includes(searchTerm));
+    if (searchTerm) resultado = resultado.filter(c => c.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || (c.contacto || '').includes(searchTerm) || c.id.toString().includes(searchTerm) || (c.codigoCliente || '').toLowerCase().includes(searchTerm.toLowerCase()));
     if (fechaDesde) resultado = resultado.filter(c => c.fechaCotizacion && c.fechaCotizacion >= fechaDesde);
     if (fechaHasta) resultado = resultado.filter(c => c.fechaCotizacion && c.fechaCotizacion <= fechaHasta);
     if (filtroMontoMin !== '') resultado = resultado.filter(c => (parseFloat(c.monto) || 0) >= parseFloat(filtroMontoMin));
@@ -2617,18 +2618,10 @@ export default function App() {
             <div className="dot">
               <BarChart2 size={16} strokeWidth={2.5}/>
             </div>
-            <span className="logo-text">
-              <span className="logo-carta">Carta</span><span className="logo-master">Master</span>
-            </span>
           </div>
         </div>
         <div className="topbar-right">
           {soloLectura && <span style={{ background: 'rgba(254,249,195,0.15)', color: '#fbbf24', fontSize: '0.67rem', padding: '0.2rem 0.55rem', borderRadius: '5px', fontWeight: 700, marginRight: '0.25rem', border: '1px solid rgba(251,191,36,0.25)' }}>Solo lectura</span>}
-          <button className="topbar-search-trigger" onClick={() => setShowBusquedaGlobal(true)} title="Buscar (F)">
-            <Search size={14}/>
-            <span className="search-trigger-label">Buscar...</span>
-            <kbd>F</kbd>
-          </button>
           <button className="topbar-icon-btn" onClick={() => setDarkMode(!darkMode)} title="Modo oscuro">
             {darkMode ? <Sun size={16}/> : <Moon size={16}/>}
           </button>
@@ -2793,8 +2786,6 @@ export default function App() {
             {esContabilidad && tienePermiso('ver_conciliacion') && <div className={`sidebar-item ${activeTab === 'conciliacion' ? 'active' : ''}`} onClick={() => setActiveTab('conciliacion')}><span className="icon"><List size={14}/></span> Conciliación</div>}
             {esContabilidad && <div className={`sidebar-item ${activeTab === 'validar_pagos' ? 'active' : ''}`} onClick={() => { setActiveTab('validar_pagos'); cargarPagosPendientes(); }}><span className="icon"><Check size={14}/></span> Validar Pagos{pagosPendientesCount > 0 && <span style={{ marginLeft:'6px', background:'#f97316', color:'#fff', borderRadius:'10px', padding:'0 6px', fontSize:'0.7rem', fontWeight:700 }}>{pagosPendientesCount}</span>}</div>}
             <div className="sidebar-item" onClick={() => { abrirCargaMasiva(); }}><span className="icon"><Upload size={14}/></span> Carga Masiva PDF</div>
-            <div className="sidebar-item" onClick={() => { setShowGenMasivaModal(true); setGenMasivaLog([]); setGenMasivaProgreso({ total:0, done:0, ok:0, error:0 }); }}><span className="icon"><Rocket size={14}/></span> Generar Cotiz. Masivo</div>
-            <div className="sidebar-item" onClick={() => setShowPlantillasModal(true)}><span className="icon"><MessageSquare size={14}/></span> Plantillas WA</div>
             {esAdmin && <div className={`sidebar-item ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => { cargarUsuariosAdmin(); setActiveTab('usuarios'); }}><span className="icon"><Users size={14}/></span> Usuarios</div>}
           </div>
           <div className="sidebar-section">
@@ -3564,9 +3555,8 @@ export default function App() {
               </div>
 
               <div style={{ display: 'flex', gap: '0.3rem' }}>
-                <button className="btn btn-secondary" onClick={() => { setVistaCards(false); setVistaKanban(false); }} style={{ background: !vistaCards && !vistaKanban ? 'var(--navy)' : '', color: !vistaCards && !vistaKanban ? 'white' : '' }} title="Tabla"><ClipboardList size={14}/></button>
-                <button className="btn btn-secondary" onClick={() => { setVistaCards(true); setVistaKanban(false); }} style={{ background: vistaCards ? 'var(--navy)' : '', color: vistaCards ? 'white' : '' }} title="Tarjetas"><FileText size={14}/></button>
-                <button className="btn btn-secondary" onClick={() => { setVistaKanban(true); setVistaCards(false); }} style={{ background: vistaKanban ? 'var(--navy)' : '', color: vistaKanban ? 'white' : '' }} title="Kanban"><Pin size={14}/> Kanban</button>
+                <button className="btn btn-secondary" onClick={() => setVistaCards(false)} style={{ background: !vistaCards ? 'var(--navy)' : '', color: !vistaCards ? 'white' : '' }} title="Tabla"><ClipboardList size={14}/></button>
+                <button className="btn btn-secondary" onClick={() => setVistaCards(true)} style={{ background: vistaCards ? 'var(--navy)' : '', color: vistaCards ? 'white' : '' }} title="Tarjetas"><FileText size={14}/></button>
                 <button className="btn btn-secondary" onClick={() => setModoCompacto(m => !m)} style={{ background: modoCompacto ? 'var(--navy)' : '', color: modoCompacto ? 'white' : '' }} title="Modo compacto"><Ban size={14}/></button>
                 <button className="btn btn-secondary" onClick={() => setShowBusquedaAvanzada(b => !b)} style={{ background: showBusquedaAvanzada ? 'var(--accent)' : '', color: showBusquedaAvanzada ? 'white' : '', position: 'relative' }} title="Filtros avanzados">
                   <SlidersHorizontal size={14}/>{(filtroMontoMin || filtroMontoMax || filtroEstados.length > 0 || filtroAgente) && <span style={{ position: 'absolute', top: '-4px', right: '-4px', width: '8px', height: '8px', background: '#f97316', borderRadius: '50%' }}></span>}
@@ -3646,56 +3636,8 @@ export default function App() {
               </div>
             )}
 
-            {vistaKanban && (
-              <div className="kanban-board">
-                {[
-                  { estado: 'Cotizado', color: '#ea580c', emoji: <ClipboardList size={14}/> },
-                  { estado: 'Notificado', color: '#0284c7', emoji: <Mail size={14}/> },
-                  { estado: 'Pagado', color: '#059669', emoji: <DollarSign size={14}/> },
-                  { estado: 'Facturado', color: '#16a34a', emoji: <CheckCircle size={14}/> },
-                  { estado: 'Vencido', color: '#dc2626', emoji: <XCircle size={14}/> },
-                  { estado: 'No Generaron', color: '#64748b', emoji: <Ban size={14}/> },
-                ].map(({ estado, color, emoji }) => {
-                  const cols = clientesFiltrados.filter(c => estadoActivoCliente(c) === estado);
-                  return (
-                    <div key={estado} className="kanban-col">
-                      <div className="kanban-col-header" style={{ borderTop: `3px solid ${color}` }}>
-                        <span style={{ fontWeight: 700, fontSize: '0.82rem', color, display:'flex', alignItems:'center', gap:'0.3rem' }}>{emoji} {estado}</span>
-                        <span style={{ background: color + '22', color, fontWeight: 800, fontSize: '0.75rem', padding: '0.15rem 0.55rem', borderRadius: '20px' }}>{cols.length}</span>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.75rem 0.6rem', minHeight: '80px' }}>
-                        {cols.map(cliente => {
-                          const s = calcularSaldoCliente(cliente);
-                          const pct = s.monto > 0 ? Math.min((s.pagado / s.monto) * 100, 100) : 0;
-                          return (
-                            <div key={cliente.id} className="kanban-card">
-                              <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text)', cursor: 'pointer', marginBottom: '0.25rem' }}
-                                onClick={() => { setHistorialPagosCliente(cliente); setShowHistorialPagosModal(true); }}>
-                                {cliente.nombre}
-                              </div>
-                              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>{cliente.codigoCliente ? <span style={{ fontWeight: 700, color: 'var(--accent)' }}>#{cliente.codigoCliente}</span> : `#${cliente.id}`} · {cliente.mes}/{cliente.año}</div>
-                              {s.monto > 0 && <div style={{ fontWeight: 800, fontFamily: 'var(--mono)', fontSize: '0.9rem', color: 'var(--accent2)', marginBottom: '0.35rem' }}>{tienePermiso('ver_montos') ? '$' + s.monto.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '***'}</div>}
-                              {s.monto > 0 && tienePermiso('ver_montos') && (
-                                <div className="progress-bar-wrap" style={{ marginBottom: '0.4rem' }}>
-                                  <div className="progress-bar-fill" style={{ width: `${pct}%`, background: pct >= 100 ? '#059669' : color }}></div>
-                                </div>
-                              )}
-                              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.3rem', marginTop: '0.2rem' }}>
-                                {cliente.contacto && <button onClick={() => abrirWhatsappModal(cliente)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '0.1rem' }} title="WhatsApp"><MessageCircle size={14}/></button>}
-                                {tienePermiso('editar_clientes') && <button onClick={() => !esModoPasado && abrirModal(cliente)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '0.1rem' }} title="Editar"><Pencil size={14}/></button>}
-                              </div>
-                            </div>
-                          );
-                        })}
-                        {cols.length === 0 && <div style={{ textAlign: 'center', padding: '1.5rem 0.5rem', color: 'var(--text-muted)', fontSize: '0.8rem', borderRadius: '10px', border: '1.5px dashed var(--border)' }}>Sin clientes</div>}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
 
-            <div className="table-container" style={{ display: vistaCards || vistaKanban ? 'none' : 'block' }}>
+            <div className="table-container" style={{ display: vistaCards ? 'none' : 'block' }}>
               <div className="table-wrapper">
                 {clientesFiltrados.length === 0 ? (
                   <div className="empty-state"><h3>No se encontraron clientes</h3><p>Intenta ajustar los filtros o agregar un nuevo cliente</p></div>
@@ -3756,9 +3698,9 @@ export default function App() {
 
                             <td>
                               {editingContactoId === cliente.id ? (
-                                <input type="tel" value={tempContacto} onChange={e => setTempContacto(e.target.value)} onBlur={() => guardarContactoInline(cliente.id)} onKeyDown={e => { if (e.key === 'Enter') guardarContactoInline(cliente.id); else if (e.key === 'Escape') cancelarEdicionContacto(); }} autoFocus style={{ width: '115px', padding: '0.3rem 0.5rem', border: '2px solid var(--brand)', borderRadius: '6px', fontSize: '0.82rem', fontFamily: 'var(--mono)' }} />
+                                <input type="tel" value={tempContacto} onChange={e => setTempContacto(e.target.value)} onBlur={() => guardarContactoInline(cliente.id)} onKeyDown={e => { if (e.key === 'Enter') guardarContactoInline(cliente.id); else if (e.key === 'Escape') cancelarEdicionContacto(); }} autoFocus style={{ width: '110px', padding: '0.25rem 0.4rem', border: '2px solid var(--brand)', borderRadius: '6px', fontSize: '0.74rem', fontFamily: 'var(--mono)', fontWeight: 700 }} />
                               ) : (
-                                <span onDoubleClick={() => !esModoPasado && (setEditingContactoId(cliente.id), setTempContacto(cliente.contacto || ''))} title={esModoPasado ? '' : 'Doble clic para editar'} style={{ cursor: esModoPasado ? 'default' : 'text', fontSize: '0.82rem', fontFamily: 'var(--mono)', color: cliente.contacto ? 'var(--text)' : 'var(--text-muted)' }}>
+                                <span onDoubleClick={() => !esModoPasado && (setEditingContactoId(cliente.id), setTempContacto(cliente.contacto || ''))} title={esModoPasado ? '' : 'Doble clic para editar'} style={{ cursor: esModoPasado ? 'default' : 'text', fontSize: '0.74rem', fontFamily: 'var(--mono)', fontWeight: 700, color: cliente.contacto ? '#3b7dd8' : 'var(--text-muted)', letterSpacing: '0.03em' }}>
                                   {cliente.contacto || '—'}
                                 </span>
                               )}
@@ -3791,13 +3733,13 @@ export default function App() {
                             <td style={{ position: 'relative' }}>
                               <div style={{ position: 'relative', display: 'inline-block' }}>
                                 <button
-                                  onClick={() => setMenuAbierto(prev => prev === cliente.id ? null : cliente.id)}
-                                  style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.8rem', borderRadius: '7px', border: '1.5px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem', color: '#1e2d4a' }}>
-                                  <MoreVertical size={14}/>
-                                  Opciones
+                                  onClick={(e) => { const rect = e.currentTarget.getBoundingClientRect(); const spaceBelow = window.innerHeight - rect.bottom; setMenuAbiertoDir(spaceBelow < 240 ? 'up' : 'down'); setMenuAbierto(prev => prev === cliente.id ? null : cliente.id); }}
+                                  title="Opciones"
+                                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.4rem 0.55rem', borderRadius: '7px', border: '1.5px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', color: '#1e2d4a' }}>
+                                  <MoreVertical size={15}/>
                                 </button>
                                 {menuAbierto === cliente.id && (
-                                  <div style={{ position: 'absolute', right: 0, top: '110%', background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 999, minWidth: '200px', overflow: 'hidden' }}>
+                                  <div style={{ position: 'absolute', right: 0, ...(menuAbiertoDir === 'up' ? { bottom: '110%', top: 'auto' } : { top: '110%' }), background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 999, minWidth: '200px', overflow: 'hidden' }}>
                                     {cliente.contacto && (
                                       <button onClick={() => { abrirWhatsappModal(cliente); setMenuAbierto(null); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 1rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#16a34a', fontWeight: 600, borderBottom: '1px solid #f1f5f9' }}>
                                         <Phone size={15}/>
@@ -6767,29 +6709,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Mobile Bottom Navigation */}
-      <div className="mobile-bottom-nav">
-        <button className={`mobile-nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
-          <LayoutGrid size={20}/>
-          <span>Inicio</span>
-        </button>
-        <button className={`mobile-nav-btn ${activeTab === 'cartera' ? 'active' : ''}`} onClick={() => setActiveTab('cartera')}>
-          <BarChart2 size={20}/>
-          <span>Cartera</span>
-        </button>
-        <button className={`mobile-nav-btn ${activeTab === 'credito' ? 'active' : ''}`} onClick={() => setActiveTab('credito')}>
-          <CreditCard size={20}/>
-          <span>Crédito</span>
-        </button>
-        <button className={`mobile-nav-btn ${activeTab === 'agenda' ? 'active' : ''}`} onClick={() => setActiveTab('agenda')}>
-          <Calendar size={20}/>
-          <span>Agenda</span>
-        </button>
-        <button className={`mobile-nav-btn ${showMobileMenu ? 'active' : ''}`} onClick={() => setShowMobileMenu(v => !v)}>
-          <Menu size={20}/>
-          <span>Más</span>
-        </button>
-      </div>
 
       {/* Modal de nueva versión — actualización automática */}
       {nuevaVersion && (
