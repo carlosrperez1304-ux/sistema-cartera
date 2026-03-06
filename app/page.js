@@ -557,7 +557,7 @@ export default function App() {
         // Reiniciar montos y estados de todos los clientes
         await fetch('/api/clientes/reiniciar-mes', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-csrf-token': document.cookie.match(/csrf-token=([^;]+)/)?.[1] || '' },
           body: JSON.stringify({ empresa_id: session?.user?.empresa_id })
         });
         return true;
