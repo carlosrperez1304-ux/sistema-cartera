@@ -1,7 +1,7 @@
 import { db } from '../../../lib/supabase.js';
 import { requireAuth, checkCsrf } from '../../../lib/security.js';
 
-const CLAVES_PERMITIDAS = ['meta_mensual', 'color_acento', 'recordatorio_dias', 'modo_compacto'];
+const CLAVES_PERMITIDAS = ['meta_mensual', 'color_acento', 'recordatorio_dias', 'modo_compacto', 'recordatorio_mes', 'recordatorio_mes_enviado'];
 
 export async function GET(req) {
   const auth = await requireAuth(req);

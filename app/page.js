@@ -490,6 +490,7 @@ export default function App() {
   const [waMasivoActivo, setWaMasivoActivo] = useState(false);
   const [waMasivoListoSiguiente, setWaMasivoListoSiguiente] = useState(false);
   const [waMasivoDestinosActual, setWaMasivoDestinosActual] = useState([]);
+  const [recordatorioActivo, setRecordatorioActivo] = useState(false);
 
   // Cargar preferencias y datos desde API
   useEffect(() => {
@@ -500,6 +501,12 @@ export default function App() {
         if (cfg.color_acento)           setColorAcento(cfg.color_acento);
         if (cfg.recordatorio_dias)      setRecordatoriosDias(parseInt(cfg.recordatorio_dias) || 7);
         if (cfg.modo_compacto  != null) setModoCompacto(cfg.modo_compacto === 'true');
+        // Recordatorio mensual: activo si el mes coincide y no fue enviado aún
+        const hoy = new Date();
+        const mesActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+        if (cfg.recordatorio_mes === mesActual && cfg.recordatorio_mes_enviado !== mesActual) {
+          setRecordatorioActivo(true);
+        }
       })
       .catch(() => {});
     fetch('/api/plantillas')
@@ -3411,6 +3418,40 @@ export default function App() {
 
           {/* TAB CARTERA */}
           <div className={`tab-content ${activeTab === 'cartera' ? 'active' : ''}`}>
+
+            {/* Banner de recordatorio mensual */}
+            {recordatorioActivo && activeTab === 'cartera' && (() => {
+              const pendientes = clientes.filter(c => c.estado === 'Notificado');
+              return pendientes.length > 0 ? (
+                <div style={{ background:'linear-gradient(135deg,#f97316,#ea580c)', borderRadius:'12px', padding:'0.9rem 1.25rem', marginBottom:'1rem', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'1rem', flexWrap:'wrap', boxShadow:'0 4px 16px rgba(234,88,12,0.3)' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
+                    <Bell size={20} style={{ color:'white', flexShrink:0 }}/>
+                    <div>
+                      <div style={{ color:'white', fontWeight:700, fontSize:'0.95rem' }}>Recordatorio de cobro — día 13</div>
+                      <div style={{ color:'rgba(255,255,255,0.85)', fontSize:'0.8rem' }}>{pendientes.length} cliente{pendientes.length !== 1 ? 's' : ''} notificado{pendientes.length !== 1 ? 's' : ''} sin confirmar pago</div>
+                    </div>
+                  </div>
+                  <div style={{ display:'flex', gap:'0.5rem', flexShrink:0 }}>
+                    <button onClick={() => {
+                      setClientesSeleccionados(pendientes.map(c => c.id));
+                      setShowWaMasivoModal(true);
+                      setWaMasivoMensaje(''); setWaMasivoIndex(0); setWaMasivoActivo(false);
+                    }} style={{ background:'white', color:'#ea580c', border:'none', borderRadius:'8px', padding:'0.5rem 1rem', fontWeight:700, fontSize:'0.83rem', cursor:'pointer', display:'flex', alignItems:'center', gap:'0.4rem' }}>
+                      <MessageCircle size={13}/> Enviar recordatorio
+                    </button>
+                    <button onClick={async () => {
+                      const hoy = new Date();
+                      const mes = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+                      await fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ clave:'recordatorio_mes_enviado', valor: mes }) });
+                      setRecordatorioActivo(false);
+                    }} style={{ background:'rgba(255,255,255,0.2)', color:'white', border:'1px solid rgba(255,255,255,0.4)', borderRadius:'8px', padding:'0.5rem 0.75rem', fontSize:'0.8rem', cursor:'pointer' }}>
+                      Descartar
+                    </button>
+                  </div>
+                </div>
+              ) : null;
+            })()}
+
             <div className="dashboard">
               {[
                 { key: 'cotizado', label: 'Cotizado', val: estadisticas.cotizado, pct: estadisticas.cotizadoPct, monto: estadisticas.montoCotizado, color: '#ea580c' },
