@@ -1601,15 +1601,43 @@ export default function App() {
     setShowNotifDocModal(true);
   };
 
-  const enviarNotifConDocumento = () => {
+  const enviarNotifConDocumento = async () => {
     if (!notifDocCliente || !notifDocSeleccionado) return;
-    descargarDocumento(notifDocSeleccionado);
-    setTimeout(() => {
-      const num = (notifDocCliente.contacto || '').replace(/\D/g, '');
-      window.open(`https://wa.me/1${num}?text=${encodeURIComponent(notifDocMensaje)}`, '_blank');
+    const num = (notifDocCliente.contacto || '').replace(/\D/g, '');
+
+    if (window.electronAPI?.isElectron) {
+      // Modo escritorio: asegurar que tenemos el base64 completo
+      let doc = notifDocSeleccionado;
+      if (!doc.base64) {
+        try {
+          const res = await fetch(`/api/cotizaciones/${notifDocCliente.id}`);
+          const docs = await res.json();
+          doc = docs.find(d => d.id === doc.id) || doc;
+        } catch {}
+      }
       setShowNotifDocModal(false);
-      showToast('WhatsApp abierto. Adjunta el PDF descargado al mensaje.', 'success');
-    }, 800);
+      if (doc.base64) {
+        const result = await window.electronAPI.sendPDFWhatsApp(doc.base64, doc.nombre, num);
+        if (result.ok) {
+          showToast('PDF copiado al portapapeles — Ctrl+V en WhatsApp para pegarlo', 'success');
+        } else {
+          // Fallback si falla PowerShell
+          descargarDocumento(doc);
+          window.open(`https://wa.me/1${num}?text=${encodeURIComponent(notifDocMensaje)}`, '_blank');
+          showToast('WhatsApp abierto. Adjunta el PDF descargado al mensaje.', 'info');
+        }
+      } else {
+        showToast('No se pudo cargar el documento', 'error');
+      }
+    } else {
+      // Modo web: flujo original
+      descargarDocumento(notifDocSeleccionado);
+      setTimeout(() => {
+        window.open(`https://wa.me/1${num}?text=${encodeURIComponent(notifDocMensaje)}`, '_blank');
+        setShowNotifDocModal(false);
+        showToast('WhatsApp abierto. Adjunta el PDF descargado al mensaje.', 'success');
+      }, 800);
+    }
   };
 
   const abrirGenCotModal = (cliente) => {
