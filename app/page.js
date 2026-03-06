@@ -1343,7 +1343,7 @@ export default function App() {
 
   const abrirWhatsappModal = (cliente) => {
     setWhatsappCliente(cliente);
-    setWhatsappMensaje(`Hola ${cliente.nombre}, le contactamos para notificarle sobre su cuenta.\nEstado actual: *${cliente.estado}*\nMonto: *$${(parseFloat(cliente.monto)||0).toLocaleString('en-US')}*\n\nGracias.`);
+    setWhatsappMensaje(getMsgFactura(cliente));
     setShowWhatsappModal(true);
   };
 
@@ -1581,7 +1581,7 @@ export default function App() {
     if (docs.length === 0) { showToast('Este cliente no tiene documentos guardados', 'info'); return; }
     setNotifDocCliente(cliente);
     setNotifDocSeleccionado(docs[docs.length - 1]);
-    setNotifDocMensaje(`Hola ${cliente.nombre}, le enviamos su cotización correspondiente.\n\nEstado de su cuenta: *${cliente.estado}*\nMonto: *$${(parseFloat(cliente.monto)||0).toLocaleString('en-US')}*\n\nAdjunto encontrará el documento. Quedamos atentos a cualquier consulta.\n\n— CartaMaster`);
+    setNotifDocMensaje(getMsgFactura(cliente));
     setShowNotifDocModal(true);
   };
 
@@ -2106,11 +2106,23 @@ export default function App() {
   };
 
   // ─── PLANTILLAS WHATSAPP ──────────────────────────────────
+  const getSaludo = () => {
+    const h = new Date().getHours();
+    return (h >= 0 && h < 12) ? 'Buenos Días' : 'Buenas Tardes';
+  };
+  const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const getMesFactura = () => { const d = new Date(); return `${MESES[d.getMonth()].toUpperCase()} ${d.getFullYear()}`; };
+  const getMesLimite = () => { const d = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 15); return `15 DE ${MESES[d.getMonth()].toUpperCase()} ${d.getFullYear()}`; };
+  const getMsgFactura = (cliente) => `Saludos ${getSaludo()}!\n\nLa factura por *EL MES DE ${getMesFactura()}*📃 ha sido generada.\n\n💠Recordandole: que la misma tiene un plazo hasta el dia ${getMesLimite()} para el pago.\n\n💰 Monto a pagar: *$${(parseFloat(cliente.monto)||0).toLocaleString('en-US',{minimumFractionDigits:2})}*\n\n⚠LOS PAGOS SE REALIZAN A NUESTRAS CUENTAS DE BANCOS⚠\n\nCUENTAS:\nA nombre: 7LABS\n🟢Reservas: 248 013348 5\n🔵Popular:     782 6584 05\n🟢BHD:         1587 811 0015\n\n🧾RNC: 130-82698-6`;
+
   const aplicarPlantilla = (texto, cliente) => texto
     .replace(/{nombre}/g, cliente.nombre)
     .replace(/{monto}/g, (parseFloat(cliente.monto)||0).toLocaleString('en-US'))
     .replace(/{estado}/g, cliente.estado)
-    .replace(/{id}/g, cliente.id);
+    .replace(/{id}/g, cliente.id)
+    .replace(/{saludo}/g, getSaludo())
+    .replace(/{mes}/g, getMesFactura())
+    .replace(/{limite}/g, getMesLimite());
 
   const guardarPlantilla = async () => {
     if (!plantillaForm.nombre.trim() || !plantillaForm.texto.trim()) return;
@@ -4722,10 +4734,10 @@ export default function App() {
                   <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Plantillas</div>
                   <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                     {[
+                      { icon: <FileText size={11}/>, label: 'Factura', msg: getMsgFactura(whatsappCliente) },
                       { icon: <DollarSign size={11}/>, label: 'Cobro', msg: `Hola ${whatsappCliente.nombre}, le recordamos que tiene un saldo pendiente de *$${(parseFloat(whatsappCliente.monto)||0).toLocaleString('en-US')}*. Por favor gestione su pago. Gracias.` },
                       { icon: <Clock size={11}/>, label: 'Recordatorio', msg: `Hola ${whatsappCliente.nombre}, le contactamos para recordarle sobre su cuenta con estado *${whatsappCliente.estado}*. Quedamos atentos.` },
                       { icon: <CheckCircle size={11}/>, label: 'Confirmación', msg: `Hola ${whatsappCliente.nombre}, confirmamos la recepción de su pago. Gracias por su gestión.` },
-                      { label: 'Bienvenida', msg: `Hola ${whatsappCliente.nombre}, bienvenido a nuestros servicios. Estamos a su disposición para cualquier consulta.` },
                     ].map(t => <button key={t.label} onClick={() => setWhatsappMensaje(t.msg)} style={{ padding: '0.35rem 0.75rem', borderRadius: '7px', border: '1px solid var(--border2)', background: 'var(--surface2)', color: 'var(--text)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', display:'flex', alignItems:'center', gap:'0.35rem' }}>{t.icon}{t.label}</button>)}
                   </div>
                 </div>
