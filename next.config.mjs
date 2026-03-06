@@ -27,6 +27,20 @@ const nextConfig = {
         source: '/(.*)',
         headers: securityHeaders,
       },
+      // Cache para archivos estáticos JS/CSS — 1 año
+      {
+        source: '/_next/static/(.*)',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      // Cache para imágenes y fuentes — 1 mes
+      {
+        source: '/(.*)\\.(ico|png|jpg|jpeg|svg|woff|woff2)',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=2592000, stale-while-revalidate=86400' },
+        ],
+      },
     ];
   },
 };
