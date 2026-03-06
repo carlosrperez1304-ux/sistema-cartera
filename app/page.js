@@ -1466,15 +1466,31 @@ export default function App() {
   };
 
   // ─── DOCUMENTOS / COTIZACIONES ───────────────────────────
+  const cargarTodosDocumentos = async () => {
+    try {
+      const res = await fetch('/api/cotizaciones');
+      if (!res.ok) return;
+      const grouped = await res.json();
+      setCotizaciones(prev => {
+        const next = { ...prev };
+        Object.entries(grouped).forEach(([cid, docs]) => {
+          // Solo sobreescribir si no tenemos base64 aún para ese cliente
+          const existing = prev[cid];
+          if (!existing || existing.every(d => !d.base64)) next[cid] = docs;
+        });
+        return next;
+      });
+    } catch {}
+  };
+
   const abrirDocsModal = (cliente) => {
     setDocsClienteId(cliente.id);
     setShowDocsModal(true);
-    if (!cotizaciones[cliente.id]) {
-      fetch(`/api/cotizaciones/${cliente.id}`)
-        .then(r => r.ok ? r.json() : [])
-        .then(docs => setCotizaciones(prev => ({ ...prev, [cliente.id]: docs })))
-        .catch(() => {});
-    }
+    // Siempre recargar con base64 completo al abrir el modal individual
+    fetch(`/api/cotizaciones/${cliente.id}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(docs => setCotizaciones(prev => ({ ...prev, [cliente.id]: docs })))
+      .catch(() => {});
   };
 
   // ── Extrae el monto "Total RD$" del contenido de un PDF (base64) ──
@@ -2609,7 +2625,7 @@ export default function App() {
             {tienePermiso('ver_clientes') && <div className={`sidebar-item ${activeTab === 'cartera' ? 'active' : ''}`} onClick={() => setActiveTab('cartera')}><span className="icon"><BarChart2 size={14}/></span> Cartera</div>}
             {tienePermiso('ver_creditos') && <div className={`sidebar-item ${activeTab === 'credito' ? 'active' : ''}`} onClick={() => setActiveTab('credito')}><span className="icon"><CreditCard size={14}/></span> Crédito</div>}
             <div className={`sidebar-item ${activeTab === 'agenda' ? 'active' : ''}`} onClick={() => setActiveTab('agenda')}><span className="icon"><Calendar size={14}/></span> Agenda del Día</div>
-            <div className={`sidebar-item ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => setActiveTab('documentos')}><span className="icon"><FileText size={14}/></span> Documentos</div>
+            <div className={`sidebar-item ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => { setActiveTab('documentos'); cargarTodosDocumentos(); }}><span className="icon"><FileText size={14}/></span> Documentos</div>
             {puedeVerTodo && <div className={`sidebar-item ${activeTab === 'carteras' ? 'active' : ''}`} onClick={() => setActiveTab('carteras')}><span className="icon"><Users size={14}/></span> Carteras por Agente</div>}
             {tienePermiso('acceder_delegaciones') && <div className={`sidebar-item ${activeTab === 'delegations' ? 'active' : ''}`} onClick={() => { setActiveTab('delegations'); cargarDelegations(); }} style={{ position: 'relative' }}><span className="icon"><ArrowLeftRight size={14}/></span> Delegations{delegationsPendientes.length > 0 && <span style={{ position: 'absolute', top: '6px', right: '8px', width: '8px', height: '8px', background: '#f97316', borderRadius: '50%' }}></span>}</div>}
             {esContabilidad && tienePermiso('ver_conciliacion') && <div className={`sidebar-item ${activeTab === 'conciliacion' ? 'active' : ''}`} onClick={() => setActiveTab('conciliacion')}><span className="icon"><List size={14}/></span> Conciliación</div>}
