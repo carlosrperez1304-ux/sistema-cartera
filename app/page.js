@@ -488,6 +488,8 @@ export default function App() {
   const [waMasivoMensaje, setWaMasivoMensaje] = useState('');
   const [waMasivoIndex, setWaMasivoIndex] = useState(0);
   const [waMasivoActivo, setWaMasivoActivo] = useState(false);
+  const [waMasivoListoSiguiente, setWaMasivoListoSiguiente] = useState(false);
+  const [waMasivoDestinosActual, setWaMasivoDestinosActual] = useState([]);
 
   // Cargar preferencias y datos desde API
   useEffect(() => {
@@ -2254,20 +2256,62 @@ export default function App() {
     setWaMasivoMensaje(''); setWaMasivoIndex(0); setWaMasivoActivo(false);
     setShowWaMasivoModal(true);
   };
-  const enviarWaMasivo = () => {
+  const enviarWaMasivo = async () => {
     const destinos = clientes.filter(c => clientesSeleccionados.includes(c.id) && c.contacto);
     if (destinos.length === 0) { showToast('Los clientes seleccionados no tienen contacto', 'error'); return; }
-    setWaMasivoActivo(true); setWaMasivoIndex(0);
-    const enviarUno = (i) => {
-      if (i >= destinos.length) { showToast(`${destinos.length} WhatsApp abiertos`, 'success'); setWaMasivoActivo(false); setShowWaMasivoModal(false); setClientesSeleccionados([]); return; }
-      const c = destinos[i];
-      const msg = aplicarPlantilla(waMasivoMensaje, c);
-      const num = c.contacto.replace(/\D/g,'');
+    setWaMasivoActivo(true);
+    setWaMasivoIndex(0);
+    setWaMasivoListoSiguiente(false);
+    // Enviar el primero
+    await enviarWaMasivoUno(destinos, 0);
+  };
+
+  const enviarWaMasivoUno = async (destinos, i) => {
+    if (i >= destinos.length) {
+      showToast(`${destinos.length} clientes notificados`, 'success');
+      setWaMasivoActivo(false); setShowWaMasivoModal(false); setClientesSeleccionados([]);
+      return;
+    }
+    const c = destinos[i];
+    const msg = getMsgFactura(c);
+    const num = c.contacto.replace(/\D/g, '');
+
+    // Cargar documento si existe
+    let doc = null;
+    try {
+      const docs = cotizaciones[c.id] || [];
+      let lista = docs;
+      if (lista.length === 0) {
+        const r = await fetch(`/api/cotizaciones/${c.id}`);
+        if (r.ok) { lista = await r.json(); setCotizaciones(prev => ({ ...prev, [c.id]: lista })); }
+      }
+      // Obtener base64 si falta
+      const ultimo = lista[lista.length - 1] || null;
+      if (ultimo && !ultimo.base64) {
+        const r2 = await fetch(`/api/cotizaciones/${c.id}`);
+        if (r2.ok) { const full = await r2.json(); setCotizaciones(prev => ({ ...prev, [c.id]: full })); doc = full[full.length - 1] || null; }
+      } else { doc = ultimo; }
+    } catch { doc = null; }
+
+    if (window.electronAPI?.isElectron && doc?.base64) {
+      await window.electronAPI.sendPDFWhatsApp(doc.base64, doc.nombre, num, msg);
+    } else {
+      if (doc?.base64) descargarDocumento(doc);
       window.open(`https://wa.me/1${num}?text=${encodeURIComponent(msg)}`, '_blank');
-      setWaMasivoIndex(i + 1);
-      setTimeout(() => enviarUno(i + 1), 1500);
-    };
-    enviarUno(0);
+    }
+
+    setWaMasivoIndex(i);
+    setWaMasivoDestinosActual(destinos);
+    setWaMasivoListoSiguiente(true);
+  };
+
+  const siguienteWaMasivo = () => {
+    const destinos = waMasivoDestinosActual;
+    const i = waMasivoIndex;
+    // Marcar actual como Notificado
+    marcarNotificado(destinos[i]);
+    setWaMasivoListoSiguiente(false);
+    enviarWaMasivoUno(destinos, i + 1);
   };
 
   // ─── ESTADO DE CUENTA PDF ─────────────────────────────────
@@ -6345,26 +6389,55 @@ export default function App() {
               </div>
             )}
 
-            <div className="form-group">
-              <label>Mensaje <span style={{ fontWeight:400, color:'var(--text-muted)' }}>— usa {'{nombre}'}, {'{monto}'}, {'{estado}'}</span></label>
-              <textarea value={waMasivoMensaje} onChange={e => setWaMasivoMensaje(e.target.value)} rows={5} placeholder="Estimado/a {nombre}, le recordamos su cuenta pendiente por RD${monto}..." />
-            </div>
-
-            {waMasivoActivo && (
-              <div style={{ textAlign:'center', padding:'0.75rem', background:'#f0fdf4', border:'1px solid #86efac', borderRadius:'9px', marginBottom:'0.75rem', fontWeight:700, color:'#15803d' }}>
-                Enviando {waMasivoIndex} de {clientes.filter(c => clientesSeleccionados.includes(c.id) && c.contacto).length}...
+            {!waMasivoActivo && (
+              <div className="form-group">
+                <label style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                  <span>Vista previa del mensaje</span>
+                  <button onClick={() => { const primer = clientes.find(c => clientesSeleccionados.includes(c.id)); setWaMasivoMensaje(primer ? getMsgFactura(primer) : ''); }} style={{ fontSize:'0.72rem', padding:'0.2rem 0.6rem', borderRadius:'6px', border:'1px solid var(--brand)', background:'rgba(99,91,255,0.08)', color:'var(--brand)', cursor:'pointer', fontWeight:600 }}>
+                    Usar plantilla de factura
+                  </button>
+                </label>
+                <textarea value={waMasivoMensaje} onChange={e => setWaMasivoMensaje(e.target.value)} rows={5} placeholder="Haz clic en 'Usar plantilla de factura' o escribe un mensaje..." style={{ fontFamily:'var(--mono)', fontSize:'0.78rem' }} />
               </div>
             )}
 
-            <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:'9px', padding:'0.65rem 0.9rem', marginBottom:'1rem', fontSize:'0.78rem', color:'#78350f', display:'flex', alignItems:'flex-start', gap:'0.4rem' }}>
-              <Info size={14} style={{flexShrink:0,marginTop:'0.1rem'}}/> Se abrirá WhatsApp Web para cada cliente con su mensaje personalizado. Los nombres y montos se reemplazarán automáticamente.
-            </div>
-            <div className="form-actions">
-              <button className="btn btn-secondary" onClick={() => !waMasivoActivo && setShowWaMasivoModal(false)} disabled={waMasivoActivo}>Cancelar</button>
-              <button className="btn btn-primary" style={{ background:'#25d366' }} onClick={enviarWaMasivo} disabled={!waMasivoMensaje.trim() || waMasivoActivo}>
-                <MessageSquare size={13}/> Enviar a {clientes.filter(c => clientesSeleccionados.includes(c.id) && c.contacto).length} clientes
-              </button>
-            </div>
+            {/* Cola activa — modo guiado */}
+            {waMasivoActivo && waMasivoDestinosActual.length > 0 && (
+              <div style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'10px', padding:'1rem', marginBottom:'1rem' }}>
+                {/* Progreso */}
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.6rem' }}>
+                  <span style={{ fontSize:'0.78rem', color:'var(--text-muted)', fontWeight:600 }}>Progreso</span>
+                  <span style={{ fontSize:'0.82rem', fontWeight:700 }}>{waMasivoIndex + 1} / {waMasivoDestinosActual.length}</span>
+                </div>
+                <div style={{ height:'6px', background:'var(--border)', borderRadius:'4px', marginBottom:'0.9rem' }}>
+                  <div style={{ height:'6px', background:'#25d366', borderRadius:'4px', width:`${((waMasivoIndex + 1) / waMasivoDestinosActual.length) * 100}%`, transition:'width 0.3s' }}></div>
+                </div>
+                {/* Cliente actual */}
+                <div style={{ fontWeight:700, fontSize:'0.95rem', marginBottom:'0.2rem' }}>{waMasivoDestinosActual[waMasivoIndex]?.nombre}</div>
+                <div style={{ fontSize:'0.8rem', color:'var(--text-muted)', marginBottom:'0.75rem', fontFamily:'var(--mono)' }}>{waMasivoDestinosActual[waMasivoIndex]?.contacto}</div>
+                {waMasivoListoSiguiente ? (
+                  <button onClick={siguienteWaMasivo} style={{ width:'100%', padding:'0.65rem', background:'#25d366', color:'white', border:'none', borderRadius:'9px', fontWeight:700, fontSize:'0.9rem', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem' }}>
+                    <CheckCircle size={15}/> Enviado — {waMasivoIndex + 1 < waMasivoDestinosActual.length ? `Siguiente: ${waMasivoDestinosActual[waMasivoIndex + 1]?.nombre}` : 'Finalizar'}
+                  </button>
+                ) : (
+                  <div style={{ textAlign:'center', fontSize:'0.82rem', color:'var(--text-muted)' }}>Abriendo WhatsApp...</div>
+                )}
+              </div>
+            )}
+
+            {!waMasivoActivo && (
+              <>
+                <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:'9px', padding:'0.65rem 0.9rem', marginBottom:'1rem', fontSize:'0.78rem', color:'#78350f', display:'flex', alignItems:'flex-start', gap:'0.4rem' }}>
+                  <Info size={14} style={{flexShrink:0,marginTop:'0.1rem'}}/> Se abrirá WhatsApp uno por uno. Después de enviar cada mensaje haz clic en <strong>Enviado — Siguiente</strong> para avanzar. Cada cliente se marcará como Notificado automáticamente.
+                </div>
+                <div className="form-actions">
+                  <button className="btn btn-secondary" onClick={() => setShowWaMasivoModal(false)}>Cancelar</button>
+                  <button className="btn btn-primary" style={{ background:'#25d366' }} onClick={enviarWaMasivo}>
+                    <MessageCircle size={13}/> Iniciar — {clientes.filter(c => clientesSeleccionados.includes(c.id) && c.contacto).length} clientes
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
