@@ -2222,6 +2222,19 @@ export default function App() {
   const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const getMesFactura = () => { const d = new Date(); const p = new Date(d.getFullYear(), d.getMonth() - 1, 1); return `${MESES[p.getMonth()].toUpperCase()} ${p.getFullYear()}`; };
   const getMesLimite = () => { const d = new Date(); return `15 DE ${MESES[d.getMonth()].toUpperCase()} ${d.getFullYear()}`; };
+  const getMsgRecordatorio = () => {
+    const d = new Date();
+    const mes = MESES[d.getMonth()].toUpperCase();
+    const anio = d.getFullYear();
+    const suspension = new Date(d.getFullYear(), d.getMonth(), 18);
+    const diaSemana = suspension.getDay();
+    if (diaSemana === 6) suspension.setDate(20);
+    else if (diaSemana === 0) suspension.setDate(19);
+    const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+    const nombreDia = DIAS[suspension.getDay()];
+    const diaSusp = suspension.getDate();
+    return `⚠️ Atención ⚠️\n\nEstimado Cliente, es bien informarle.\n\nQue la Fecha límite de pago finaliza el *15 de ${mes} del ${anio}*. Si ya realizó su pago favor notificarlo.\n\nDe no realizar el pago a partir del día 15, el servicio entrará en suspensión el día *${nombreDia} ${diaSusp} de ${mes} del ${anio}* a partir de las 10 AM.\n\nMuchas Gracias de antemano!!`;
+  };
   const getMsgFactura = (cliente) => `Saludos ${getSaludo()}!\n\nLa factura por *EL MES DE ${getMesFactura()}*📃 ha sido generada.\n\n💠Recordandole: que la misma tiene un plazo hasta el dia ${getMesLimite()} para el pago.\n\n💰 Monto a pagar: *$${(parseFloat(cliente.monto)||0).toLocaleString('en-US',{minimumFractionDigits:2})}*\n\n⚠LOS PAGOS SE REALIZAN A NUESTRAS CUENTAS DE BANCOS⚠\n\nCUENTAS:\nA nombre: 7LABS\n🟢Reservas: 248 013348 5\n🔵Popular:     782 6584 05\n🟢BHD:         1587 811 0015\n\n🧾RNC: 130-82698-6`;
 
   const aplicarPlantilla = (texto, cliente) => texto
@@ -3435,7 +3448,7 @@ export default function App() {
                     <button onClick={() => {
                       setClientesSeleccionados(pendientes.map(c => c.id));
                       setShowWaMasivoModal(true);
-                      setWaMasivoMensaje(''); setWaMasivoIndex(0); setWaMasivoActivo(false);
+                      setWaMasivoMensaje(getMsgRecordatorio()); setWaMasivoIndex(0); setWaMasivoActivo(false);
                     }} style={{ background:'white', color:'#ea580c', border:'none', borderRadius:'8px', padding:'0.5rem 1rem', fontWeight:700, fontSize:'0.83rem', cursor:'pointer', display:'flex', alignItems:'center', gap:'0.4rem' }}>
                       <MessageCircle size={13}/> Enviar recordatorio
                     </button>
