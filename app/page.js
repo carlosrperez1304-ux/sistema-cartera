@@ -383,6 +383,8 @@ export default function App() {
   const ITEMS_POR_PAGINA = 15;
   const [editingMontoId, setEditingMontoId] = useState(null);
   const [tempMonto, setTempMonto] = useState('');
+  const [editingContactoId, setEditingContactoId] = useState(null);
+  const [tempContacto, setTempContacto] = useState('');
   const [editingCreditoMontoId, setEditingCreditoMontoId] = useState(null);
   const [tempCreditoMonto, setTempCreditoMonto] = useState('');
   const [showPagoModal, setShowPagoModal] = useState(false);
@@ -1032,6 +1034,12 @@ export default function App() {
     setEditingMontoId(null); setTempMonto('');
   };
   const cancelarEdicionMonto = () => { setEditingMontoId(null); setTempMonto(''); };
+  const guardarContactoInline = (clienteId) => {
+    const updated = clientes.find(c => c.id === clienteId);
+    if (updated) actualizarCliente({ ...updated, contacto: tempContacto, historial: [...(updated.historial || []), { fecha: new Date().toISOString(), accion: `Teléfono actualizado a ${tempContacto}`, usuario: currentUser || 'SISTEMA' }] });
+    setEditingContactoId(null); setTempContacto('');
+  };
+  const cancelarEdicionContacto = () => { setEditingContactoId(null); setTempContacto(''); };
 
   const iniciarEdicionCreditoMonto = (credito) => { setEditingCreditoMontoId(credito.id); setTempCreditoMonto(credito.monto || ''); };
   const guardarCreditoMontoInline = (creditoId) => {
@@ -3588,6 +3596,7 @@ export default function App() {
                       <th>Cliente</th>
                       {puedeVerTodo && <th style={{ width:'90px' }}>Agente</th>}
                       <th style={{ width:'120px' }}>Estado</th>
+                      <th style={{ width:'130px' }}>Teléfono</th>
                       <th style={{ width:'100px' }}>Monto</th>
                       <th style={{ width:'110px' }}>Proceso</th>
                       <th style={{ width:'120px', textAlign:'right' }}>Opciones</th>
@@ -3630,6 +3639,16 @@ export default function App() {
                             </td>}
 
                             <td><span className={`badge badge-${estadoActivoCliente(cliente).toLowerCase().replace(/ /g, '-')}`}>{estadoActivoCliente(cliente)}</span></td>
+
+                            <td>
+                              {editingContactoId === cliente.id ? (
+                                <input type="tel" value={tempContacto} onChange={e => setTempContacto(e.target.value)} onBlur={() => guardarContactoInline(cliente.id)} onKeyDown={e => { if (e.key === 'Enter') guardarContactoInline(cliente.id); else if (e.key === 'Escape') cancelarEdicionContacto(); }} autoFocus style={{ width: '115px', padding: '0.3rem 0.5rem', border: '2px solid var(--brand)', borderRadius: '6px', fontSize: '0.82rem', fontFamily: 'var(--mono)' }} />
+                              ) : (
+                                <span onDoubleClick={() => !esModoPasado && (setEditingContactoId(cliente.id), setTempContacto(cliente.contacto || ''))} title={esModoPasado ? '' : 'Doble clic para editar'} style={{ cursor: esModoPasado ? 'default' : 'text', fontSize: '0.82rem', fontFamily: 'var(--mono)', color: cliente.contacto ? 'var(--text)' : 'var(--text-muted)' }}>
+                                  {cliente.contacto || '—'}
+                                </span>
+                              )}
+                            </td>
 
                             <td>
                               {!tienePermiso('ver_montos') ? (
