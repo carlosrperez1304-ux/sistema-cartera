@@ -1345,13 +1345,58 @@ export default function App() {
     setWhatsappCliente(cliente);
     setWhatsappMensaje(getMsgFactura(cliente));
     setShowWhatsappModal(true);
+    // Cargar documento si aún no está en estado
+    if (!cotizaciones[cliente.id]) {
+      fetch(`/api/cotizaciones/${cliente.id}`)
+        .then(r => r.ok ? r.json() : [])
+        .then(docs => setCotizaciones(prev => ({ ...prev, [cliente.id]: docs })))
+        .catch(() => {});
+    }
   };
 
-  const enviarWhatsapp = () => {
+  const marcarNotificado = (cliente) => {
+    if (cliente.fechaNotificacion) return;
+    const a = { ...cliente, fechaNotificacion: new Date().toISOString().split('T')[0], estado: 'Notificado' };
+    a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: 'Notificado vía WhatsApp', usuario: currentUser || session?.user?.username || 'Sistema' }];
+    actualizarCliente(a);
+    sincronizarEstadoCotizacion(cliente.id, 'Notificado');
+  };
+
+  const enviarWhatsapp = async () => {
     if (!whatsappCliente) return;
     const num = whatsappCliente.contacto.replace(/\D/g, '');
-    window.open(`https://wa.me/1${num}?text=${encodeURIComponent(whatsappMensaje)}`, '_blank');
+    const docs = cotizaciones[whatsappCliente.id] || [];
+    let doc = docs[docs.length - 1] || null;
+
+    // Si el doc existe pero no tiene base64, cargarlo completo
+    if (doc && !doc.base64) {
+      try {
+        const res = await fetch(`/api/cotizaciones/${whatsappCliente.id}`);
+        const fullDocs = await res.json();
+        setCotizaciones(prev => ({ ...prev, [whatsappCliente.id]: fullDocs }));
+        doc = fullDocs[fullDocs.length - 1] || null;
+      } catch { doc = null; }
+    }
+
     setShowWhatsappModal(false);
+
+    if (window.electronAPI?.isElectron && doc?.base64) {
+      // Modo escritorio: PDF al portapapeles + WhatsApp Desktop con mensaje
+      const result = await window.electronAPI.sendPDFWhatsApp(doc.base64, doc.nombre, num, whatsappMensaje);
+      if (!result.ok) {
+        if (doc) descargarDocumento(doc);
+        window.open(`https://wa.me/1${num}?text=${encodeURIComponent(whatsappMensaje)}`, '_blank');
+      } else {
+        showToast('PDF copiado al portapapeles — Ctrl+V en WhatsApp para pegarlo', 'success');
+      }
+    } else {
+      // Modo web: descargar PDF (si hay) + abrir wa.me
+      if (doc?.base64) descargarDocumento(doc);
+      window.open(`https://wa.me/1${num}?text=${encodeURIComponent(whatsappMensaje)}`, '_blank');
+    }
+
+    // Marcar como Notificado automáticamente
+    marcarNotificado(whatsappCliente);
   };
 
   const generarReciboPDF = (cliente, pago) => {
