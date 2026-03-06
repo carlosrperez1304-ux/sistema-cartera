@@ -1050,6 +1050,20 @@ export default function App() {
   };
   const cancelarEdicionContacto = () => { setEditingContactoId(null); setTempContacto(''); };
 
+  const esMorosoRecurrente = (cliente) => {
+    const historial = cliente.historial || [];
+    const meses = new Set();
+    historial.forEach(h => { if (h.accion?.includes('Notificado') && h.fecha) meses.add(h.fecha.substring(0, 7)); });
+    return meses.size >= 2;
+  };
+
+  const esClienteNuevo = (cliente) => {
+    if (!cliente.created_at) return false;
+    const hoy = new Date();
+    const mesActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+    return cliente.created_at.startsWith(mesActual);
+  };
+
   const iniciarEdicionCreditoMonto = (credito) => { setEditingCreditoMontoId(credito.id); setTempCreditoMonto(credito.monto || ''); };
   const guardarCreditoMontoInline = (creditoId) => {
     const montoNorm = tempCreditoMonto.replace(',', '.');
@@ -3712,6 +3726,8 @@ export default function App() {
                                 {(() => { const av = getAvatar(cliente.nombre); return <div className="avatar avatar-sm" style={{ background: av.color }}>{av.letra}</div>; })()}
                                 <div>
                                   <span onClick={() => { setHistorialPagosCliente(cliente); setShowHistorialPagosModal(true); }} className="nombre-cliente" title="Ver historial de pagos">{cliente.nombre}</span>
+                                  {esClienteNuevo(cliente) && <span title="Cliente nuevo este mes" style={{ fontSize:'0.62rem', fontWeight:700, background:'#dcfce7', color:'#15803d', border:'1px solid #86efac', borderRadius:'20px', padding:'0.1rem 0.45rem', marginLeft:'0.3rem', verticalAlign:'middle' }}>NUEVO</span>}
+                                  {esMorosoRecurrente(cliente) && <span title="Ha sido notificado sin pagar en 2+ meses" style={{ fontSize:'0.62rem', fontWeight:700, background:'#fef2f2', color:'#dc2626', border:'1px solid #fca5a5', borderRadius:'20px', padding:'0.1rem 0.45rem', marginLeft:'0.3rem', verticalAlign:'middle' }}>⚠ Moroso</span>}
                                   {(tags[cliente.id] || []).length > 0 && (
                                     <div className="tags-wrap">
                                       {(tags[cliente.id] || []).map(tag => (
@@ -6094,20 +6110,6 @@ export default function App() {
                   </div>
                 ))}
               </>)}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showConfigModal && (
-        <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowConfigModal(false); }}>
-          <div className="modal-content" style={{ maxWidth: '480px' }}>
-            <div className="modal-header">
-              <h2>Configuración del Sistema</h2>
-              <button className="close-btn" onClick={() => setShowConfigModal(false)}>×</button>
-            </div>
-            <div className="form-actions">
-              <button className="btn btn-secondary" onClick={() => setShowConfigModal(false)}>Cerrar</button>
             </div>
           </div>
         </div>
