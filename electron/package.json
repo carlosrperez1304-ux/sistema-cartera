@@ -25,6 +25,8 @@
     "files": [
       "main.js",
       "preload.js",
+      "preload-activation.js",
+      "activation.html",
       "assets/**"
     ]
   },

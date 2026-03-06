@@ -4,7 +4,7 @@ import { getSupabaseBrowser } from '../lib/supabase-browser.js';
 import * as XLSX from 'xlsx';
 import { signIn, signOut, useSession } from 'next-auth/react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Pencil, Trash2, Plus, Download, Send, FolderOpen, Save, RefreshCw, CheckCircle, XCircle, AlertTriangle, HelpCircle, Info, Phone, MessageCircle, MapPin, Mail, Pin, DollarSign, ClipboardList, FileText, FileEdit, Archive, Tag, Sun, Moon, Eye, EyeOff, SlidersHorizontal, Clock, Loader2, Inbox, Ban, MessageSquare, BarChart2, Lock, Search, Calendar, Bell, Target, Palette, MoreVertical, Edit2, StickyNote, FileSearch, BookOpen, PauseCircle, PlayCircle, Menu, X, Settings, LogOut, UserPlus, CreditCard, Upload, ChevronDown, LayoutGrid, Users, ArrowLeftRight, List, Check, Briefcase, Rocket } from 'lucide-react';
+import { Pencil, Trash2, Plus, Download, Send, FolderOpen, Save, RefreshCw, CheckCircle, XCircle, AlertTriangle, HelpCircle, Info, Phone, MessageCircle, MapPin, Mail, Pin, DollarSign, ClipboardList, FileText, FileEdit, Archive, Tag, Sun, Moon, Eye, EyeOff, SlidersHorizontal, Clock, Loader2, Inbox, Ban, MessageSquare, BarChart2, Lock, Search, Calendar, Bell, Target, Palette, MoreVertical, Edit2, StickyNote, FileSearch, BookOpen, PauseCircle, PlayCircle, Menu, X, Settings, LogOut, UserPlus, CreditCard, Upload, ChevronDown, LayoutGrid, Users, ArrowLeftRight, List, Check, Briefcase, Rocket, Monitor } from 'lucide-react';
 import COT_PLANTILLAS from '../lib/cotPlantillas.js';
 
 export default function App() {
@@ -435,6 +435,9 @@ export default function App() {
   const [filtroMontoMax, setFiltroMontoMax] = useState('');
   const [filtroEstados, setFiltroEstados] = useState([]);
   const [recordatoriosDias, setRecordatoriosDias] = useState(7);
+  const [activaciones, setActivaciones] = useState([]);
+  const [nuevaActivNombre, setNuevaActivNombre] = useState('');
+  const [loadingActivaciones, setLoadingActivaciones] = useState(false);
 
   // ── Documentos / Cotizaciones ────────────────────────────
   const [cotizaciones, setCotizaciones] = useState({});          // { clienteId: [{id, nombre, base64, fecha, monto}] }
@@ -5585,6 +5588,12 @@ export default function App() {
                   Permisos
                 </button>
               )}
+              {esAdmin && (
+                <button className={`settings-nav-item ${settingsSection === 'activaciones' ? 'active' : ''}`} onClick={async () => { setSettingsSection('activaciones'); setLoadingActivaciones(true); const r = await fetch('/api/activaciones/admin'); if (r.ok) setActivaciones(await r.json()); setLoadingActivaciones(false); }}>
+                  <Monitor size={14}/>
+                  Licencias App
+                </button>
+              )}
               <button className="settings-nav-item" style={{ marginTop: 'auto', color: 'var(--danger)', opacity: 0.8 }} onClick={() => { window._manualLogout = true; setShowSettingsPanel(false); signOut({ callbackUrl: '/' }); setTimeout(() => { window.location.href = '/'; }, 500); }}>
                 <LogOut size={14}/>
                 Cerrar sesión
@@ -5886,6 +5895,87 @@ export default function App() {
                     else showToast('Error', 'error');
                   }}>Asignar</button>
                 </div>
+              </>)}
+
+              {/* ── Panel Licencias App (Electron) ── */}
+              {settingsSection === 'activaciones' && esAdmin && (<>
+                <div className="settings-content-header">
+                  <div className="settings-content-title">Licencias App de Escritorio</div>
+                  <button className="settings-close-btn" onClick={() => setShowSettingsPanel(false)}>×</button>
+                </div>
+
+                {/* Generar nuevo código */}
+                <div style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'10px', padding:'1rem', marginBottom:'1rem' }}>
+                  <div style={{ fontWeight:700, fontSize:'0.85rem', marginBottom:'0.65rem', display:'flex', alignItems:'center', gap:'0.4rem' }}><Monitor size={13}/> Nuevo código de activación</div>
+                  <div style={{ display:'flex', gap:'0.5rem' }}>
+                    <input
+                      placeholder="Nombre del agente (ej: TAULIO)"
+                      value={nuevaActivNombre}
+                      onChange={e => setNuevaActivNombre(e.target.value)}
+                      onKeyDown={async e => { if (e.key === 'Enter') {
+                        if (!nuevaActivNombre.trim()) return;
+                        const r = await fetch('/api/activaciones/admin', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ nombre_agente: nuevaActivNombre.trim() }) });
+                        if (r.ok) { const d = await r.json(); setActivaciones(prev => [d, ...prev]); setNuevaActivNombre(''); showToast('Código generado', 'success'); }
+                        else showToast('Error generando código', 'error');
+                      }}}
+                      style={{ flex:1, padding:'0.5rem 0.75rem', border:'1px solid var(--border)', borderRadius:'7px', fontSize:'0.83rem', background:'var(--surface)', color:'var(--text)' }}
+                    />
+                    <button className="btn btn-primary" onClick={async () => {
+                      if (!nuevaActivNombre.trim()) return showToast('Ingresa el nombre del agente', 'error');
+                      const r = await fetch('/api/activaciones/admin', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ nombre_agente: nuevaActivNombre.trim() }) });
+                      if (r.ok) { const d = await r.json(); setActivaciones(prev => [d, ...prev]); setNuevaActivNombre(''); showToast('Código generado', 'success'); }
+                      else showToast('Error generando código', 'error');
+                    }}>Generar</button>
+                  </div>
+                  <div style={{ fontSize:'0.72rem', color:'var(--text-muted)', marginTop:'0.4rem' }}>El código se genera automáticamente. Compártelo con el agente para activar su instalación.</div>
+                </div>
+
+                {/* Lista de licencias */}
+                <div style={{ fontWeight:700, fontSize:'0.85rem', marginBottom:'0.5rem' }}>Licencias registradas</div>
+                {loadingActivaciones && <div style={{ color:'var(--text-muted)', fontSize:'0.82rem', textAlign:'center', padding:'1.5rem' }}>Cargando…</div>}
+                {!loadingActivaciones && activaciones.length === 0 && (
+                  <div style={{ color:'var(--text-muted)', fontSize:'0.82rem', textAlign:'center', padding:'1.5rem' }}>No hay licencias creadas aún</div>
+                )}
+                {activaciones.map(lic => (
+                  <div key={lic.id} style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'9px', padding:'0.75rem 1rem', marginBottom:'0.5rem' }}>
+                    <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:'0.5rem' }}>
+                      <div style={{ flex:1 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', marginBottom:'0.2rem' }}>
+                          <span style={{ fontWeight:700, fontSize:'0.88rem' }}>{lic.nombre_agente}</span>
+                          <span style={{ fontSize:'0.7rem', padding:'0.15rem 0.5rem', borderRadius:'20px', fontWeight:600,
+                            background: lic.activo ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)',
+                            color: lic.activo ? '#4ade80' : '#f87171',
+                            border: `1px solid ${lic.activo ? 'rgba(74,222,128,0.3)' : 'rgba(248,113,113,0.3)'}` }}>
+                            {lic.activo ? 'Activa' : 'Desactivada'}
+                          </span>
+                        </div>
+                        <div style={{ fontFamily:'monospace', fontSize:'0.9rem', letterSpacing:'0.1em', color:'var(--brand)', fontWeight:600, marginBottom:'0.3rem' }}>{lic.codigo}</div>
+                        <div style={{ fontSize:'0.71rem', color:'var(--text-muted)' }}>
+                          {lic.device_id
+                            ? <><Monitor size={10}/> Activado el {lic.fecha_activacion ? new Date(lic.fecha_activacion).toLocaleDateString('es-DO') : '—'}</>
+                            : 'Sin activar (ningún dispositivo vinculado)'}
+                        </div>
+                      </div>
+                      <div style={{ display:'flex', flexDirection:'column', gap:'0.3rem', alignItems:'flex-end', flexShrink:0 }}>
+                        <button onClick={async () => {
+                          const r = await fetch('/api/activaciones/admin', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: lic.id, activo: !lic.activo }) });
+                          if (r.ok) { const d = await r.json(); setActivaciones(prev => prev.map(a => a.id === lic.id ? d : a)); showToast(d.activo ? 'Licencia activada' : 'Licencia desactivada', 'success'); }
+                        }} style={{ fontSize:'0.72rem', padding:'0.25rem 0.65rem', borderRadius:'6px', border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-muted)', cursor:'pointer', whiteSpace:'nowrap', fontWeight:600 }}>
+                          {lic.activo ? 'Desactivar' : 'Activar'}
+                        </button>
+                        {lic.device_id && (
+                          <button onClick={async () => {
+                            if (!confirm('¿Liberar dispositivo? El agente deberá activar de nuevo en su PC.')) return;
+                            const r = await fetch('/api/activaciones/admin', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: lic.id, release_device: true }) });
+                            if (r.ok) { const d = await r.json(); setActivaciones(prev => prev.map(a => a.id === lic.id ? d : a)); showToast('Dispositivo liberado', 'success'); }
+                          }} style={{ fontSize:'0.72rem', padding:'0.25rem 0.65rem', borderRadius:'6px', border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-muted)', cursor:'pointer', whiteSpace:'nowrap' }}>
+                            Liberar PC
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </>)}
             </div>
           </div>

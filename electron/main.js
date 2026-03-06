@@ -3,14 +3,77 @@ const path = require('path');
 const fs   = require('fs');
 const os   = require('os');
 const { exec } = require('child_process');
+const crypto = require('crypto');
 
 // ── URL de producción en Vercel ─────────────────────────────
-// Actualiza esta URL con la dirección real de tu deployment
 const PROD_URL = 'https://sistema-cartera.vercel.app';
 // ───────────────────────────────────────────────────────────
 
-function createWindow() {
-  const win = new BrowserWindow({
+// ── Rutas de activación ─────────────────────────────────────
+const ACTIVATION_FILE = path.join(app.getPath('userData'), 'activation.json');
+// ───────────────────────────────────────────────────────────
+
+function loadActivation() {
+  try {
+    if (fs.existsSync(ACTIVATION_FILE)) {
+      return JSON.parse(fs.readFileSync(ACTIVATION_FILE, 'utf8'));
+    }
+  } catch (_) {}
+  return null;
+}
+
+function saveActivation(data) {
+  fs.writeFileSync(ACTIVATION_FILE, JSON.stringify(data), 'utf8');
+}
+
+function getOrCreateDeviceId() {
+  const saved = loadActivation();
+  if (saved?.deviceId) return saved.deviceId;
+  const id = crypto.randomUUID();
+  // Guardar solo el deviceId por ahora (sin código aún)
+  saveActivation({ deviceId: id });
+  return id;
+}
+
+// ── Validar código contra la API ────────────────────────────
+async function validateCodeWithAPI(codigo, device_id) {
+  try {
+    const res = await fetch(`${PROD_URL}/api/activaciones`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ codigo, device_id }),
+    });
+    return await res.json();
+  } catch (err) {
+    return { ok: false, error: 'Sin conexión a internet' };
+  }
+}
+
+// ── Ventana de activación ───────────────────────────────────
+let activationWin = null;
+let mainWin       = null;
+
+function createActivationWindow() {
+  activationWin = new BrowserWindow({
+    width: 460,
+    height: 420,
+    resizable: false,
+    frame: false,
+    titleBarStyle: 'hidden',
+    icon: path.join(__dirname, 'assets', 'icon.png'),
+    title: 'CartaMaster — Activación',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload-activation.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  activationWin.loadFile(path.join(__dirname, 'activation.html'));
+  activationWin.setMenuBarVisibility(false);
+}
+
+function createMainWindow() {
+  mainWin = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 960,
@@ -23,12 +86,10 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
+  mainWin.loadURL(PROD_URL);
+  mainWin.setMenuBarVisibility(false);
 
-  win.loadURL(PROD_URL);
-  win.setMenuBarVisibility(false);
-
-  // Abrir links externos en el navegador del sistema (no en Electron)
-  win.webContents.setWindowOpenHandler(({ url }) => {
+  mainWin.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('http') || url.startsWith('whatsapp')) {
       shell.openExternal(url);
     }
@@ -36,15 +97,54 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(() => {
-  createWindow();
+// ── Flujo principal al arrancar ─────────────────────────────
+app.whenReady().then(async () => {
+  const deviceId = getOrCreateDeviceId();
+  const saved    = loadActivation();
+
+  if (saved?.code) {
+    // Ya tiene código guardado — validar contra la API
+    const result = await validateCodeWithAPI(saved.code, deviceId);
+    if (result.ok) {
+      createMainWindow();
+      return;
+    }
+    // Código desactivado o inválido: mostrar pantalla de activación
+    console.warn('[activation] Validación fallida:', result.error);
+  }
+
+  // Sin código o inválido: mostrar pantalla de activación
+  createActivationWindow();
+
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) createActivationWindow();
   });
 });
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
+});
+
+// ── IPC: validar código de activación ───────────────────────
+ipcMain.handle('validate-activation', async (event, codigo) => {
+  const deviceId = getOrCreateDeviceId();
+  const result   = await validateCodeWithAPI(codigo, deviceId);
+
+  if (result.ok) {
+    // Guardar activación localmente
+    saveActivation({ code: codigo, deviceId });
+
+    // Cerrar ventana de activación y abrir la app
+    if (activationWin) {
+      setTimeout(() => {
+        activationWin.close();
+        activationWin = null;
+        createMainWindow();
+      }, 1200); // pequeña pausa para mostrar el mensaje de éxito
+    }
+  }
+
+  return result;
 });
 
 // ── IPC: copiar PDF al portapapeles y abrir WhatsApp Desktop ─
