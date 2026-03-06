@@ -1924,21 +1924,36 @@ export default function App() {
     } catch { setClientesConDoc(new Set()); }
   };
 
-  const confirmarCargaMasiva = () => {
+  const confirmarCargaMasiva = async () => {
     let guardados = 0; let errores = 0; let omitidos = 0;
-    archivosEnProceso.forEach(arch => {
-      if (arch.estado === 'ya-tiene-doc') { omitidos++; return; }
-      if (!arch.base64 || !arch.clienteAsignado) { errores++; return; }
-      const nueva = { id: Date.now() + Math.random(), nombre: arch.nombre, base64: arch.base64, fecha: new Date().toISOString(), monto: arch.montoDetectado || null, tipo: 'subido', estado: 'Cotizado' };
+    setShowCargaMasivaModal(false);
+    setArchivosEnProceso([]);
+    const paraGuardar = archivosEnProceso.filter(arch => {
+      if (arch.estado === 'ya-tiene-doc') { omitidos++; return false; }
+      if (!arch.base64 || !arch.clienteAsignado) { errores++; return false; }
+      return true;
+    });
+    for (const arch of paraGuardar) {
+      const fecha = new Date().toISOString();
+      const nueva = { id: Date.now() + Math.random(), nombre: arch.nombre, base64: arch.base64, fecha, monto: arch.montoDetectado || null, tipo: 'subido', estado: 'Cotizado' };
       setCotizaciones(prev => ({ ...prev, [arch.clienteAsignado.id]: [...(prev[arch.clienteAsignado.id] || []), nueva] }));
+      try {
+        const res = await fetch(`/api/cotizaciones/${arch.clienteAsignado.id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre: arch.nombre, base64: arch.base64, monto: arch.montoDetectado || null, fecha, estado: 'Cotizado', tipo: 'subido' }),
+        });
+        if (res.ok) {
+          const saved = await res.json();
+          setCotizaciones(prev => ({ ...prev, [arch.clienteAsignado.id]: (prev[arch.clienteAsignado.id] || []).map(d => d.id === nueva.id ? { ...d, id: saved.id } : d) }));
+          guardados++;
+        } else { errores++; }
+      } catch { errores++; }
       if (arch.montoDetectado) {
         const clienteActual = clientes.find(c => c.id === arch.clienteAsignado.id);
         if (clienteActual) actualizarCliente({ ...clienteActual, monto: arch.montoDetectado.toString() });
       }
-      guardados++;
-    });
-    setShowCargaMasivaModal(false);
-    setArchivosEnProceso([]);
+    }
     const msg = [
       `${guardados} documento${guardados !== 1 ? 's' : ''} guardado${guardados !== 1 ? 's' : ''}`,
       omitidos > 0 ? `${omitidos} omitido${omitidos !== 1 ? 's' : ''} (ya tenían documento)` : null,
