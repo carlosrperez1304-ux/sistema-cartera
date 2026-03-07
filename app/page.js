@@ -183,6 +183,42 @@ export default function App() {
       .finally(() => setHydrated(true));
   }, [session?.user, sessionStatus]);
 
+  // — Notas del dashboard —
+  const cargarNotasDashboard = useCallback(async () => {
+    try {
+      const res = await fetch('/api/notas-dashboard');
+      if (res.ok) setNotasDashboard(await res.json());
+    } catch {}
+  }, []);
+
+  const agregarNota = async () => {
+    if (!notaInput.trim()) return;
+    setNotaLoading(true);
+    try {
+      const res = await fetch('/api/notas-dashboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-csrf-token': 'paytrack' },
+        body: JSON.stringify({ texto: notaInput.trim() }),
+      });
+      if (res.ok) {
+        const nueva = await res.json();
+        setNotasDashboard(prev => [nueva, ...prev]);
+        setNotaInput('');
+      }
+    } catch {}
+    setNotaLoading(false);
+  };
+
+  const eliminarNota = async (id) => {
+    try {
+      await fetch(`/api/notas-dashboard?id=${id}`, {
+        method: 'DELETE',
+        headers: { 'x-csrf-token': 'paytrack' },
+      });
+      setNotasDashboard(prev => prev.filter(n => n.id !== id));
+    } catch {}
+  };
+
   // — Funciones de carga separadas (estables con useCallback) —
   const cargarClientes = useCallback(async () => {
     try {
@@ -247,6 +283,7 @@ export default function App() {
     // Carga inicial de datos
     cargarClientes();
     cargarCreditos();
+    cargarNotasDashboard();
 
     // Supabase Realtime — reemplaza el setInterval por eventos en tiempo real
     const supabase = getSupabaseBrowser();
@@ -347,6 +384,10 @@ export default function App() {
   const [tickerIndex, setTickerIndex] = useState(0);
   const [tickerVisible, setTickerVisible] = useState(true);
   const [tickerItems, setTickerItems] = useState([]);
+  const [notasDashboard, setNotasDashboard] = useState([]);
+  const [notaInput, setNotaInput] = useState('');
+  const [notaLoading, setNotaLoading] = useState(false);
+  const [showNotasDashboard, setShowNotasDashboard] = useState(false);
   const [gmailSelected, setGmailSelected] = useState(null);
   const [gmailSearch, setGmailSearch] = useState('');
   const [graficasVisibles, setGraficasVisibles] = useState(false);
@@ -2631,13 +2672,17 @@ export default function App() {
       items.push({ icon: '⚠️', text: `${vencidos.length} clientes vencidos requieren atención`, color: '#ef4444' });
     }
 
+    notasDashboard.forEach(n => {
+      items.push({ icon: '📝', text: `${n.usuario}: ${n.texto}`, color: '#06b6d4' });
+    });
+
     if (items.length === 0) {
       items.push({ icon: '✨', text: 'Todo al día — sin pendientes', color: '#22c55e' });
     }
 
     setTickerItems(items);
     setTickerIndex(0);
-  }, [clientes, creditos]);
+  }, [clientes, creditos, notasDashboard]);
 
   useEffect(() => {
     if (tickerItems.length === 0) return;
@@ -3120,6 +3165,50 @@ export default function App() {
 
           {/* TAB DASHBOARD */}
           <div className={`tab-content ${activeTab === 'dashboard' ? 'active' : ''}`}>
+
+            {/* NOTAS DEL DASHBOARD */}
+            <div style={{ marginBottom: '1.25rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
+              <div onClick={() => setShowNotasDashboard(v => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', cursor: 'pointer', borderBottom: showNotasDashboard ? '1px solid #e2e8f0' : 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '1rem' }}>📝</span>
+                  <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1e2d4a' }}>Notas del equipo</span>
+                  {notasDashboard.length > 0 && <span style={{ background: '#6366f1', color: '#fff', borderRadius: '20px', padding: '0.1rem 0.5rem', fontSize: '0.7rem', fontWeight: 700 }}>{notasDashboard.length}</span>}
+                </div>
+                <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{showNotasDashboard ? '▲' : '▼'}</span>
+              </div>
+              {showNotasDashboard && (
+                <div style={{ padding: '0.75rem 1rem' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                    <input
+                      value={notaInput}
+                      onChange={e => setNotaInput(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && agregarNota()}
+                      placeholder="Escribe una nota para el equipo..."
+                      style={{ flex: 1, padding: '0.5rem 0.75rem', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '0.83rem', outline: 'none' }}
+                    />
+                    <button onClick={agregarNota} disabled={notaLoading || !notaInput.trim()} style={{ padding: '0.5rem 1rem', background: '#6366f1', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, fontSize: '0.83rem', cursor: 'pointer', opacity: notaLoading || !notaInput.trim() ? 0.5 : 1 }}>
+                      {notaLoading ? '…' : 'Agregar'}
+                    </button>
+                  </div>
+                  {notasDashboard.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '0.8rem', padding: '0.5rem' }}>Sin notas este mes</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '200px', overflowY: 'auto' }}>
+                      {notasDashboard.map(n => (
+                        <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.5rem 0.75rem', gap: '0.5rem' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#6366f1' }}>{n.usuario} </span>
+                            <span style={{ fontSize: '0.82rem', color: '#334155' }}>{n.texto}</span>
+                          </div>
+                          <button onClick={() => eliminarNota(n.id)} title="Eliminar nota" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', fontSize: '0.85rem', flexShrink: 0, padding: '0 0.2rem' }}>✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginTop: '0.5rem', textAlign: 'right' }}>Las notas se borran automáticamente el 1 de cada mes</div>
+                </div>
+              )}
+            </div>
 
             {/* ALERTAS PRIORITARIAS */}
             {(estadisticas.vencido > 0 || creditoStats.vencido > 0) && (
