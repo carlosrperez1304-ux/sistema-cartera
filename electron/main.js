@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, screen } = require('electron');
 const path = require('path');
 const fs   = require('fs');
 const os   = require('os');
@@ -78,6 +78,7 @@ function createMainWindow() {
     height: 800,
     minWidth: 960,
     minHeight: 600,
+    frame: false,
     icon: path.join(__dirname, 'assets', 'icon.png'),
     title: 'CartaMaster',
     webPreferences: {
@@ -145,6 +146,32 @@ ipcMain.handle('validate-activation', async (event, codigo) => {
   }
 
   return result;
+});
+
+// ── IPC: controles de ventana ────────────────────────────────
+ipcMain.handle('window-control', (event, action) => {
+  const win = BrowserWindow.getFocusedWindow() || mainWin;
+  if (!win) return;
+  if (action === 'minimize') win.minimize();
+  else if (action === 'maximize') win.isMaximized() ? win.unmaximize() : win.maximize();
+  else if (action === 'close') win.close();
+});
+
+// ── IPC: modo mini ───────────────────────────────────────────
+ipcMain.handle('toggle-mini', () => {
+  const win = BrowserWindow.getFocusedWindow() || mainWin;
+  if (!win) return;
+  const [w] = win.getSize();
+  if (w <= 380) {
+    win.setSize(1280, 800);
+    win.setResizable(true);
+    win.center();
+  } else {
+    const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+    win.setSize(340, 240);
+    win.setResizable(false);
+    win.setPosition(width - 360, height - 260);
+  }
 });
 
 // ── IPC: copiar PDF al portapapeles y abrir WhatsApp Desktop ─

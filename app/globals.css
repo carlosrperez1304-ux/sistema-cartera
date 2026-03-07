@@ -1279,6 +1279,110 @@ tr.row-selected:hover { background: #dbeafe !important; }
 /* ═══════════════════════════════════════════════════════════
    TOAST SYSTEM
 ═══════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════
+   ELECTRON DESKTOP
+═══════════════════════════════════════════════════════════ */
+.electron-titlebar {
+  height: 36px;
+  background: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 0 0.85rem;
+  flex-shrink: 0;
+  -webkit-app-region: drag;
+  user-select: none;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.electron-titlebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.85);
+  -webkit-app-region: no-drag;
+  letter-spacing: 0.01em;
+}
+.electron-user-badge {
+  background: rgba(255,255,255,0.08);
+  border-radius: 4px;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.63rem;
+  color: rgba(255,255,255,0.5);
+  margin-left: 0.35rem;
+  font-weight: 600;
+}
+.electron-win-controls {
+  display: flex;
+  -webkit-app-region: no-drag;
+}
+.electron-win-btn {
+  width: 40px;
+  height: 36px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: rgba(255,255,255,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.electron-win-btn:hover { background: rgba(255,255,255,0.07); color: white; }
+.electron-win-btn.close-btn:hover { background: #e81123; color: white; }
+
+/* Topbar en modo electron: no necesita drag region, ya lo tiene la titlebar */
+body.electron-mode .topbar { -webkit-app-region: no-drag; }
+
+/* ── Command Palette ──────────────────────────────────────── */
+.command-palette-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(4px);
+  z-index: 99990;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 14vh;
+}
+.command-palette {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  width: 560px;
+  max-width: 95vw;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.3);
+  overflow: hidden;
+}
+.command-section-label {
+  padding: 0.5rem 1.25rem 0.3rem;
+  font-size: 0.63rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+.command-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1.25rem;
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  color: var(--text);
+  font-size: 0.87rem;
+  font-weight: 500;
+  transition: background 0.1s;
+}
+.command-item:hover,
+.command-item.selected { background: var(--surface-2); }
+
 .toast-container {
   position: fixed;
   bottom: 1.5rem;

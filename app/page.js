@@ -4,7 +4,7 @@ import { getSupabaseBrowser } from '../lib/supabase-browser.js';
 import * as XLSX from 'xlsx';
 import { signIn, signOut, useSession } from 'next-auth/react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Pencil, Trash2, Plus, Download, Send, FolderOpen, Save, RefreshCw, CheckCircle, XCircle, AlertTriangle, HelpCircle, Info, Phone, MessageCircle, MapPin, Mail, Pin, DollarSign, ClipboardList, FileText, FileEdit, Archive, Tag, Sun, Moon, Eye, EyeOff, SlidersHorizontal, Clock, Loader2, Inbox, Ban, MessageSquare, BarChart2, Lock, Search, Calendar, Bell, Target, Palette, MoreVertical, Edit2, StickyNote, FileSearch, BookOpen, PauseCircle, PlayCircle, Menu, X, Settings, LogOut, UserPlus, CreditCard, Upload, ChevronDown, LayoutGrid, Users, ArrowLeftRight, List, Check, Briefcase, Rocket, Monitor } from 'lucide-react';
+import { Pencil, Trash2, Plus, Download, Send, FolderOpen, Save, RefreshCw, CheckCircle, XCircle, AlertTriangle, HelpCircle, Info, Phone, MessageCircle, MapPin, Mail, Pin, DollarSign, ClipboardList, FileText, FileEdit, Archive, Tag, Sun, Moon, Eye, EyeOff, SlidersHorizontal, Clock, Loader2, Inbox, Ban, MessageSquare, BarChart2, Lock, Search, Calendar, Bell, Target, Palette, MoreVertical, Edit2, StickyNote, FileSearch, BookOpen, PauseCircle, PlayCircle, Menu, X, Settings, LogOut, UserPlus, CreditCard, Upload, ChevronDown, LayoutGrid, Users, ArrowLeftRight, List, Check, Briefcase, Rocket, Monitor, Minus, Square, Minimize2, Maximize2, Command } from 'lucide-react';
 import COT_PLANTILLAS from '../lib/cotPlantillas.js';
 
 export default function App() {
@@ -331,6 +331,11 @@ export default function App() {
   const [menuAbierto, setMenuAbierto] = useState(null);
   const [menuAbiertoDir, setMenuAbiertoDir] = useState('down');
   const [mostrarArchivados, setMostrarArchivados] = useState(false);
+  const [isElectron, setIsElectron] = useState(false);
+  const [isMiniMode, setIsMiniMode] = useState(false);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [commandQuery, setCommandQuery] = useState('');
+  const [commandIdx, setCommandIdx] = useState(0);
   const [showGmailPanel, setShowGmailPanel] = useState(false);
   const [gmailEmails, setGmailEmails] = useState([]);
   const [gmailLoading, setGmailLoading] = useState(false);
@@ -356,6 +361,33 @@ export default function App() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
   }, [darkMode]);
+
+  // Detectar Electron y modo mini
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.electronAPI?.isElectron) {
+      setIsElectron(true);
+      document.body.classList.add('electron-mode');
+      const handleResize = () => setIsMiniMode(window.innerWidth <= 380);
+      handleResize();
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, []);
+
+  // Command Palette — Ctrl+K
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowCommandPalette(v => !v);
+        setCommandQuery('');
+        setCommandIdx(0);
+      }
+      if (e.key === 'Escape') setShowCommandPalette(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
   const [showCreditoModal, setShowCreditoModal] = useState(false);
   const [editingCredito, setEditingCredito] = useState(null);
   const [creditoFormData, setCreditoFormData] = useState({ id: '', numeroOrden: '', cliente: '', monto: '', fechaInicio: '', plazoMeses: '', fechaVencimiento: '', estado: 'Activo', comentario: '', historial: [], abonos: [] });
@@ -2635,6 +2667,64 @@ export default function App() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+
+      {/* ── ELECTRON: Mini Mode Widget ───────────────────────── */}
+      {isElectron && isMiniMode && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: '#0f172a', display: 'flex', flexDirection: 'column', padding: '0.6rem 0.75rem', WebkitAppRegion: 'drag' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem', WebkitAppRegion: 'no-drag' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'white', fontSize: '0.75rem', fontWeight: 800 }}>
+              <BarChart2 size={13} style={{ color: '#6366f1' }}/>
+              CartaMaster
+            </div>
+            <button onClick={() => window.electronAPI?.toggleMini()} title="Expandir" style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '5px', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', padding: '0.2rem 0.45rem', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              <Maximize2 size={11}/> Expandir
+            </button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', WebkitAppRegion: 'no-drag' }}>
+            <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '0.45rem 0.6rem' }}>
+              <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.15rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Cobrado</div>
+              <div style={{ fontSize: '1rem', fontWeight: 800, fontFamily: 'var(--mono)', color: '#22c55e' }}>${((estadisticas.montoPagado||0)+(estadisticas.montoFacturado||0)).toLocaleString('en-US',{maximumFractionDigits:0})}</div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.4rem' }}>
+              <div style={{ flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '0.4rem 0.6rem' }}>
+                <div style={{ fontSize: '0.58rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.1rem' }}>PENDIENTES</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#f97316' }}>{(estadisticas.cotizado||0)+(estadisticas.notificado||0)}</div>
+              </div>
+              {metaMensual > 0 && (
+                <div style={{ flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '0.4rem 0.6rem' }}>
+                  <div style={{ fontSize: '0.58rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.1rem' }}>META</div>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'white' }}>{Math.min(100,Math.round(((estadisticas.montoPagado||0)+(estadisticas.montoFacturado||0))/metaMensual*100))}%</div>
+                </div>
+              )}
+            </div>
+            {metaMensual > 0 && (
+              <div style={{ height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '99px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', background: '#22c55e', borderRadius: '99px', width: `${Math.min(100,((estadisticas.montoPagado||0)+(estadisticas.montoFacturado||0))/metaMensual*100)}%`, transition: 'width 0.5s' }}/>
+              </div>
+            )}
+          </div>
+          <div style={{ marginTop: 'auto', fontSize: '0.6rem', color: 'rgba(255,255,255,0.25)', textAlign: 'center', WebkitAppRegion: 'no-drag' }}>{session?.user?.nombre||''}</div>
+        </div>
+      )}
+
+      {/* ── ELECTRON: Custom Titlebar ─────────────────────────── */}
+      {isElectron && !isMiniMode && (
+        <div className="electron-titlebar">
+          <div className="electron-titlebar-brand">
+            <BarChart2 size={13} style={{ color: '#6366f1' }}/>
+            <span>CartaMaster</span>
+            {session?.user?.nombre && <span className="electron-user-badge">{session.user.nombre}</span>}
+          </div>
+          <div style={{ flex: 1, WebkitAppRegion: 'drag' }}/>
+          <div className="electron-win-controls">
+            <button className="electron-win-btn" onClick={() => window.electronAPI?.toggleMini()} title="Modo mini"><Minimize2 size={11}/></button>
+            <button className="electron-win-btn" onClick={() => window.electronAPI?.windowControl('minimize')} title="Minimizar"><Minus size={11}/></button>
+            <button className="electron-win-btn" onClick={() => window.electronAPI?.windowControl('maximize')} title="Maximizar"><Square size={11}/></button>
+            <button className="electron-win-btn close-btn" onClick={() => window.electronAPI?.windowControl('close')} title="Cerrar"><X size={11}/></button>
+          </div>
+        </div>
+      )}
+
       {/* TOPBAR — ESPN style */}
       <div className="topbar">
         <div className="topbar-left">
@@ -6898,6 +6988,76 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* ── Command Palette (Ctrl+K) ─────────────────────────── */}
+      {showCommandPalette && (() => {
+        const quickActions = [
+          { id: 'dashboard', label: 'Inicio / Dashboard', Icon: LayoutGrid, action: () => { setActiveTab('dashboard'); setShowCommandPalette(false); } },
+          { id: 'cartera',   label: 'Cartera',            Icon: BarChart2,   action: () => { setActiveTab('cartera');   setShowCommandPalette(false); } },
+          { id: 'nuevo',     label: 'Nuevo Cliente',      Icon: UserPlus,    action: () => { setActiveTab('cartera'); abrirModal(); setShowCommandPalette(false); }, show: tienePermiso('crear_clientes') },
+          { id: 'agenda',    label: 'Agenda del Día',     Icon: Calendar,    action: () => { setActiveTab('agenda');    setShowCommandPalette(false); } },
+          { id: 'reactiv',   label: 'Reactivación',       Icon: Archive,     action: () => { setActiveTab('reactivacion'); setShowCommandPalette(false); } },
+          { id: 'dark',      label: darkMode ? 'Modo Claro' : 'Modo Oscuro', Icon: darkMode ? Sun : Moon, action: () => { setDarkMode(v => !v); setShowCommandPalette(false); } },
+        ].filter(a => a.show !== false);
+
+        const filtered = commandQuery ? quickActions.filter(a => a.label.toLowerCase().includes(commandQuery.toLowerCase())) : quickActions;
+        const clientResults = commandQuery.length > 1
+          ? clientes.filter(c => c.nombre.toLowerCase().includes(commandQuery.toLowerCase()) || (c.codigoCliente||'').toLowerCase().includes(commandQuery.toLowerCase()) || (c.contacto||'').includes(commandQuery)).slice(0,5)
+          : [];
+        const allResults = [
+          ...filtered.map(a => ({ ...a, type: 'action', sub: null })),
+          ...clientResults.map(c => ({ id: `c${c.id}`, label: c.nombre, sub: `${c.codigoCliente?'#'+c.codigoCliente:'#'+c.id} · ${estadoActivoCliente(c)}`, Icon: Users, type: 'client', action: () => { setActiveTab('cartera'); setSearchTerm(c.nombre); setShowCommandPalette(false); } })),
+        ];
+        return (
+          <div className="command-palette-overlay" onClick={() => setShowCommandPalette(false)}>
+            <div className="command-palette" onClick={e => e.stopPropagation()}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
+                <Command size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }}/>
+                <input
+                  autoFocus
+                  placeholder="Buscar cliente o acción..."
+                  value={commandQuery}
+                  onChange={e => { setCommandQuery(e.target.value); setCommandIdx(0); }}
+                  onKeyDown={e => {
+                    if (e.key === 'ArrowDown') { e.preventDefault(); setCommandIdx(i => Math.min(i+1, allResults.length-1)); }
+                    else if (e.key === 'ArrowUp') { e.preventDefault(); setCommandIdx(i => Math.max(i-1, 0)); }
+                    else if (e.key === 'Enter' && allResults[commandIdx]) allResults[commandIdx].action();
+                  }}
+                  style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '0.95rem', color: 'var(--text)', outline: 'none' }}
+                />
+              </div>
+              <div style={{ maxHeight: '340px', overflowY: 'auto' }}>
+                {filtered.length > 0 && <div className="command-section-label">Acciones rápidas</div>}
+                {filtered.map((item, idx) => (
+                  <button key={item.id} className={`command-item${commandIdx===idx?' selected':''}`} onClick={item.action} onMouseEnter={() => setCommandIdx(idx)}>
+                    <item.Icon size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }}/>
+                    <span style={{ flex: 1 }}>{item.label}</span>
+                    <kbd style={{ fontSize: '0.65rem', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: '4px', padding: '0.1rem 0.35rem', color: 'var(--text-muted)' }}>↵</kbd>
+                  </button>
+                ))}
+                {clientResults.length > 0 && <div className="command-section-label">Clientes</div>}
+                {clientResults.map((item, idx) => {
+                  const realIdx = filtered.length + idx;
+                  return (
+                    <button key={item.id} className={`command-item${commandIdx===realIdx?' selected':''}`} onClick={item.action} onMouseEnter={() => setCommandIdx(realIdx)}>
+                      <item.Icon size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }}/>
+                      <span style={{ flex: 1 }}>{item.label}</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{item.sub}</span>
+                    </button>
+                  );
+                })}
+                {allResults.length === 0 && (
+                  <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Sin resultados para "{commandQuery}"</div>
+                )}
+              </div>
+              <div style={{ padding: '0.5rem 1.25rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '1rem', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                <span>↑↓ navegar</span><span>↵ seleccionar</span><span>Esc cerrar</span>
+                <span style={{ marginLeft: 'auto' }}>Ctrl+K</span>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Toast Notifications */}
       <div className="toast-container">
