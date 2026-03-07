@@ -213,6 +213,7 @@ export default function App() {
       setUpdateVersion(version);
     });
     window.electronAPI.onDownloadProgress?.((percent) => {
+      console.log('Progreso:', percent);
       setDownloadProgress(percent);
     });
     window.electronAPI.onUpdateDownloaded?.(() => {
