@@ -1185,7 +1185,7 @@ export default function App() {
 
   // Auto-actualizar Gmail cada 3 minutos
   useEffect(() => {
-    const interval = setInterval(() => { cargarGmail(); }, 3 * 60 * 1000);
+    const interval = setInterval(() => { cargarGmail(); }, 10 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
