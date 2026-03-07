@@ -2619,6 +2619,13 @@ export default function App() {
       items.push({ icon: '🔴', text: `Crédito de ${c.cliente || c.nombre || '—'} está vencido`, color: '#ef4444' });
     });
 
+    const creditosPorVencer = creditos.filter(c => c.estado === 'Por Vencer');
+    creditosPorVencer.slice(0, 5).forEach(c => {
+      const dias = c.fechaVencimiento ? Math.ceil((new Date(c.fechaVencimiento) - new Date()) / (1000 * 60 * 60 * 24)) : null;
+      const diasText = dias !== null ? ` — vence en ${dias}d` : '';
+      items.push({ icon: '🟡', text: `Crédito de ${c.cliente || c.nombre || '—'} por vencer${diasText}`, color: '#f59e0b' });
+    });
+
     const vencidos = clientes.filter(c => c.estado === 'Vencido');
     if (vencidos.length > 0) {
       items.push({ icon: '⚠️', text: `${vencidos.length} clientes vencidos requieren atención`, color: '#ef4444' });
