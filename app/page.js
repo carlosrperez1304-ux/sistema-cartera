@@ -184,6 +184,19 @@ export default function App() {
       .finally(() => setHydrated(true));
   }, [session?.user, sessionStatus]);
 
+  // — Reloj en tiempo real —
+  useEffect(() => {
+    const actualizar = () => {
+      const ahora = new Date();
+      const hora = ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const fecha = ahora.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+      setHoraActual(`${fecha} · ${hora}`);
+    };
+    actualizar();
+    const interval = setInterval(actualizar, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   // — Notas del dashboard —
   const cargarNotasDashboard = useCallback(async () => {
     try {
@@ -485,6 +498,7 @@ export default function App() {
   const [fechaHasta, setFechaHasta] = useState('');
   const [busquedaGlobal, setBusquedaGlobal] = useState('');
   const [showBusquedaGlobal, setShowBusquedaGlobal] = useState(false);
+  const [horaActual, setHoraActual] = useState('');
   const [showWhatsappModal, setShowWhatsappModal] = useState(false);
   const [whatsappCliente, setWhatsappCliente] = useState(null);
   const [whatsappMensaje, setWhatsappMensaje] = useState('');
@@ -2914,6 +2928,62 @@ export default function App() {
             </div>
           )}
         </div>
+
+        {/* TOPBAR CENTER — búsqueda global + reloj */}
+        <div className="topbar-center">
+          <div style={{ position: 'relative' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--surface-2, rgba(255,255,255,0.06))', border: '1px solid var(--border)', borderRadius: '10px', padding: '0.3rem 0.75rem', minWidth: '260px' }}>
+              <Search size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }}/>
+              <input
+                type="text"
+                value={busquedaGlobal}
+                onChange={e => { setBusquedaGlobal(e.target.value); setShowBusquedaGlobal(true); }}
+                onFocus={() => setShowBusquedaGlobal(true)}
+                onBlur={() => setTimeout(() => setShowBusquedaGlobal(false), 180)}
+                placeholder="Buscar cliente..."
+                style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.82rem', color: 'var(--text)', width: '100%' }}
+              />
+              {busquedaGlobal && (
+                <button onClick={() => { setBusquedaGlobal(''); setShowBusquedaGlobal(false); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, lineHeight: 1 }}>×</button>
+              )}
+            </div>
+            {showBusquedaGlobal && busquedaGlobal.length > 1 && (() => {
+              const term = busquedaGlobal.toLowerCase();
+              const resultados = clientes.filter(c =>
+                (c.nombre || '').toLowerCase().includes(term) ||
+                (c.codigo || '').toLowerCase().includes(term)
+              ).slice(0, 6);
+              return (
+                <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.25)', zIndex: 9999, overflow: 'hidden' }}>
+                  {resultados.length === 0 ? (
+                    <div style={{ padding: '0.75rem 1rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Sin resultados</div>
+                  ) : resultados.map(c => (
+                    <div key={c.id} onMouseDown={() => { setBusquedaGlobal(''); setShowBusquedaGlobal(false); setActiveTab('cartera'); setTimeout(() => { setBusqueda(c.nombre || ''); }, 100); }}
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.9rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-2)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--brand)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.75rem', flexShrink: 0 }}>
+                        {(c.nombre || '?').charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: '0.82rem', color: 'var(--text)' }}>{c.nombre}</div>
+                        {c.codigo && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{c.codigo}</div>}
+                      </div>
+                      <div style={{ marginLeft: 'auto', fontSize: '0.7rem', fontWeight: 600, color: c.estado === 'Vencido' ? '#ef4444' : c.estado === 'Por vencer' ? '#f59e0b' : 'var(--text-muted)' }}>
+                        {c.estado}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', letterSpacing: '0.02em', marginLeft: '1rem' }}>
+            {horaActual}
+          </div>
+        </div>
+
         <div className="topbar-right">
           {soloLectura && <span style={{ background: 'rgba(254,249,195,0.15)', color: '#fbbf24', fontSize: '0.67rem', padding: '0.2rem 0.55rem', borderRadius: '5px', fontWeight: 700, marginRight: '0.25rem', border: '1px solid rgba(251,191,36,0.25)' }}>Solo lectura</span>}
           <button className="topbar-icon-btn" onClick={() => setDarkMode(!darkMode)} title="Modo oscuro">

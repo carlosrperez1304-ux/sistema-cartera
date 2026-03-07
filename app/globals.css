@@ -342,6 +342,16 @@ textarea:disabled {
 }
 
 /* Right utility area */
+.topbar-center {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  justify-content: center;
+  gap: 0;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
 .topbar-right {
   display: flex;
   align-items: center;
@@ -2257,6 +2267,7 @@ body.electron-mode .topbar { -webkit-app-region: no-drag; }
 @media (max-width: 768px) {
   .hamburger-btn { display: flex; }
   .topbar-center-nav { display: none; }
+  .topbar-center { display: none; }
   .logo-text { display: none; }
   .topbar { padding: 0 0.85rem 0 0.5rem; gap: 0; }
 
