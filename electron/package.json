@@ -27,6 +27,7 @@
       "preload.js",
       "preload-activation.js",
       "activation.html",
+      "splash.html",
       "assets/**"
     ]
   },

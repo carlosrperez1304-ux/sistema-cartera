@@ -18,9 +18,10 @@ export default withAuth(
       // Permitir acceso si hay token válido
       authorized: ({ token, req }) => {
         const { pathname } = req.nextUrl;
-        // Rutas públicas: login de NextAuth y página principal (maneja su propio auth)
+        // Rutas públicas: login de NextAuth, página principal y activación de licencia
         if (pathname.startsWith('/api/auth')) return true;
         if (pathname === '/') return true;
+        if (pathname === '/api/activaciones') return true;
         // El resto de APIs requieren token
         if (pathname.startsWith('/api/')) return !!token;
         return true;
