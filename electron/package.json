@@ -1,6 +1,6 @@
 {
   "name": "paytrack",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "PayTrack — Gestión de Cartera",
   "main": "main.js",
   "scripts": {
@@ -40,7 +40,7 @@
     ]
   },
   "dependencies": {
-    "electron-log": "^5.0.0",
+    "electron-log": "^5.4.3",
     "electron-updater": "^6.0.0"
   },
   "devDependencies": {
