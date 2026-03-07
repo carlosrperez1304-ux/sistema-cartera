@@ -2641,7 +2641,7 @@ export default function App() {
 
   if (!isAuthenticated && !session) {
     return (
-      <div className="login-container">
+      <div className="login-container" style={{ position: 'relative', zIndex: 1, isolation: 'isolate' }}>
         {/* Fondo animado con gráficas */}
         <div style={{ position: 'fixed', inset: 0, zIndex: 0, background: '#0a0f1e', overflow: 'hidden' }}>
           <svg width="100%" height="100%" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
