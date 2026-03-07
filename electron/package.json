@@ -1,15 +1,15 @@
 {
-  "name": "cartamaster",
+  "name": "paytrack",
   "version": "1.0.0",
-  "description": "CartaMaster — Gestión de Cartera",
+  "description": "PayTrack — Gestión de Cartera",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "build": "electron-builder --win"
   },
   "build": {
-    "appId": "com.7labs.cartamaster",
-    "productName": "CartaMaster",
+    "appId": "com.7labs.paytrack",
+    "productName": "PayTrack",
     "copyright": "7LABS",
     "win": {
       "target": "nsis",

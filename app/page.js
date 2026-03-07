@@ -876,10 +876,10 @@ export default function App() {
     if (!('Notification' in window)) return;
     const enviarNotif = () => {
       if (creditosVencidos.length > 0) {
-        new Notification('CartaMaster - Créditos Vencidos', { body: `Tienes ${creditosVencidos.length} crédito(s) vencido(s) que requieren atención.`, icon: '/favicon.ico' });
+        new Notification('PayTrack - Créditos Vencidos', { body: `Tienes ${creditosVencidos.length} crédito(s) vencido(s) que requieren atención.`, icon: '/favicon.ico' });
       }
       if (creditosAlerta.length > 0) {
-        new Notification('CartaMaster - Créditos por Vencer', { body: `${creditosAlerta.length} crédito(s) vencen en los próximos 7 días.`, icon: '/favicon.ico' });
+        new Notification('PayTrack - Créditos por Vencer', { body: `${creditosAlerta.length} crédito(s) vencen en los próximos 7 días.`, icon: '/favicon.ico' });
       }
     };
     if (Notification.permission === 'granted') { enviarNotif(); }
@@ -1529,7 +1529,7 @@ export default function App() {
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       doc.setFillColor(30, 45, 74); doc.rect(0, 0, 210, 40, 'F');
       doc.setTextColor(255, 255, 255); doc.setFontSize(22); doc.setFont(undefined, 'bold');
-      doc.text('CartaMaster', 15, 18);
+      doc.text('PayTrack', 15, 18);
       doc.setFontSize(11); doc.setFont(undefined, 'normal');
       doc.text('Recibo de Pago', 15, 28);
       doc.text(`Fecha: ${new Date().toLocaleDateString('es-DO')}`, 150, 28);
@@ -1551,7 +1551,7 @@ export default function App() {
       doc.text(`Saldo pendiente:`, 20, 135); doc.setTextColor(s.pendiente > 0 ? 220 : 5, s.pendiente > 0 ? 38 : 150, s.pendiente > 0 ? 38 : 105);
       doc.text(`$${s.pendiente.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 80, 135);
       doc.setTextColor(148, 163, 184); doc.setFontSize(9);
-      doc.text('Este recibo fue generado automáticamente por CartaMaster.', 15, 270);
+      doc.text('Este recibo fue generado automáticamente por PayTrack.', 15, 270);
       doc.save(`recibo-${cliente.nombre.replace(/ /g,'-')}-${new Date().toISOString().split('T')[0]}.pdf`);
     });
   };
@@ -1562,7 +1562,7 @@ export default function App() {
       import('jspdf-autotable').then((autotableModule) => { const autoTable = autotableModule.default || autotableModule;
         const doc = new jsPDF({ orientation: 'landscape' });
         doc.setFontSize(16); doc.setFont(undefined, 'bold');
-        doc.text('CartaMaster - Reporte de Cartera', 14, 15);
+        doc.text('PayTrack - Reporte de Cartera', 14, 15);
         doc.setFontSize(10); doc.setFont(undefined, 'normal');
         doc.text(`Generado: ${new Date().toLocaleDateString('es-DO')} | Total clientes: ${clientes.length}`, 14, 22);
         autoTable(doc, {
@@ -1584,7 +1584,7 @@ export default function App() {
       import('jspdf-autotable').then((autotableModule) => { const autoTable = autotableModule.default || autotableModule;
         const doc = new jsPDF({ orientation: 'landscape' });
         doc.setFontSize(16); doc.setFont(undefined, 'bold');
-        doc.text('CartaMaster - Reporte de Créditos', 14, 15);
+        doc.text('PayTrack - Reporte de Créditos', 14, 15);
         doc.setFontSize(10); doc.setFont(undefined, 'normal');
         doc.text(`Generado: ${new Date().toLocaleDateString('es-DO')} | Total créditos: ${creditos.length}`, 14, 22);
         autoTable(doc, {
@@ -2448,7 +2448,7 @@ export default function App() {
         // Header
         doc.setFillColor(15,28,63); doc.rect(0,0,210,40,'F');
         doc.setTextColor(255,255,255); doc.setFontSize(20); doc.setFont(undefined,'bold');
-        doc.text('CartaMaster', 15, 16);
+        doc.text('PayTrack', 15, 16);
         doc.setFontSize(10); doc.setFont(undefined,'normal');
         doc.text('Estado de Cuenta', 15, 25);
         doc.text(`Generado: ${new Date().toLocaleDateString('es-DO')}`, 15, 33);
@@ -2519,7 +2519,7 @@ export default function App() {
         // Header
         doc.setFillColor(15, 28, 63); doc.rect(0, 0, 210, 45, 'F');
         doc.setTextColor(255,255,255); doc.setFontSize(22); doc.setFont(undefined,'bold');
-        doc.text('CartaMaster', 15, 18);
+        doc.text('PayTrack', 15, 18);
         doc.setFontSize(11); doc.setFont(undefined,'normal');
         doc.text('Resumen Ejecutivo Mensual', 15, 27);
         doc.text(mesNombre, 15, 35);
@@ -2569,7 +2569,7 @@ export default function App() {
         for (let i = 1; i <= totalPages; i++) {
           doc.setPage(i);
           doc.setTextColor(148,163,184); doc.setFontSize(8); doc.setFont(undefined,'normal');
-          doc.text('CartaMaster — Reporte Confidencial', 15, 287);
+          doc.text('PayTrack — Reporte Confidencial', 15, 287);
           doc.text(`Página ${i} de ${totalPages}`, 170, 287);
         }
         doc.save(`resumen-ejecutivo-${mesVisualizando}.pdf`);
@@ -2734,7 +2734,7 @@ export default function App() {
         <div className="login-box" style={{ position: 'relative', zIndex: 2 }}>
           <div className="login-header">
             <div className="login-logo"><BarChart2 size={34} strokeWidth={2}/></div>
-            <h1 className="login-title"><span className="logo-carta">Carta</span><span className="logo-master">Master</span></h1>
+            <h1 className="login-title"><span className="logo-carta">Pay</span><span className="logo-master">Track</span></h1>
             <p className="login-subtitle">Sistema de Gestión de Cartera</p>
           </div>
           <form className="login-form" onSubmit={handleLogin}>
@@ -2750,7 +2750,7 @@ export default function App() {
             <button type="submit" className="login-btn">Iniciar Sesión</button>
           </form>
         </div>
-        <p className="login-footer" style={{ position: 'relative', zIndex: 2 }}>© 2026 CartaMaster · Todos los derechos reservados</p>
+        <p className="login-footer" style={{ position: 'relative', zIndex: 2 }}>© 2026 PayTrack · Todos los derechos reservados</p>
       </div>
     );
   }
@@ -2764,7 +2764,7 @@ export default function App() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem', WebkitAppRegion: 'no-drag' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'white', fontSize: '0.75rem', fontWeight: 800 }}>
               <BarChart2 size={13} style={{ color: '#6366f1' }}/>
-              CartaMaster
+              PayTrack
             </div>
             <button onClick={() => window.electronAPI?.toggleMini()} title="Expandir" style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '5px', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', padding: '0.2rem 0.45rem', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
               <Maximize2 size={11}/> Expandir
@@ -2802,9 +2802,9 @@ export default function App() {
         <div style={{ height: '36px', background: '#1e1e2e', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 1rem', WebkitAppRegion: 'drag', flexShrink: 0, zIndex: 9999 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <div style={{ width: '20px', height: '20px', background: 'linear-gradient(135deg, #6366f1, #7c3aed)', borderRadius: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ color: '#fff', fontSize: '0.65rem', fontWeight: 800 }}>C</span>
+              <span style={{ color: '#fff', fontSize: '0.65rem', fontWeight: 800 }}>P</span>
             </div>
-            <span style={{ color: '#e8e8f0', fontSize: '0.78rem', fontWeight: 600 }}>CartaMaster</span>
+            <span style={{ color: '#818cf8', fontSize: '0.78rem', fontWeight: 300 }}>Pay</span><span style={{ color: '#ffffff', fontSize: '0.78rem', fontWeight: 800 }}>Track</span>
           </div>
           {tickerItems.length > 0 && (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '0 1rem' }}>

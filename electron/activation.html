@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CartaMaster — Activación</title>
+  <title>PayTrack — Activación</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -101,8 +101,8 @@
 </head>
 <body>
   <div class="container">
-    <img class="logo" src="assets/icon.png" alt="CartaMaster" onerror="this.style.display='none'">
-    <h1>CartaMaster</h1>
+    <img class="logo" src="assets/icon.png" alt="PayTrack" onerror="this.style.display='none'">
+    <h1>PayTrack</h1>
     <div class="divider"></div>
     <p class="subtitle">Ingresa el código de activación<br>para habilitar esta instalación</p>
     <div class="input-group">
@@ -143,7 +143,7 @@
         const result = await window.activationAPI.validate(code);
         if (result.ok) {
           showMsg(`Activado para ${result.nombre_agente} — iniciando…`, 'success');
-          btn.textContent = 'Abriendo CartaMaster…';
+          btn.textContent = 'Abriendo PayTrack…';
         } else {
           showMsg(result.error || 'Código inválido', 'error');
           btn.disabled = false;

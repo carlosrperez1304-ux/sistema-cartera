@@ -65,7 +65,7 @@ function createSplashWindow() {
     alwaysOnTop: true,
     center: true,
     icon: path.join(__dirname, 'assets', 'icon.png'),
-    title: 'CartaMaster',
+    title: 'PayTrack',
     webPreferences: { contextIsolation: true, nodeIntegration: false },
   });
   splashWin.loadFile(path.join(__dirname, 'splash.html'));
@@ -86,7 +86,7 @@ function createActivationWindow() {
     frame: false,
     titleBarStyle: 'hidden',
     icon: path.join(__dirname, 'assets', 'icon.png'),
-    title: 'CartaMaster — Activación',
+    title: 'PayTrack — Activación',
     webPreferences: {
       preload: path.join(__dirname, 'preload-activation.js'),
       contextIsolation: true,
@@ -108,7 +108,7 @@ function createMainWindow() {
     show: false,
     backgroundColor: '#f5f4ef',
     icon: path.join(__dirname, 'assets', 'icon.png'),
-    title: 'CartaMaster',
+    title: 'PayTrack',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -187,17 +187,7 @@ ipcMain.handle('validate-activation', async (event, codigo) => {
 
 // ── IPC: controles de ventana ────────────────────────────────
 ipcMain.on('window-minimize', () => { const win = BrowserWindow.getFocusedWindow() || mainWin; if (win) win.minimize(); });
-ipcMain.on('window-maximize', () => {
-  const win = BrowserWindow.getFocusedWindow() || mainWin;
-  if (!win) return;
-  if (win.isFullScreen()) {
-    win.setFullScreen(false);
-  } else if (win.isMaximized()) {
-    win.unmaximize();
-  } else {
-    win.maximize();
-  }
-});
+ipcMain.on('window-maximize', () => { const win = BrowserWindow.getFocusedWindow() || mainWin; if (win) win.isMaximized() ? win.unmaximize() : win.maximize(); });
 ipcMain.on('window-close',    () => { const win = BrowserWindow.getFocusedWindow() || mainWin; if (win) win.close(); });
 
 // ── IPC: modo mini ───────────────────────────────────────────
