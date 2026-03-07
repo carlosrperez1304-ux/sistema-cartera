@@ -4,7 +4,7 @@ import { getSupabaseBrowser } from '../lib/supabase-browser.js';
 import * as XLSX from 'xlsx';
 import { signIn, signOut, useSession } from 'next-auth/react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Pencil, Trash2, Plus, Download, Send, FolderOpen, Save, RefreshCw, CheckCircle, XCircle, AlertTriangle, HelpCircle, Info, Phone, MessageCircle, MapPin, Mail, Pin, DollarSign, ClipboardList, FileText, FileEdit, Archive, Tag, Sun, Moon, Eye, EyeOff, SlidersHorizontal, Clock, Loader2, Inbox, Ban, MessageSquare, BarChart2, Lock, Search, Calendar, Bell, Target, Palette, MoreVertical, Edit2, StickyNote, FileSearch, BookOpen, PauseCircle, PlayCircle, Menu, X, Settings, LogOut, UserPlus, CreditCard, Upload, ChevronDown, LayoutGrid, Users, ArrowLeftRight, List, Check, Briefcase, Rocket, Monitor } from 'lucide-react';
+import { Pencil, Trash2, Plus, Download, Send, FolderOpen, Save, RefreshCw, CheckCircle, XCircle, AlertTriangle, HelpCircle, Info, Phone, MessageCircle, MapPin, Mail, Pin, DollarSign, ClipboardList, FileText, FileEdit, Archive, Tag, Sun, Moon, Eye, EyeOff, SlidersHorizontal, Clock, Loader2, Inbox, Ban, MessageSquare, BarChart2, Lock, Search, Calendar, Bell, Target, Palette, MoreVertical, Edit2, StickyNote, FileSearch, BookOpen, PauseCircle, PlayCircle, Menu, X, Settings, LogOut, UserPlus, CreditCard, Upload, ChevronDown, LayoutGrid, Users, ArrowLeftRight, List, Check, Briefcase, Rocket, Monitor, Minus, Square, Minimize2, Maximize2, Command } from 'lucide-react';
 import COT_PLANTILLAS from '../lib/cotPlantillas.js';
 
 export default function App() {
@@ -328,7 +328,15 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('todos');
   const [showModal, setShowModal] = useState(false);
+  const [duplicadosAlerta, setDuplicadosAlerta] = useState([]);
   const [menuAbierto, setMenuAbierto] = useState(null);
+  const [menuAbiertoDir, setMenuAbiertoDir] = useState('down');
+  const [mostrarArchivados, setMostrarArchivados] = useState(false);
+  const [isElectron, setIsElectron] = useState(false);
+  const [isMiniMode, setIsMiniMode] = useState(false);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [commandQuery, setCommandQuery] = useState('');
+  const [commandIdx, setCommandIdx] = useState(0);
   const [showGmailPanel, setShowGmailPanel] = useState(false);
   const [gmailEmails, setGmailEmails] = useState([]);
   const [gmailLoading, setGmailLoading] = useState(false);
@@ -338,7 +346,7 @@ export default function App() {
   const [gmailSending, setGmailSending] = useState(false);
   const [gmailSelected, setGmailSelected] = useState(null);
   const [gmailSearch, setGmailSearch] = useState('');
-  const [graficasVisibles, setGraficasVisibles] = useState(true);
+  const [graficasVisibles, setGraficasVisibles] = useState(false);
   const [showNotaModal, setShowNotaModal] = useState(false);
   const [showDescargaMesModal, setShowDescargaMesModal] = useState(false);
   const [notaClienteId, setNotaClienteId] = useState(null);
@@ -347,13 +355,40 @@ export default function App() {
   const [formData, setFormData] = useState({ id: '', codigoCliente: '', nombre: '', contacto: '', estado: 'Cotizado', fechaCotizacion: '', fechaNotificacion: '', fechaPago: '', fechaFacturacion: '', fechaSuspension: '', mes: '', año: '', monto: '', comentario: '', historial: [] });
   const [pdfCargando, setPdfCargando] = useState(false);
   const [pdfError,    setPdfError]    = useState('');
-  const [activeTab, setActiveTab] = useState('cartera');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [darkMode, setDarkMode] = useState(false);
   const [vistaCards, setVistaCards] = useState(false);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
   }, [darkMode]);
+
+  // Detectar Electron y modo mini
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.electronAPI?.isElectron) {
+      setIsElectron(true);
+      document.body.classList.add('electron-mode');
+      const handleResize = () => setIsMiniMode(window.innerWidth <= 380);
+      handleResize();
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, []);
+
+  // Command Palette — Ctrl+K
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowCommandPalette(v => !v);
+        setCommandQuery('');
+        setCommandIdx(0);
+      }
+      if (e.key === 'Escape') setShowCommandPalette(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
   const [showCreditoModal, setShowCreditoModal] = useState(false);
   const [editingCredito, setEditingCredito] = useState(null);
   const [creditoFormData, setCreditoFormData] = useState({ id: '', numeroOrden: '', cliente: '', monto: '', fechaInicio: '', plazoMeses: '', fechaVencimiento: '', estado: 'Activo', comentario: '', historial: [], abonos: [] });
@@ -383,6 +418,9 @@ export default function App() {
   const ITEMS_POR_PAGINA = 15;
   const [editingMontoId, setEditingMontoId] = useState(null);
   const [tempMonto, setTempMonto] = useState('');
+  const [editingContactoId, setEditingContactoId] = useState(null);
+  const [tempContacto, setTempContacto] = useState('');
+  const [vistaReact, setVistaReact] = useState('no-generaron');
   const [editingCreditoMontoId, setEditingCreditoMontoId] = useState(null);
   const [tempCreditoMonto, setTempCreditoMonto] = useState('');
   const [showPagoModal, setShowPagoModal] = useState(false);
@@ -486,6 +524,9 @@ export default function App() {
   const [waMasivoMensaje, setWaMasivoMensaje] = useState('');
   const [waMasivoIndex, setWaMasivoIndex] = useState(0);
   const [waMasivoActivo, setWaMasivoActivo] = useState(false);
+  const [waMasivoListoSiguiente, setWaMasivoListoSiguiente] = useState(false);
+  const [waMasivoDestinosActual, setWaMasivoDestinosActual] = useState([]);
+  const [recordatorioActivo, setRecordatorioActivo] = useState(false);
 
   // Cargar preferencias y datos desde API
   useEffect(() => {
@@ -496,6 +537,12 @@ export default function App() {
         if (cfg.color_acento)           setColorAcento(cfg.color_acento);
         if (cfg.recordatorio_dias)      setRecordatoriosDias(parseInt(cfg.recordatorio_dias) || 7);
         if (cfg.modo_compacto  != null) setModoCompacto(cfg.modo_compacto === 'true');
+        // Recordatorio mensual: activo si el mes coincide y no fue enviado aún
+        const hoy = new Date();
+        const mesActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+        if (cfg.recordatorio_mes === mesActual && cfg.recordatorio_mes_enviado !== mesActual) {
+          setRecordatorioActivo(true);
+        }
       })
       .catch(() => {});
     fetch('/api/plantillas')
@@ -683,6 +730,7 @@ export default function App() {
   };
 
   const estadoActivoCliente = (cliente) => {
+    if (cliente.estado === 'Archivado') return 'Archivado';
     const docs = cotizaciones[cliente.id] || [];
     if (!docs.length) {
       // Sin documentos: 'Cotizado' solo es válido si el usuario marcó el proceso manualmente
@@ -691,6 +739,28 @@ export default function App() {
       return cliente.estado;
     }
     return docs.reduce((a, b) => (a.id > b.id ? a : b)).estado || cliente.estado || 'Cotizado';
+  };
+
+  const mesesSinActividad = (cliente) => {
+    const historial = cliente.historial || [];
+    // Buscar última acción positiva
+    const acciones = ['Marco Pagado', 'Marco Facturado', 'Marco Notificado', 'Notificado'];
+    const entradas = historial
+      .filter(h => h.fecha && acciones.some(a => (h.accion || '').includes(a)))
+      .sort((a, b) => b.fecha.localeCompare(a.fecha));
+    if (entradas.length === 0) {
+      // Usar mes/año del cliente
+      if (cliente.mes && cliente.anio) {
+        const hoy = new Date();
+        const diff = (hoy.getFullYear() - parseInt(cliente.anio)) * 12 + (hoy.getMonth() + 1 - parseInt(cliente.mes));
+        return diff > 0 ? diff : 0;
+      }
+      return null;
+    }
+    const ultima = new Date(entradas[0].fecha);
+    const hoy = new Date();
+    const diff = (hoy.getFullYear() - ultima.getFullYear()) * 12 + (hoy.getMonth() - ultima.getMonth());
+    return Math.max(0, diff);
   };
 
   const calcularSaldoCredito = (credito) => {
@@ -815,6 +885,8 @@ export default function App() {
 
   const clientesFiltrados = useMemo(() => {
     let resultado = datosActuales.clientes;
+    // Excluir archivados del listado principal salvo que se active el toggle
+    if (!mostrarArchivados) resultado = resultado.filter(c => c.estado !== 'Archivado');
     const myUsername = (session?.user?.username || '').toLowerCase();
     if (filter === 'delegaciones') {
       // Solo clientes delegados (creados por otro usuario)
@@ -824,7 +896,7 @@ export default function App() {
       resultado = resultado.filter(c => c.creadoPor.toLowerCase() === myUsername);
     }
     if (filtroAgente) resultado = resultado.filter(c => c.creadoPor === filtroAgente);
-    if (searchTerm) resultado = resultado.filter(c => c.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || (c.contacto || '').includes(searchTerm) || c.id.toString().includes(searchTerm));
+    if (searchTerm) resultado = resultado.filter(c => c.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || (c.contacto || '').includes(searchTerm) || c.id.toString().includes(searchTerm) || (c.codigoCliente || '').toLowerCase().includes(searchTerm.toLowerCase()));
     if (fechaDesde) resultado = resultado.filter(c => c.fechaCotizacion && c.fechaCotizacion >= fechaDesde);
     if (fechaHasta) resultado = resultado.filter(c => c.fechaCotizacion && c.fechaCotizacion <= fechaHasta);
     if (filtroMontoMin !== '') resultado = resultado.filter(c => (parseFloat(c.monto) || 0) >= parseFloat(filtroMontoMin));
@@ -874,7 +946,34 @@ export default function App() {
     setShowModal(true);
   };
 
-  const cerrarModal = () => { setShowModal(false); setEditingCliente(null); setPdfError(''); };
+  const cerrarModal = () => { setShowModal(false); setEditingCliente(null); setPdfError(''); setDuplicadosAlerta([]); };
+
+  const detectarDuplicados = (nombre, contacto) => {
+    if (editingCliente) return; // al editar no es necesario
+    const norm = (s) => (s || '').toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s]/g, '').trim();
+    const normTel = (t) => (t || '').replace(/\D/g, '');
+    const nNombre = norm(nombre);
+    const nTel = normTel(contacto);
+    if (!nNombre && !nTel) { setDuplicadosAlerta([]); return; }
+    const encontrados = clientes.filter(c => {
+      if (nTel.length >= 7 && normTel(c.contacto) === nTel) return true;
+      if (nNombre.length >= 3) {
+        const cN = norm(c.nombre);
+        if (cN === nNombre) return true;
+        if (cN.length > 3 && (cN.includes(nNombre) || nNombre.includes(cN))) return true;
+        const words = nNombre.split(/\s+/).filter(w => w.length > 2);
+        if (words.length > 0) {
+          const cWords = cN.split(/\s+/);
+          const hits = words.filter(w => cWords.some(cw => cw === w || cw.includes(w)));
+          if (hits.length / words.length >= 0.6) return true;
+        }
+      }
+      return false;
+    });
+    setDuplicadosAlerta(encontrados.slice(0, 3));
+  };
 
   // Lee una factura PDF y autocompleta el campo monto
   const leerFacturaPDF = async (archivo) => {
@@ -1032,6 +1131,26 @@ export default function App() {
     setEditingMontoId(null); setTempMonto('');
   };
   const cancelarEdicionMonto = () => { setEditingMontoId(null); setTempMonto(''); };
+  const guardarContactoInline = (clienteId) => {
+    const updated = clientes.find(c => c.id === clienteId);
+    if (updated) actualizarCliente({ ...updated, contacto: tempContacto, historial: [...(updated.historial || []), { fecha: new Date().toISOString(), accion: `Teléfono actualizado a ${tempContacto}`, usuario: currentUser || 'SISTEMA' }] });
+    setEditingContactoId(null); setTempContacto('');
+  };
+  const cancelarEdicionContacto = () => { setEditingContactoId(null); setTempContacto(''); };
+
+  const esMorosoRecurrente = (cliente) => {
+    const historial = cliente.historial || [];
+    const meses = new Set();
+    historial.forEach(h => { if (h.accion?.includes('Notificado') && h.fecha) meses.add(h.fecha.substring(0, 7)); });
+    return meses.size >= 2;
+  };
+
+  const esClienteNuevo = (cliente) => {
+    if (!cliente.created_at) return false;
+    const hoy = new Date();
+    const mesActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+    return cliente.created_at.startsWith(mesActual);
+  };
 
   const iniciarEdicionCreditoMonto = (credito) => { setEditingCreditoMontoId(credito.id); setTempCreditoMonto(credito.monto || ''); };
   const guardarCreditoMontoInline = (creditoId) => {
@@ -2205,6 +2324,19 @@ export default function App() {
   const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const getMesFactura = () => { const d = new Date(); const p = new Date(d.getFullYear(), d.getMonth() - 1, 1); return `${MESES[p.getMonth()].toUpperCase()} ${p.getFullYear()}`; };
   const getMesLimite = () => { const d = new Date(); return `15 DE ${MESES[d.getMonth()].toUpperCase()} ${d.getFullYear()}`; };
+  const getMsgRecordatorio = () => {
+    const d = new Date();
+    const mes = MESES[d.getMonth()].toUpperCase();
+    const anio = d.getFullYear();
+    const suspension = new Date(d.getFullYear(), d.getMonth(), 18);
+    const diaSemana = suspension.getDay();
+    if (diaSemana === 6) suspension.setDate(20);
+    else if (diaSemana === 0) suspension.setDate(19);
+    const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+    const nombreDia = DIAS[suspension.getDay()];
+    const diaSusp = suspension.getDate();
+    return `⚠️ Atención ⚠️\n\nEstimado Cliente, es bien informarle.\n\nQue la Fecha límite de pago finaliza el *15 de ${mes} del ${anio}*. Si ya realizó su pago favor notificarlo.\n\nDe no realizar el pago a partir del día 15, el servicio entrará en suspensión el día *${nombreDia} ${diaSusp} de ${mes} del ${anio}* a partir de las 10 AM.\n\nMuchas Gracias de antemano!!`;
+  };
   const getMsgFactura = (cliente) => `Saludos ${getSaludo()}!\n\nLa factura por *EL MES DE ${getMesFactura()}*📃 ha sido generada.\n\n💠Recordandole: que la misma tiene un plazo hasta el dia ${getMesLimite()} para el pago.\n\n💰 Monto a pagar: *$${(parseFloat(cliente.monto)||0).toLocaleString('en-US',{minimumFractionDigits:2})}*\n\n⚠LOS PAGOS SE REALIZAN A NUESTRAS CUENTAS DE BANCOS⚠\n\nCUENTAS:\nA nombre: 7LABS\n🟢Reservas: 248 013348 5\n🔵Popular:     782 6584 05\n🟢BHD:         1587 811 0015\n\n🧾RNC: 130-82698-6`;
 
   const aplicarPlantilla = (texto, cliente) => texto
@@ -2246,20 +2378,62 @@ export default function App() {
     setWaMasivoMensaje(''); setWaMasivoIndex(0); setWaMasivoActivo(false);
     setShowWaMasivoModal(true);
   };
-  const enviarWaMasivo = () => {
+  const enviarWaMasivo = async () => {
     const destinos = clientes.filter(c => clientesSeleccionados.includes(c.id) && c.contacto);
     if (destinos.length === 0) { showToast('Los clientes seleccionados no tienen contacto', 'error'); return; }
-    setWaMasivoActivo(true); setWaMasivoIndex(0);
-    const enviarUno = (i) => {
-      if (i >= destinos.length) { showToast(`${destinos.length} WhatsApp abiertos`, 'success'); setWaMasivoActivo(false); setShowWaMasivoModal(false); setClientesSeleccionados([]); return; }
-      const c = destinos[i];
-      const msg = aplicarPlantilla(waMasivoMensaje, c);
-      const num = c.contacto.replace(/\D/g,'');
+    setWaMasivoActivo(true);
+    setWaMasivoIndex(0);
+    setWaMasivoListoSiguiente(false);
+    // Enviar el primero
+    await enviarWaMasivoUno(destinos, 0);
+  };
+
+  const enviarWaMasivoUno = async (destinos, i) => {
+    if (i >= destinos.length) {
+      showToast(`${destinos.length} clientes notificados`, 'success');
+      setWaMasivoActivo(false); setShowWaMasivoModal(false); setClientesSeleccionados([]);
+      return;
+    }
+    const c = destinos[i];
+    const msg = getMsgFactura(c);
+    const num = c.contacto.replace(/\D/g, '');
+
+    // Cargar documento si existe
+    let doc = null;
+    try {
+      const docs = cotizaciones[c.id] || [];
+      let lista = docs;
+      if (lista.length === 0) {
+        const r = await fetch(`/api/cotizaciones/${c.id}`);
+        if (r.ok) { lista = await r.json(); setCotizaciones(prev => ({ ...prev, [c.id]: lista })); }
+      }
+      // Obtener base64 si falta
+      const ultimo = lista[lista.length - 1] || null;
+      if (ultimo && !ultimo.base64) {
+        const r2 = await fetch(`/api/cotizaciones/${c.id}`);
+        if (r2.ok) { const full = await r2.json(); setCotizaciones(prev => ({ ...prev, [c.id]: full })); doc = full[full.length - 1] || null; }
+      } else { doc = ultimo; }
+    } catch { doc = null; }
+
+    if (window.electronAPI?.isElectron && doc?.base64) {
+      await window.electronAPI.sendPDFWhatsApp(doc.base64, doc.nombre, num, msg);
+    } else {
+      if (doc?.base64) descargarDocumento(doc);
       window.open(`https://wa.me/1${num}?text=${encodeURIComponent(msg)}`, '_blank');
-      setWaMasivoIndex(i + 1);
-      setTimeout(() => enviarUno(i + 1), 1500);
-    };
-    enviarUno(0);
+    }
+
+    setWaMasivoIndex(i);
+    setWaMasivoDestinosActual(destinos);
+    setWaMasivoListoSiguiente(true);
+  };
+
+  const siguienteWaMasivo = () => {
+    const destinos = waMasivoDestinosActual;
+    const i = waMasivoIndex;
+    // Marcar actual como Notificado
+    marcarNotificado(destinos[i]);
+    setWaMasivoListoSiguiente(false);
+    enviarWaMasivoUno(destinos, i + 1);
   };
 
   // ─── ESTADO DE CUENTA PDF ─────────────────────────────────
@@ -2521,28 +2695,81 @@ export default function App() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+
+      {/* ── ELECTRON: Mini Mode Widget ───────────────────────── */}
+      {isElectron && isMiniMode && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: '#0f172a', display: 'flex', flexDirection: 'column', padding: '0.6rem 0.75rem', WebkitAppRegion: 'drag' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem', WebkitAppRegion: 'no-drag' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'white', fontSize: '0.75rem', fontWeight: 800 }}>
+              <BarChart2 size={13} style={{ color: '#6366f1' }}/>
+              CartaMaster
+            </div>
+            <button onClick={() => window.electronAPI?.toggleMini()} title="Expandir" style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '5px', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', padding: '0.2rem 0.45rem', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              <Maximize2 size={11}/> Expandir
+            </button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', WebkitAppRegion: 'no-drag' }}>
+            <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '0.45rem 0.6rem' }}>
+              <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.15rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Cobrado</div>
+              <div style={{ fontSize: '1rem', fontWeight: 800, fontFamily: 'var(--mono)', color: '#22c55e' }}>${((estadisticas.montoPagado||0)+(estadisticas.montoFacturado||0)).toLocaleString('en-US',{maximumFractionDigits:0})}</div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.4rem' }}>
+              <div style={{ flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '0.4rem 0.6rem' }}>
+                <div style={{ fontSize: '0.58rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.1rem' }}>PENDIENTES</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#f97316' }}>{(estadisticas.cotizado||0)+(estadisticas.notificado||0)}</div>
+              </div>
+              {metaMensual > 0 && (
+                <div style={{ flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '0.4rem 0.6rem' }}>
+                  <div style={{ fontSize: '0.58rem', color: 'rgba(255,255,255,0.4)', marginBottom: '0.1rem' }}>META</div>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'white' }}>{Math.min(100,Math.round(((estadisticas.montoPagado||0)+(estadisticas.montoFacturado||0))/metaMensual*100))}%</div>
+                </div>
+              )}
+            </div>
+            {metaMensual > 0 && (
+              <div style={{ height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '99px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', background: '#22c55e', borderRadius: '99px', width: `${Math.min(100,((estadisticas.montoPagado||0)+(estadisticas.montoFacturado||0))/metaMensual*100)}%`, transition: 'width 0.5s' }}/>
+              </div>
+            )}
+          </div>
+          <div style={{ marginTop: 'auto', fontSize: '0.6rem', color: 'rgba(255,255,255,0.25)', textAlign: 'center', WebkitAppRegion: 'no-drag' }}>{session?.user?.nombre||''}</div>
+        </div>
+      )}
+
+      {/* ── ELECTRON: Custom Titlebar ─────────────────────────── */}
+      {isElectron && !isMiniMode && (
+        <div style={{ height: '36px', background: '#1e1e2e', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 1rem', WebkitAppRegion: 'drag', flexShrink: 0, zIndex: 9999 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ width: '20px', height: '20px', background: 'linear-gradient(135deg, #6366f1, #7c3aed)', borderRadius: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ color: '#fff', fontSize: '0.65rem', fontWeight: 800 }}>C</span>
+            </div>
+            <span style={{ color: '#e8e8f0', fontSize: '0.78rem', fontWeight: 600 }}>CartaMaster</span>
+            <span style={{ color: '#5a5a7a', fontSize: '0.72rem' }}>· Sistema de Gestión de Cartera</span>
+          </div>
+          <div style={{ display: 'flex', gap: '0.3rem', WebkitAppRegion: 'no-drag' }}>
+            <button onClick={() => window.electronAPI?.toggleMini()} title="Modo mini" style={{ width: '28px', height: '20px', background: 'none', border: 'none', cursor: 'pointer', color: '#7878a0', borderRadius: '4px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.1)'} onMouseLeave={e => e.currentTarget.style.background='none'}><Minimize2 size={10}/></button>
+            <button onClick={() => window.electronAPI?.minimizeWindow()} title="Minimizar" style={{ width: '28px', height: '20px', background: 'none', border: 'none', cursor: 'pointer', color: '#7878a0', borderRadius: '4px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.1)'} onMouseLeave={e => e.currentTarget.style.background='none'}>─</button>
+            <button onClick={() => window.electronAPI?.maximizeWindow()} title="Maximizar" style={{ width: '28px', height: '20px', background: 'none', border: 'none', cursor: 'pointer', color: '#7878a0', borderRadius: '4px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.1)'} onMouseLeave={e => e.currentTarget.style.background='none'}>□</button>
+            <button onClick={() => window.electronAPI?.closeWindow()} title="Cerrar" style={{ width: '28px', height: '20px', background: 'none', border: 'none', cursor: 'pointer', color: '#7878a0', borderRadius: '4px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => { e.currentTarget.style.background='#ef4444'; e.currentTarget.style.color='#fff'; }} onMouseLeave={e => { e.currentTarget.style.background='none'; e.currentTarget.style.color='#7878a0'; }}>✕</button>
+          </div>
+        </div>
+      )}
+
       {/* TOPBAR — ESPN style */}
       <div className="topbar">
         <div className="topbar-left">
           <button className="hamburger-btn" onClick={() => setShowMobileMenu(v => !v)} title="Menú">
             {showMobileMenu ? <X size={20}/> : <Menu size={20}/>}
           </button>
-          <div className="topbar-logo">
-            <div className="dot">
-              <BarChart2 size={16} strokeWidth={2.5}/>
+          {!(typeof window !== 'undefined' && window.electronAPI?.isElectron) && (
+            <div className="topbar-logo">
+              <div className="dot">
+                <BarChart2 size={16} strokeWidth={2.5}/>
+              </div>
             </div>
-            <span className="logo-text">
-              <span className="logo-carta">Carta</span><span className="logo-master">Master</span>
-            </span>
-          </div>
+          )}
         </div>
         <div className="topbar-right">
           {soloLectura && <span style={{ background: 'rgba(254,249,195,0.15)', color: '#fbbf24', fontSize: '0.67rem', padding: '0.2rem 0.55rem', borderRadius: '5px', fontWeight: 700, marginRight: '0.25rem', border: '1px solid rgba(251,191,36,0.25)' }}>Solo lectura</span>}
-          <button className="topbar-search-trigger" onClick={() => setShowBusquedaGlobal(true)} title="Buscar (F)">
-            <Search size={14}/>
-            <span className="search-trigger-label">Buscar...</span>
-            <kbd>F</kbd>
-          </button>
           <button className="topbar-icon-btn" onClick={() => setDarkMode(!darkMode)} title="Modo oscuro">
             {darkMode ? <Sun size={16}/> : <Moon size={16}/>}
           </button>
@@ -2706,9 +2933,8 @@ export default function App() {
             {tienePermiso('acceder_delegaciones') && <div className={`sidebar-item ${activeTab === 'delegations' ? 'active' : ''}`} onClick={() => { setActiveTab('delegations'); cargarDelegations(); }} style={{ position: 'relative' }}><span className="icon"><ArrowLeftRight size={14}/></span> Delegations{delegationsPendientes.length > 0 && <span style={{ position: 'absolute', top: '6px', right: '8px', width: '8px', height: '8px', background: '#f97316', borderRadius: '50%' }}></span>}</div>}
             {esContabilidad && tienePermiso('ver_conciliacion') && <div className={`sidebar-item ${activeTab === 'conciliacion' ? 'active' : ''}`} onClick={() => setActiveTab('conciliacion')}><span className="icon"><List size={14}/></span> Conciliación</div>}
             {esContabilidad && <div className={`sidebar-item ${activeTab === 'validar_pagos' ? 'active' : ''}`} onClick={() => { setActiveTab('validar_pagos'); cargarPagosPendientes(); }}><span className="icon"><Check size={14}/></span> Validar Pagos{pagosPendientesCount > 0 && <span style={{ marginLeft:'6px', background:'#f97316', color:'#fff', borderRadius:'10px', padding:'0 6px', fontSize:'0.7rem', fontWeight:700 }}>{pagosPendientesCount}</span>}</div>}
+            {tienePermiso('ver_clientes') && (() => { const noGen = datosActuales.clientes.filter(c => c.estado === 'No Generaron' || c.estado === 'Archivado').length; return <div className={`sidebar-item ${activeTab === 'reactivacion' ? 'active' : ''}`} onClick={() => setActiveTab('reactivacion')} style={{ position: 'relative' }}><span className="icon"><Archive size={14}/></span> Reactivación{noGen > 0 && <span style={{ marginLeft:'6px', background:'#64748b', color:'#fff', borderRadius:'10px', padding:'0 6px', fontSize:'0.7rem', fontWeight:700 }}>{noGen}</span>}</div>; })()}
             <div className="sidebar-item" onClick={() => { abrirCargaMasiva(); }}><span className="icon"><Upload size={14}/></span> Carga Masiva PDF</div>
-            <div className="sidebar-item" onClick={() => { setShowGenMasivaModal(true); setGenMasivaLog([]); setGenMasivaProgreso({ total:0, done:0, ok:0, error:0 }); }}><span className="icon"><Rocket size={14}/></span> Generar Cotiz. Masivo</div>
-            <div className="sidebar-item" onClick={() => setShowPlantillasModal(true)}><span className="icon"><MessageSquare size={14}/></span> Plantillas WA</div>
             {esAdmin && <div className={`sidebar-item ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => { cargarUsuariosAdmin(); setActiveTab('usuarios'); }}><span className="icon"><Users size={14}/></span> Usuarios</div>}
           </div>
           <div className="sidebar-section">
@@ -2740,20 +2966,28 @@ export default function App() {
 
           </div>{/* fin sidebar-scroll */}
 
-          {/*  User footer — siempre fijo abajo  */}
-          <div className="sidebar-user-footer">
-            <div className="sidebar-user-avatar">
-              {(currentUser || session?.user?.name || 'U').charAt(0).toUpperCase()}
+          {/* Footer usuario sidebar */}
+          <div style={{ padding: '0.75rem', borderTop: '1px solid var(--border)', margin: '0.5rem', borderRadius: '12px', background: 'var(--surface-2)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.6rem' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #7c3aed)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.9rem', flexShrink: 0 }}>
+                {(currentUser || session?.user?.username || 'U').charAt(0).toUpperCase()}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentUser || session?.user?.username}</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{esAdmin ? 'Administrador' : esEditor ? 'Editor' : 'Viewer'}{empresaActual ? ` · ${empresaActual.nombre}` : ''}</div>
+              </div>
             </div>
-            <div className="sidebar-user-info">
-              <div className="sidebar-user-name">{currentUser || session?.user?.name || 'Usuario'}</div>
-              <div className="sidebar-user-role">{esAdmin ? 'Administrador' : esEditor ? 'Editor' : 'Viewer'}{empresaActual ? ` · ${empresaActual.nombre}` : ''}</div>
-            </div>
-            <div className="sidebar-user-actions">
-              {tienePermiso('acceder_configuracion') && <button className="sidebar-icon-btn" onClick={() => { setSettingsSection('config'); setShowSettingsPanel(true); }} title="Configuración">
-                <Settings size={14}/>
-              </button>}
-              <button className="sidebar-icon-btn" onClick={() => { window._manualLogout = true; signOut({ callbackUrl: "/" }); setTimeout(() => { window.location.href = "/"; }, 500); }} title="Cerrar sesión">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flex: 1 }}>
+                <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#22c55e' }}></div>
+                <span style={{ fontSize: '0.7rem', color: '#22c55e', fontWeight: 600 }}>En línea</span>
+              </div>
+              {tienePermiso('acceder_configuracion') && (
+                <button onClick={() => { setSettingsSection('config'); setShowSettingsPanel(true); }} title="Preferencias" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0.3rem', borderRadius: '6px', display: 'flex', alignItems: 'center' }}>
+                  <Settings size={14}/>
+                </button>
+              )}
+              <button onClick={() => { window._manualLogout = true; signOut({ callbackUrl: '/' }); setTimeout(() => { window.location.href = '/'; }, 500); }} title="Cerrar sesión" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0.3rem', borderRadius: '6px', display: 'flex', alignItems: 'center' }}>
                 <LogOut size={14}/>
               </button>
             </div>
@@ -3183,6 +3417,122 @@ export default function App() {
             </div>
           </div>
 
+          {/* TAB REACTIVACIÓN */}
+          <div className={`tab-content ${activeTab === 'reactivacion' ? 'active' : ''}`}>
+            {(() => {
+              const myUsername = (session?.user?.username || '').toLowerCase();
+              const candidatos = datosActuales.clientes.filter(c => {
+                if (!puedeVerTodo && c.creadoPor.toLowerCase() !== myUsername) return false;
+                return c.estado === 'No Generaron' || c.estado === 'Archivado';
+              }).sort((a, b) => {
+                const ma = mesesSinActividad(a) ?? 0;
+                const mb = mesesSinActividad(b) ?? 0;
+                return mb - ma;
+              });
+              const noGeneraron = candidatos.filter(c => c.estado === 'No Generaron');
+              const archivados  = candidatos.filter(c => c.estado === 'Archivado');
+              const reactivarCliente = (cliente) => {
+                const a = { ...cliente, estado: 'Cotizado', historial: [...(cliente.historial || []), { fecha: new Date().toISOString(), accion: 'Reactivado desde sección Reactivación', usuario: currentUser || session?.user?.username || 'SISTEMA' }] };
+                actualizarCliente(a);
+                showToast(`${cliente.nombre} reactivado`, 'success');
+              };
+
+              const archivarCliente = (cliente) => {
+                const esArchivado = cliente.estado === 'Archivado';
+                const nuevoEstado = esArchivado ? 'No Generaron' : 'Archivado';
+                const a = { ...cliente, estado: nuevoEstado, historial: [...(cliente.historial || []), { fecha: new Date().toISOString(), accion: esArchivado ? 'Cliente desarchivado' : 'Cliente archivado', usuario: currentUser || session?.user?.username || 'SISTEMA' }] };
+                actualizarCliente(a);
+                showToast(esArchivado ? `${cliente.nombre} desarchivado` : `${cliente.nombre} archivado`, 'info');
+              };
+
+              const lista = vistaReact === 'archivados' ? archivados : noGeneraron;
+
+              return (
+                <div style={{ padding: '1.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                    <div>
+                      <h2 style={{ fontWeight: 800, fontSize: '1.15rem', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Archive size={18} style={{ color: '#64748b' }}/> Reactivación de Clientes
+                      </h2>
+                      <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                        {noGeneraron.length} sin generar · {archivados.length} archivados
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                      <button onClick={() => setVistaReact('no-generaron')} className="btn btn-secondary" style={{ background: vistaReact === 'no-generaron' ? 'var(--navy)' : '', color: vistaReact === 'no-generaron' ? 'white' : '', fontSize: '0.8rem' }}>
+                        No Generaron <span style={{ marginLeft: '4px', background: vistaReact === 'no-generaron' ? 'rgba(255,255,255,0.2)' : 'var(--border-2)', borderRadius: '10px', padding: '0 6px', fontSize: '0.72rem', fontWeight: 700 }}>{noGeneraron.length}</span>
+                      </button>
+                      <button onClick={() => setVistaReact('archivados')} className="btn btn-secondary" style={{ background: vistaReact === 'archivados' ? '#64748b' : '', color: vistaReact === 'archivados' ? 'white' : '', fontSize: '0.8rem' }}>
+                        <Archive size={13}/> Archivados <span style={{ marginLeft: '4px', background: vistaReact === 'archivados' ? 'rgba(255,255,255,0.2)' : 'var(--border-2)', borderRadius: '10px', padding: '0 6px', fontSize: '0.72rem', fontWeight: 700 }}>{archivados.length}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {lista.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '4rem 2rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px' }}>
+                      <Archive size={40} style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}/>
+                      <p style={{ color: 'var(--text-muted)', fontWeight: 600 }}>
+                        {vistaReact === 'archivados' ? 'No hay clientes archivados' : 'No hay clientes sin generar'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                        <thead>
+                          <tr style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
+                            <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 700, color: 'var(--text-muted)', fontSize: '0.75rem' }}>Cliente</th>
+                            <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 700, color: 'var(--text-muted)', fontSize: '0.75rem' }}>Teléfono</th>
+                            <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontWeight: 700, color: 'var(--text-muted)', fontSize: '0.75rem' }}>Sin actividad</th>
+                            <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 700, color: 'var(--text-muted)', fontSize: '0.75rem' }}>Acciones</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {lista.map((cliente, idx) => {
+                            const meses = mesesSinActividad(cliente);
+                            const urgente = meses !== null && meses >= 3;
+                            return (
+                              <tr key={cliente.id} style={{ borderBottom: '1px solid var(--border)', background: idx % 2 === 0 ? 'transparent' : 'var(--surface-2)' }}>
+                                <td style={{ padding: '0.75rem 1rem' }}>
+                                  <div style={{ fontWeight: 700, color: 'var(--text)' }}>{cliente.nombre}</div>
+                                  {cliente.codigoCliente && <div style={{ fontSize: '0.72rem', color: 'var(--accent)', fontWeight: 700 }}>#{cliente.codigoCliente}</div>}
+                                </td>
+                                <td style={{ padding: '0.75rem 1rem', fontFamily: 'var(--mono)', fontSize: '0.78rem', fontWeight: 700, color: cliente.contacto ? '#3b7dd8' : 'var(--text-muted)' }}>
+                                  {cliente.contacto || '—'}
+                                </td>
+                                <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                                  {meses !== null ? (
+                                    <span style={{ fontWeight: 800, fontSize: '0.82rem', color: urgente ? '#dc2626' : '#f97316', background: urgente ? '#fee2e2' : '#fff7ed', border: `1px solid ${urgente ? '#fca5a5' : '#fcd9b4'}`, borderRadius: '20px', padding: '0.2rem 0.65rem' }}>
+                                      {meses} {meses === 1 ? 'mes' : 'meses'}
+                                    </span>
+                                  ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                                </td>
+                                <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
+                                  <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                                    {cliente.contacto && (
+                                      <button onClick={() => abrirWhatsappModal(cliente)} title="WhatsApp" style={{ padding: '0.35rem 0.6rem', border: '1.5px solid #e2e8f0', borderRadius: '7px', background: 'none', cursor: 'pointer', color: '#16a34a', display: 'flex', alignItems: 'center' }}>
+                                        <MessageCircle size={14}/>
+                                      </button>
+                                    )}
+                                    <button onClick={() => reactivarCliente(cliente)} title="Reactivar como Cotizado" style={{ padding: '0.35rem 0.75rem', border: 'none', borderRadius: '7px', background: '#dcfce7', color: '#15803d', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                      <PlayCircle size={13}/> Reactivar
+                                    </button>
+                                    <button onClick={() => archivarCliente(cliente)} title={cliente.estado === 'Archivado' ? 'Desarchivar' : 'Archivar'} style={{ padding: '0.35rem 0.6rem', border: '1.5px solid #e2e8f0', borderRadius: '7px', background: 'none', cursor: 'pointer', color: cliente.estado === 'Archivado' ? '#0369a1' : '#64748b', display: 'flex', alignItems: 'center' }}>
+                                      <Archive size={14}/>
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+
           {/* TAB AGENDA DEL DÍA */}
           <div className={`tab-content ${activeTab === 'agenda' ? 'active' : ''}`}>
             {(() => {
@@ -3359,6 +3709,40 @@ export default function App() {
 
           {/* TAB CARTERA */}
           <div className={`tab-content ${activeTab === 'cartera' ? 'active' : ''}`}>
+
+            {/* Banner de recordatorio mensual */}
+            {recordatorioActivo && activeTab === 'cartera' && (() => {
+              const pendientes = clientes.filter(c => c.estado === 'Notificado');
+              return pendientes.length > 0 ? (
+                <div style={{ background:'linear-gradient(135deg,#f97316,#ea580c)', borderRadius:'12px', padding:'0.9rem 1.25rem', marginBottom:'1rem', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'1rem', flexWrap:'wrap', boxShadow:'0 4px 16px rgba(234,88,12,0.3)' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
+                    <Bell size={20} style={{ color:'white', flexShrink:0 }}/>
+                    <div>
+                      <div style={{ color:'white', fontWeight:700, fontSize:'0.95rem' }}>Recordatorio de cobro — día 13</div>
+                      <div style={{ color:'rgba(255,255,255,0.85)', fontSize:'0.8rem' }}>{pendientes.length} cliente{pendientes.length !== 1 ? 's' : ''} notificado{pendientes.length !== 1 ? 's' : ''} sin confirmar pago</div>
+                    </div>
+                  </div>
+                  <div style={{ display:'flex', gap:'0.5rem', flexShrink:0 }}>
+                    <button onClick={() => {
+                      setClientesSeleccionados(pendientes.map(c => c.id));
+                      setShowWaMasivoModal(true);
+                      setWaMasivoMensaje(getMsgRecordatorio()); setWaMasivoIndex(0); setWaMasivoActivo(false);
+                    }} style={{ background:'white', color:'#ea580c', border:'none', borderRadius:'8px', padding:'0.5rem 1rem', fontWeight:700, fontSize:'0.83rem', cursor:'pointer', display:'flex', alignItems:'center', gap:'0.4rem' }}>
+                      <MessageCircle size={13}/> Enviar recordatorio
+                    </button>
+                    <button onClick={async () => {
+                      const hoy = new Date();
+                      const mes = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+                      await fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ clave:'recordatorio_mes_enviado', valor: mes }) });
+                      setRecordatorioActivo(false);
+                    }} style={{ background:'rgba(255,255,255,0.2)', color:'white', border:'1px solid rgba(255,255,255,0.4)', borderRadius:'8px', padding:'0.5rem 0.75rem', fontSize:'0.8rem', cursor:'pointer' }}>
+                      Descartar
+                    </button>
+                  </div>
+                </div>
+              ) : null;
+            })()}
+
             <div className="dashboard">
               {[
                 { key: 'cotizado', label: 'Cotizado', val: estadisticas.cotizado, pct: estadisticas.cotizadoPct, monto: estadisticas.montoCotizado, color: '#ea580c' },
@@ -3444,10 +3828,10 @@ export default function App() {
               </div>
 
               <div style={{ display: 'flex', gap: '0.3rem' }}>
-                <button className="btn btn-secondary" onClick={() => { setVistaCards(false); setVistaKanban(false); }} style={{ background: !vistaCards && !vistaKanban ? 'var(--navy)' : '', color: !vistaCards && !vistaKanban ? 'white' : '' }} title="Tabla"><ClipboardList size={14}/></button>
-                <button className="btn btn-secondary" onClick={() => { setVistaCards(true); setVistaKanban(false); }} style={{ background: vistaCards ? 'var(--navy)' : '', color: vistaCards ? 'white' : '' }} title="Tarjetas"><FileText size={14}/></button>
-                <button className="btn btn-secondary" onClick={() => { setVistaKanban(true); setVistaCards(false); }} style={{ background: vistaKanban ? 'var(--navy)' : '', color: vistaKanban ? 'white' : '' }} title="Kanban"><Pin size={14}/> Kanban</button>
+                <button className="btn btn-secondary" onClick={() => setVistaCards(false)} style={{ background: !vistaCards ? 'var(--navy)' : '', color: !vistaCards ? 'white' : '' }} title="Tabla"><ClipboardList size={14}/></button>
+                <button className="btn btn-secondary" onClick={() => setVistaCards(true)} style={{ background: vistaCards ? 'var(--navy)' : '', color: vistaCards ? 'white' : '' }} title="Tarjetas"><FileText size={14}/></button>
                 <button className="btn btn-secondary" onClick={() => setModoCompacto(m => !m)} style={{ background: modoCompacto ? 'var(--navy)' : '', color: modoCompacto ? 'white' : '' }} title="Modo compacto"><Ban size={14}/></button>
+                <button className="btn btn-secondary" onClick={() => setMostrarArchivados(v => !v)} style={{ background: mostrarArchivados ? '#64748b' : '', color: mostrarArchivados ? 'white' : '', fontSize: '0.75rem', gap: '0.3rem' }} title="Mostrar/ocultar archivados"><Archive size={13}/>{mostrarArchivados ? ' Ocultar archivados' : ' Ver archivados'}</button>
                 <button className="btn btn-secondary" onClick={() => setShowBusquedaAvanzada(b => !b)} style={{ background: showBusquedaAvanzada ? 'var(--accent)' : '', color: showBusquedaAvanzada ? 'white' : '', position: 'relative' }} title="Filtros avanzados">
                   <SlidersHorizontal size={14}/>{(filtroMontoMin || filtroMontoMax || filtroEstados.length > 0 || filtroAgente) && <span style={{ position: 'absolute', top: '-4px', right: '-4px', width: '8px', height: '8px', background: '#f97316', borderRadius: '50%' }}></span>}
                 </button>
@@ -3526,56 +3910,8 @@ export default function App() {
               </div>
             )}
 
-            {vistaKanban && (
-              <div className="kanban-board">
-                {[
-                  { estado: 'Cotizado', color: '#ea580c', emoji: <ClipboardList size={14}/> },
-                  { estado: 'Notificado', color: '#0284c7', emoji: <Mail size={14}/> },
-                  { estado: 'Pagado', color: '#059669', emoji: <DollarSign size={14}/> },
-                  { estado: 'Facturado', color: '#16a34a', emoji: <CheckCircle size={14}/> },
-                  { estado: 'Vencido', color: '#dc2626', emoji: <XCircle size={14}/> },
-                  { estado: 'No Generaron', color: '#64748b', emoji: <Ban size={14}/> },
-                ].map(({ estado, color, emoji }) => {
-                  const cols = clientesFiltrados.filter(c => estadoActivoCliente(c) === estado);
-                  return (
-                    <div key={estado} className="kanban-col">
-                      <div className="kanban-col-header" style={{ borderTop: `3px solid ${color}` }}>
-                        <span style={{ fontWeight: 700, fontSize: '0.82rem', color, display:'flex', alignItems:'center', gap:'0.3rem' }}>{emoji} {estado}</span>
-                        <span style={{ background: color + '22', color, fontWeight: 800, fontSize: '0.75rem', padding: '0.15rem 0.55rem', borderRadius: '20px' }}>{cols.length}</span>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.75rem 0.6rem', minHeight: '80px' }}>
-                        {cols.map(cliente => {
-                          const s = calcularSaldoCliente(cliente);
-                          const pct = s.monto > 0 ? Math.min((s.pagado / s.monto) * 100, 100) : 0;
-                          return (
-                            <div key={cliente.id} className="kanban-card">
-                              <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text)', cursor: 'pointer', marginBottom: '0.25rem' }}
-                                onClick={() => { setHistorialPagosCliente(cliente); setShowHistorialPagosModal(true); }}>
-                                {cliente.nombre}
-                              </div>
-                              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>{cliente.codigoCliente ? <span style={{ fontWeight: 700, color: 'var(--accent)' }}>#{cliente.codigoCliente}</span> : `#${cliente.id}`} · {cliente.mes}/{cliente.año}</div>
-                              {s.monto > 0 && <div style={{ fontWeight: 800, fontFamily: 'var(--mono)', fontSize: '0.9rem', color: 'var(--accent2)', marginBottom: '0.35rem' }}>{tienePermiso('ver_montos') ? '$' + s.monto.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '***'}</div>}
-                              {s.monto > 0 && tienePermiso('ver_montos') && (
-                                <div className="progress-bar-wrap" style={{ marginBottom: '0.4rem' }}>
-                                  <div className="progress-bar-fill" style={{ width: `${pct}%`, background: pct >= 100 ? '#059669' : color }}></div>
-                                </div>
-                              )}
-                              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.3rem', marginTop: '0.2rem' }}>
-                                {cliente.contacto && <button onClick={() => abrirWhatsappModal(cliente)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '0.1rem' }} title="WhatsApp"><MessageCircle size={14}/></button>}
-                                {tienePermiso('editar_clientes') && <button onClick={() => !esModoPasado && abrirModal(cliente)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '0.1rem' }} title="Editar"><Pencil size={14}/></button>}
-                              </div>
-                            </div>
-                          );
-                        })}
-                        {cols.length === 0 && <div style={{ textAlign: 'center', padding: '1.5rem 0.5rem', color: 'var(--text-muted)', fontSize: '0.8rem', borderRadius: '10px', border: '1.5px dashed var(--border)' }}>Sin clientes</div>}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
 
-            <div className="table-container" style={{ display: vistaCards || vistaKanban ? 'none' : 'block' }}>
+            <div className="table-container" style={{ display: vistaCards ? 'none' : 'block' }}>
               <div className="table-wrapper">
                 {clientesFiltrados.length === 0 ? (
                   <div className="empty-state"><h3>No se encontraron clientes</h3><p>Intenta ajustar los filtros o agregar un nuevo cliente</p></div>
@@ -3588,6 +3924,7 @@ export default function App() {
                       <th>Cliente</th>
                       {puedeVerTodo && <th style={{ width:'90px' }}>Agente</th>}
                       <th style={{ width:'120px' }}>Estado</th>
+                      <th style={{ width:'130px' }}>Teléfono</th>
                       <th style={{ width:'100px' }}>Monto</th>
                       <th style={{ width:'110px' }}>Proceso</th>
                       <th style={{ width:'120px', textAlign:'right' }}>Opciones</th>
@@ -3605,6 +3942,8 @@ export default function App() {
                                 {(() => { const av = getAvatar(cliente.nombre); return <div className="avatar avatar-sm" style={{ background: av.color }}>{av.letra}</div>; })()}
                                 <div>
                                   <span onClick={() => { setHistorialPagosCliente(cliente); setShowHistorialPagosModal(true); }} className="nombre-cliente" title="Ver historial de pagos">{cliente.nombre}</span>
+                                  {esClienteNuevo(cliente) && <span title="Cliente nuevo este mes" style={{ fontSize:'0.62rem', fontWeight:700, background:'#dcfce7', color:'#15803d', border:'1px solid #86efac', borderRadius:'20px', padding:'0.1rem 0.45rem', marginLeft:'0.3rem', verticalAlign:'middle' }}>NUEVO</span>}
+                                  {esMorosoRecurrente(cliente) && <span title="Ha sido notificado sin pagar en 2+ meses" style={{ fontSize:'0.62rem', fontWeight:700, background:'#fef2f2', color:'#dc2626', border:'1px solid #fca5a5', borderRadius:'20px', padding:'0.1rem 0.45rem', marginLeft:'0.3rem', verticalAlign:'middle' }}>⚠ Moroso</span>}
                                   {(tags[cliente.id] || []).length > 0 && (
                                     <div className="tags-wrap">
                                       {(tags[cliente.id] || []).map(tag => (
@@ -3630,6 +3969,16 @@ export default function App() {
                             </td>}
 
                             <td><span className={`badge badge-${estadoActivoCliente(cliente).toLowerCase().replace(/ /g, '-')}`}>{estadoActivoCliente(cliente)}</span></td>
+
+                            <td>
+                              {editingContactoId === cliente.id ? (
+                                <input type="tel" value={tempContacto} onChange={e => setTempContacto(e.target.value)} onBlur={() => guardarContactoInline(cliente.id)} onKeyDown={e => { if (e.key === 'Enter') guardarContactoInline(cliente.id); else if (e.key === 'Escape') cancelarEdicionContacto(); }} autoFocus style={{ width: '110px', padding: '0.25rem 0.4rem', border: '2px solid var(--brand)', borderRadius: '6px', fontSize: '0.74rem', fontFamily: 'var(--mono)', fontWeight: 700 }} />
+                              ) : (
+                                <span onDoubleClick={() => !esModoPasado && (setEditingContactoId(cliente.id), setTempContacto(cliente.contacto || ''))} title={esModoPasado ? '' : 'Doble clic para editar'} style={{ cursor: esModoPasado ? 'default' : 'text', fontSize: '0.74rem', fontFamily: 'var(--mono)', fontWeight: 700, color: cliente.contacto ? '#3b7dd8' : 'var(--text-muted)', letterSpacing: '0.03em' }}>
+                                  {cliente.contacto || '—'}
+                                </span>
+                              )}
+                            </td>
 
                             <td>
                               {!tienePermiso('ver_montos') ? (
@@ -3658,13 +4007,13 @@ export default function App() {
                             <td style={{ position: 'relative' }}>
                               <div style={{ position: 'relative', display: 'inline-block' }}>
                                 <button
-                                  onClick={() => setMenuAbierto(prev => prev === cliente.id ? null : cliente.id)}
-                                  style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.8rem', borderRadius: '7px', border: '1.5px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem', color: '#1e2d4a' }}>
-                                  <MoreVertical size={14}/>
-                                  Opciones
+                                  onClick={(e) => { const rect = e.currentTarget.getBoundingClientRect(); const spaceBelow = window.innerHeight - rect.bottom; setMenuAbiertoDir(spaceBelow < 240 ? 'up' : 'down'); setMenuAbierto(prev => prev === cliente.id ? null : cliente.id); }}
+                                  title="Opciones"
+                                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.4rem 0.55rem', borderRadius: '7px', border: '1.5px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', color: '#1e2d4a' }}>
+                                  <MoreVertical size={15}/>
                                 </button>
                                 {menuAbierto === cliente.id && (
-                                  <div style={{ position: 'absolute', right: 0, top: '110%', background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 999, minWidth: '200px', overflow: 'hidden' }}>
+                                  <div style={{ position: 'absolute', right: 0, ...(menuAbiertoDir === 'up' ? { bottom: '110%', top: 'auto' } : { top: '110%' }), background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 999, minWidth: '200px', overflow: 'hidden' }}>
                                     {cliente.contacto && (
                                       <button onClick={() => { abrirWhatsappModal(cliente); setMenuAbierto(null); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 1rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#16a34a', fontWeight: 600, borderBottom: '1px solid #f1f5f9' }}>
                                         <Phone size={15}/>
@@ -3704,6 +4053,17 @@ export default function App() {
                                         ) : (
                                           <><PauseCircle size={15}/> Suspender cliente</>
                                         )}
+                                      </button>
+                                    )}
+                                    {!esModoPasado && (estadoActivoCliente(cliente) === 'No Generaron' || estadoActivoCliente(cliente) === 'Archivado') && (
+                                      <button onClick={() => {
+                                        const esArchivado = cliente.estado === 'Archivado';
+                                        const nuevoEstado = esArchivado ? 'No Generaron' : 'Archivado';
+                                        const a = { ...cliente, estado: nuevoEstado, historial: [...(cliente.historial || []), { fecha: new Date().toISOString(), accion: esArchivado ? 'Cliente desarchivado' : 'Cliente archivado', usuario: currentUser || 'SISTEMA' }] };
+                                        actualizarCliente(a); setMenuAbierto(null);
+                                      }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 1rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: cliente.estado === 'Archivado' ? '#0369a1' : '#64748b', fontWeight: 600, borderBottom: '1px solid #f1f5f9' }}>
+                                        <Archive size={15}/>
+                                        {cliente.estado === 'Archivado' ? 'Desarchivar' : 'Archivar'}
                                       </button>
                                     )}
                                     {tienePermiso('eliminar_clientes') && (
@@ -4527,12 +4887,25 @@ export default function App() {
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Contacto (Teléfono)</label>
-                    <input type="text" value={formData.contacto} onChange={(e) => setFormData({ ...formData, contacto: e.target.value })} style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+                    <input type="text" value={formData.contacto} onChange={(e) => { setFormData({ ...formData, contacto: e.target.value }); detectarDuplicados(formData.nombre, e.target.value); }} style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
                   </div>
                 </div>
                 <div className="form-group" style={{ margin: 0 }}>
                   <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Nombre del Cliente *</label>
-                  <input type="text" value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+                  <input type="text" value={formData.nombre} onChange={(e) => { setFormData({ ...formData, nombre: e.target.value }); detectarDuplicados(e.target.value, formData.contacto); }} required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: `1.5px solid ${!editingCliente && duplicadosAlerta.length > 0 ? '#f59e0b' : '#e2e8f0'}`, fontSize: '0.9rem', boxSizing: 'border-box', transition: 'border-color 0.2s' }} />
+                  {!editingCliente && duplicadosAlerta.length > 0 && (
+                    <div style={{ marginTop: '0.5rem', background: 'rgba(234,179,8,0.07)', border: '1px solid rgba(234,179,8,0.3)', borderRadius: '8px', padding: '0.6rem 0.8rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', fontWeight: 700, color: '#92400e' }}>
+                        <AlertTriangle size={12}/> Posible duplicado
+                      </div>
+                      {duplicadosAlerta.map(d => (
+                        <div key={d.id} style={{ fontSize: '0.76rem', color: '#78350f', display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ fontWeight: 600 }}>{d.nombre}</span>
+                          <span style={{ color: '#a16207' }}>{d.contacto || '—'} · {d.estado}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                   <div className="form-group" style={{ margin: 0 }}>
@@ -5982,20 +6355,6 @@ export default function App() {
         </div>
       )}
 
-      {showConfigModal && (
-        <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowConfigModal(false); }}>
-          <div className="modal-content" style={{ maxWidth: '480px' }}>
-            <div className="modal-header">
-              <h2>Configuración del Sistema</h2>
-              <button className="close-btn" onClick={() => setShowConfigModal(false)}>×</button>
-            </div>
-            <div className="form-actions">
-              <button className="btn btn-secondary" onClick={() => setShowConfigModal(false)}>Cerrar</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/*  Modal Gestión de Usuarios  */}
       {showUsuariosModal && esAdmin && (
         <div className="modal show" onClick={e => { if (e.target === e.currentTarget) { setShowUsuariosModal(false); setUsuarioEditando(null); setUsuarioForm({ username:'', nombre:'', pass:'', rol:'viewer' }); } }}>
@@ -6326,26 +6685,55 @@ export default function App() {
               </div>
             )}
 
-            <div className="form-group">
-              <label>Mensaje <span style={{ fontWeight:400, color:'var(--text-muted)' }}>— usa {'{nombre}'}, {'{monto}'}, {'{estado}'}</span></label>
-              <textarea value={waMasivoMensaje} onChange={e => setWaMasivoMensaje(e.target.value)} rows={5} placeholder="Estimado/a {nombre}, le recordamos su cuenta pendiente por RD${monto}..." />
-            </div>
-
-            {waMasivoActivo && (
-              <div style={{ textAlign:'center', padding:'0.75rem', background:'#f0fdf4', border:'1px solid #86efac', borderRadius:'9px', marginBottom:'0.75rem', fontWeight:700, color:'#15803d' }}>
-                Enviando {waMasivoIndex} de {clientes.filter(c => clientesSeleccionados.includes(c.id) && c.contacto).length}...
+            {!waMasivoActivo && (
+              <div className="form-group">
+                <label style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                  <span>Vista previa del mensaje</span>
+                  <button onClick={() => { const primer = clientes.find(c => clientesSeleccionados.includes(c.id)); setWaMasivoMensaje(primer ? getMsgFactura(primer) : ''); }} style={{ fontSize:'0.72rem', padding:'0.2rem 0.6rem', borderRadius:'6px', border:'1px solid var(--brand)', background:'rgba(99,91,255,0.08)', color:'var(--brand)', cursor:'pointer', fontWeight:600 }}>
+                    Usar plantilla de factura
+                  </button>
+                </label>
+                <textarea value={waMasivoMensaje} onChange={e => setWaMasivoMensaje(e.target.value)} rows={5} placeholder="Haz clic en 'Usar plantilla de factura' o escribe un mensaje..." style={{ fontFamily:'var(--mono)', fontSize:'0.78rem' }} />
               </div>
             )}
 
-            <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:'9px', padding:'0.65rem 0.9rem', marginBottom:'1rem', fontSize:'0.78rem', color:'#78350f', display:'flex', alignItems:'flex-start', gap:'0.4rem' }}>
-              <Info size={14} style={{flexShrink:0,marginTop:'0.1rem'}}/> Se abrirá WhatsApp Web para cada cliente con su mensaje personalizado. Los nombres y montos se reemplazarán automáticamente.
-            </div>
-            <div className="form-actions">
-              <button className="btn btn-secondary" onClick={() => !waMasivoActivo && setShowWaMasivoModal(false)} disabled={waMasivoActivo}>Cancelar</button>
-              <button className="btn btn-primary" style={{ background:'#25d366' }} onClick={enviarWaMasivo} disabled={!waMasivoMensaje.trim() || waMasivoActivo}>
-                <MessageSquare size={13}/> Enviar a {clientes.filter(c => clientesSeleccionados.includes(c.id) && c.contacto).length} clientes
-              </button>
-            </div>
+            {/* Cola activa — modo guiado */}
+            {waMasivoActivo && waMasivoDestinosActual.length > 0 && (
+              <div style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'10px', padding:'1rem', marginBottom:'1rem' }}>
+                {/* Progreso */}
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.6rem' }}>
+                  <span style={{ fontSize:'0.78rem', color:'var(--text-muted)', fontWeight:600 }}>Progreso</span>
+                  <span style={{ fontSize:'0.82rem', fontWeight:700 }}>{waMasivoIndex + 1} / {waMasivoDestinosActual.length}</span>
+                </div>
+                <div style={{ height:'6px', background:'var(--border)', borderRadius:'4px', marginBottom:'0.9rem' }}>
+                  <div style={{ height:'6px', background:'#25d366', borderRadius:'4px', width:`${((waMasivoIndex + 1) / waMasivoDestinosActual.length) * 100}%`, transition:'width 0.3s' }}></div>
+                </div>
+                {/* Cliente actual */}
+                <div style={{ fontWeight:700, fontSize:'0.95rem', marginBottom:'0.2rem' }}>{waMasivoDestinosActual[waMasivoIndex]?.nombre}</div>
+                <div style={{ fontSize:'0.8rem', color:'var(--text-muted)', marginBottom:'0.75rem', fontFamily:'var(--mono)' }}>{waMasivoDestinosActual[waMasivoIndex]?.contacto}</div>
+                {waMasivoListoSiguiente ? (
+                  <button onClick={siguienteWaMasivo} style={{ width:'100%', padding:'0.65rem', background:'#25d366', color:'white', border:'none', borderRadius:'9px', fontWeight:700, fontSize:'0.9rem', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem' }}>
+                    <CheckCircle size={15}/> Enviado — {waMasivoIndex + 1 < waMasivoDestinosActual.length ? `Siguiente: ${waMasivoDestinosActual[waMasivoIndex + 1]?.nombre}` : 'Finalizar'}
+                  </button>
+                ) : (
+                  <div style={{ textAlign:'center', fontSize:'0.82rem', color:'var(--text-muted)' }}>Abriendo WhatsApp...</div>
+                )}
+              </div>
+            )}
+
+            {!waMasivoActivo && (
+              <>
+                <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:'9px', padding:'0.65rem 0.9rem', marginBottom:'1rem', fontSize:'0.78rem', color:'#78350f', display:'flex', alignItems:'flex-start', gap:'0.4rem' }}>
+                  <Info size={14} style={{flexShrink:0,marginTop:'0.1rem'}}/> Se abrirá WhatsApp uno por uno. Después de enviar cada mensaje haz clic en <strong>Enviado — Siguiente</strong> para avanzar. Cada cliente se marcará como Notificado automáticamente.
+                </div>
+                <div className="form-actions">
+                  <button className="btn btn-secondary" onClick={() => setShowWaMasivoModal(false)}>Cancelar</button>
+                  <button className="btn btn-primary" style={{ background:'#25d366' }} onClick={enviarWaMasivo}>
+                    <MessageCircle size={13}/> Iniciar — {clientes.filter(c => clientesSeleccionados.includes(c.id) && c.contacto).length} clientes
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -6619,29 +7007,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Mobile Bottom Navigation */}
-      <div className="mobile-bottom-nav">
-        <button className={`mobile-nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
-          <LayoutGrid size={20}/>
-          <span>Inicio</span>
-        </button>
-        <button className={`mobile-nav-btn ${activeTab === 'cartera' ? 'active' : ''}`} onClick={() => setActiveTab('cartera')}>
-          <BarChart2 size={20}/>
-          <span>Cartera</span>
-        </button>
-        <button className={`mobile-nav-btn ${activeTab === 'credito' ? 'active' : ''}`} onClick={() => setActiveTab('credito')}>
-          <CreditCard size={20}/>
-          <span>Crédito</span>
-        </button>
-        <button className={`mobile-nav-btn ${activeTab === 'agenda' ? 'active' : ''}`} onClick={() => setActiveTab('agenda')}>
-          <Calendar size={20}/>
-          <span>Agenda</span>
-        </button>
-        <button className={`mobile-nav-btn ${showMobileMenu ? 'active' : ''}`} onClick={() => setShowMobileMenu(v => !v)}>
-          <Menu size={20}/>
-          <span>Más</span>
-        </button>
-      </div>
 
       {/* Modal de nueva versión — actualización automática */}
       {nuevaVersion && (
@@ -6675,6 +7040,76 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* ── Command Palette (Ctrl+K) ─────────────────────────── */}
+      {showCommandPalette && (() => {
+        const quickActions = [
+          { id: 'dashboard', label: 'Inicio / Dashboard', Icon: LayoutGrid, action: () => { setActiveTab('dashboard'); setShowCommandPalette(false); } },
+          { id: 'cartera',   label: 'Cartera',            Icon: BarChart2,   action: () => { setActiveTab('cartera');   setShowCommandPalette(false); } },
+          { id: 'nuevo',     label: 'Nuevo Cliente',      Icon: UserPlus,    action: () => { setActiveTab('cartera'); abrirModal(); setShowCommandPalette(false); }, show: tienePermiso('crear_clientes') },
+          { id: 'agenda',    label: 'Agenda del Día',     Icon: Calendar,    action: () => { setActiveTab('agenda');    setShowCommandPalette(false); } },
+          { id: 'reactiv',   label: 'Reactivación',       Icon: Archive,     action: () => { setActiveTab('reactivacion'); setShowCommandPalette(false); } },
+          { id: 'dark',      label: darkMode ? 'Modo Claro' : 'Modo Oscuro', Icon: darkMode ? Sun : Moon, action: () => { setDarkMode(v => !v); setShowCommandPalette(false); } },
+        ].filter(a => a.show !== false);
+
+        const filtered = commandQuery ? quickActions.filter(a => a.label.toLowerCase().includes(commandQuery.toLowerCase())) : quickActions;
+        const clientResults = commandQuery.length > 1
+          ? clientes.filter(c => c.nombre.toLowerCase().includes(commandQuery.toLowerCase()) || (c.codigoCliente||'').toLowerCase().includes(commandQuery.toLowerCase()) || (c.contacto||'').includes(commandQuery)).slice(0,5)
+          : [];
+        const allResults = [
+          ...filtered.map(a => ({ ...a, type: 'action', sub: null })),
+          ...clientResults.map(c => ({ id: `c${c.id}`, label: c.nombre, sub: `${c.codigoCliente?'#'+c.codigoCliente:'#'+c.id} · ${estadoActivoCliente(c)}`, Icon: Users, type: 'client', action: () => { setActiveTab('cartera'); setSearchTerm(c.nombre); setShowCommandPalette(false); } })),
+        ];
+        return (
+          <div className="command-palette-overlay" onClick={() => setShowCommandPalette(false)}>
+            <div className="command-palette" onClick={e => e.stopPropagation()}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
+                <Command size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }}/>
+                <input
+                  autoFocus
+                  placeholder="Buscar cliente o acción..."
+                  value={commandQuery}
+                  onChange={e => { setCommandQuery(e.target.value); setCommandIdx(0); }}
+                  onKeyDown={e => {
+                    if (e.key === 'ArrowDown') { e.preventDefault(); setCommandIdx(i => Math.min(i+1, allResults.length-1)); }
+                    else if (e.key === 'ArrowUp') { e.preventDefault(); setCommandIdx(i => Math.max(i-1, 0)); }
+                    else if (e.key === 'Enter' && allResults[commandIdx]) allResults[commandIdx].action();
+                  }}
+                  style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '0.95rem', color: 'var(--text)', outline: 'none' }}
+                />
+              </div>
+              <div style={{ maxHeight: '340px', overflowY: 'auto' }}>
+                {filtered.length > 0 && <div className="command-section-label">Acciones rápidas</div>}
+                {filtered.map((item, idx) => (
+                  <button key={item.id} className={`command-item${commandIdx===idx?' selected':''}`} onClick={item.action} onMouseEnter={() => setCommandIdx(idx)}>
+                    <item.Icon size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }}/>
+                    <span style={{ flex: 1 }}>{item.label}</span>
+                    <kbd style={{ fontSize: '0.65rem', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: '4px', padding: '0.1rem 0.35rem', color: 'var(--text-muted)' }}>↵</kbd>
+                  </button>
+                ))}
+                {clientResults.length > 0 && <div className="command-section-label">Clientes</div>}
+                {clientResults.map((item, idx) => {
+                  const realIdx = filtered.length + idx;
+                  return (
+                    <button key={item.id} className={`command-item${commandIdx===realIdx?' selected':''}`} onClick={item.action} onMouseEnter={() => setCommandIdx(realIdx)}>
+                      <item.Icon size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }}/>
+                      <span style={{ flex: 1 }}>{item.label}</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{item.sub}</span>
+                    </button>
+                  );
+                })}
+                {allResults.length === 0 && (
+                  <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Sin resultados para "{commandQuery}"</div>
+                )}
+              </div>
+              <div style={{ padding: '0.5rem 1.25rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '1rem', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                <span>↑↓ navegar</span><span>↵ seleccionar</span><span>Esc cerrar</span>
+                <span style={{ marginLeft: 'auto' }}>Ctrl+K</span>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Toast Notifications */}
       <div className="toast-container">

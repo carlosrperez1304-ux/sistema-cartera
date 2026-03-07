@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, screen } = require('electron');
 const path = require('path');
 const fs   = require('fs');
 const os   = require('os');
@@ -49,9 +49,34 @@ async function validateCodeWithAPI(codigo, device_id) {
   }
 }
 
-// ── Ventana de activación ───────────────────────────────────
+// ── Ventanas ─────────────────────────────────────────────────
+let splashWin     = null;
 let activationWin = null;
 let mainWin       = null;
+
+function createSplashWindow() {
+  splashWin = new BrowserWindow({
+    width: 480,
+    height: 300,
+    resizable: false,
+    frame: false,
+    transparent: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    center: true,
+    icon: path.join(__dirname, 'assets', 'icon.png'),
+    title: 'CartaMaster',
+    webPreferences: { contextIsolation: true, nodeIntegration: false },
+  });
+  splashWin.loadFile(path.join(__dirname, 'splash.html'));
+  splashWin.setMenuBarVisibility(false);
+}
+
+function closeSplash() {
+  if (!splashWin) return;
+  splashWin.destroy();
+  splashWin = null;
+}
 
 function createActivationWindow() {
   activationWin = new BrowserWindow({
@@ -78,6 +103,10 @@ function createMainWindow() {
     height: 800,
     minWidth: 960,
     minHeight: 600,
+    frame: false,
+    titleBarStyle: 'hidden',
+    show: false,
+    backgroundColor: '#f5f4ef',
     icon: path.join(__dirname, 'assets', 'icon.png'),
     title: 'CartaMaster',
     webPreferences: {
@@ -89,6 +118,12 @@ function createMainWindow() {
   mainWin.loadURL(PROD_URL);
   mainWin.setMenuBarVisibility(false);
 
+  // Cuando la página cargó: cerrar splash y mostrar la app
+  mainWin.webContents.once('did-finish-load', () => {
+    closeSplash();
+    mainWin.show();
+  });
+
   mainWin.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('http') || url.startsWith('whatsapp')) {
       shell.openExternal(url);
@@ -99,21 +134,24 @@ function createMainWindow() {
 
 // ── Flujo principal al arrancar ─────────────────────────────
 app.whenReady().then(async () => {
+  // Mostrar splash de inmediato
+  createSplashWindow();
+
   const deviceId = getOrCreateDeviceId();
   const saved    = loadActivation();
 
   if (saved?.code) {
-    // Ya tiene código guardado — validar contra la API
+    // Ya tiene código guardado — validar contra la API (splash visible mientras)
     const result = await validateCodeWithAPI(saved.code, deviceId);
     if (result.ok) {
-      createMainWindow();
+      createMainWindow();  // splash se cierra solo cuando main carga
       return;
     }
-    // Código desactivado o inválido: mostrar pantalla de activación
     console.warn('[activation] Validación fallida:', result.error);
   }
 
-  // Sin código o inválido: mostrar pantalla de activación
+  // Sin código o inválido: cerrar splash y mostrar activación
+  closeSplash();
   createActivationWindow();
 
   app.on('activate', () => {
@@ -145,6 +183,28 @@ ipcMain.handle('validate-activation', async (event, codigo) => {
   }
 
   return result;
+});
+
+// ── IPC: controles de ventana ────────────────────────────────
+ipcMain.on('window-minimize', () => { const win = BrowserWindow.getFocusedWindow() || mainWin; if (win) win.minimize(); });
+ipcMain.on('window-maximize', () => { const win = BrowserWindow.getFocusedWindow() || mainWin; if (win) win.isMaximized() ? win.unmaximize() : win.maximize(); });
+ipcMain.on('window-close',    () => { const win = BrowserWindow.getFocusedWindow() || mainWin; if (win) win.close(); });
+
+// ── IPC: modo mini ───────────────────────────────────────────
+ipcMain.handle('toggle-mini', () => {
+  const win = BrowserWindow.getFocusedWindow() || mainWin;
+  if (!win) return;
+  const [w] = win.getSize();
+  if (w <= 380) {
+    win.setSize(1280, 800);
+    win.setResizable(true);
+    win.center();
+  } else {
+    const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+    win.setSize(340, 240);
+    win.setResizable(false);
+    win.setPosition(width - 360, height - 260);
+  }
 });
 
 // ── IPC: copiar PDF al portapapeles y abrir WhatsApp Desktop ─
