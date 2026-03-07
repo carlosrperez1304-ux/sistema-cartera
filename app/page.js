@@ -2979,7 +2979,7 @@ export default function App() {
                   {resultados.length === 0 ? (
                     <div style={{ padding: '0.75rem 1rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Sin resultados</div>
                   ) : resultados.map(c => (
-                    <div key={c.id} onMouseDown={() => { setBusquedaGlobal(''); setShowBusquedaGlobal(false); setActiveTab('cartera'); setTimeout(() => { setBusqueda(c.nombre || ''); }, 100); }}
+                    <div key={c.id} onMouseDown={() => { setBusquedaGlobal(''); setShowBusquedaGlobal(false); setActiveTab('cartera'); setTimeout(() => { setSearchTerm(c.nombre || ''); setPaginaActual(1); }, 100); }}
                       style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.9rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
                       onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-2)'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
