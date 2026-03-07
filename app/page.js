@@ -3169,8 +3169,34 @@ export default function App() {
                 </div>
                 <div style={{ padding: '0.4rem' }}>
                   {tienePermiso('acceder_configuracion') && (
-                    <button onClick={() => { setSettingsSection('config'); setShowSettingsPanel(true); setShowUserMenu(false); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.75rem', background: 'none', border: 'none', cursor: 'pointer', borderRadius: '6px', fontSize: '0.83rem', color: 'var(--text)', textAlign: 'left' }} onMouseEnter={e => e.currentTarget.style.background='var(--surface-2, #f6f9fc)'} onMouseLeave={e => e.currentTarget.style.background='none'}>
+                    <button onClick={() => { setSettingsSection('config'); setShowSettingsPanel(true); setShowUserMenu(false); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.75rem', background: 'none', border: 'none', cursor: 'pointer', borderRadius: '6px', fontSize: '0.83rem', color: 'var(--text)', textAlign: 'left' }} onMouseEnter={e => e.currentTarget.style.background='var(--surface-2)'} onMouseLeave={e => e.currentTarget.style.background='none'}>
                       <Settings size={14}/> Preferencias
+                    </button>
+                  )}
+                  {/* Actualización — solo en Electron */}
+                  {typeof window !== 'undefined' && window.electronAPI?.isElectron && (
+                    <button
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        if (updateDownloaded) { window.electronAPI.installUpdate(); }
+                        else if (downloading) { /* en progreso */ }
+                        else if (updateAvailable) { setDownloading(true); window.electronAPI.startDownload(); }
+                      }}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.75rem', background: 'none', border: 'none', cursor: updateAvailable ? 'pointer' : 'default', borderRadius: '6px', fontSize: '0.83rem', color: updateDownloaded ? '#22c55e' : updateAvailable ? '#6366f1' : 'var(--text-muted)', textAlign: 'left' }}
+                      onMouseEnter={e => e.currentTarget.style.background='var(--surface-2)'}
+                      onMouseLeave={e => e.currentTarget.style.background='none'}
+                    >
+                      <Download size={14}/>
+                      {updateDownloaded
+                        ? 'Reiniciar y actualizar'
+                        : downloading
+                          ? `Descargando... ${downloadProgress}%`
+                          : updateAvailable
+                            ? `Actualizar a v${updateVersion}`
+                            : 'App actualizada'}
+                      {updateAvailable && !downloading && !updateDownloaded && (
+                        <span style={{ marginLeft: 'auto', width: '7px', height: '7px', borderRadius: '50%', background: '#6366f1', flexShrink: 0 }}/>
+                      )}
                     </button>
                   )}
                   <button onClick={() => { setShowUserMenu(false); window._manualLogout = true; signOut({ callbackUrl: '/' }); setTimeout(() => { window.location.href = '/'; }, 500); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.75rem', background: 'none', border: 'none', cursor: 'pointer', borderRadius: '6px', fontSize: '0.83rem', color: '#ef4444', textAlign: 'left' }} onMouseEnter={e => e.currentTarget.style.background='#fff1f2'} onMouseLeave={e => e.currentTarget.style.background='none'}>
@@ -7416,52 +7442,6 @@ export default function App() {
         ))}
       </div>
 
-      {/* Modal de actualización */}
-      {updateAvailable && typeof window !== 'undefined' && window.electronAPI?.isElectron && (
-        <div style={{
-          position: 'fixed', bottom: '1.5rem', right: '1.5rem',
-          background: 'var(--surface)', border: '1px solid var(--border)',
-          borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-          padding: '1.25rem', width: '300px', zIndex: 99999,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#6366f1', flexShrink: 0 }}/>
-            <span style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text)' }}>Nueva versión disponible</span>
-          </div>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-            PayTrack v{updateVersion} está disponible. Actualiza para obtener las últimas mejoras.
-          </p>
-
-          {downloading && (
-            <div style={{ marginBottom: '0.75rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Descargando...</span>
-                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6366f1' }}>{downloadProgress}%</span>
-              </div>
-              <div style={{ height: '6px', background: 'var(--border)', borderRadius: '999px', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${downloadProgress}%`, background: 'linear-gradient(90deg,#6366f1,#7c3aed)', borderRadius: '999px', transition: 'width 0.3s ease' }}/>
-              </div>
-            </div>
-          )}
-
-          {!downloading && !updateDownloaded && (
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button onClick={() => setUpdateAvailable(false)} style={{ flex: 1, padding: '0.5rem', background: 'none', border: '1px solid var(--border)', borderRadius: '7px', fontSize: '0.8rem', cursor: 'pointer', color: 'var(--text-muted)' }}>
-                Ahora no
-              </button>
-              <button onClick={() => { setDownloading(true); window.electronAPI.startDownload(); }} style={{ flex: 1, padding: '0.5rem', background: 'linear-gradient(135deg,#6366f1,#7c3aed)', border: 'none', borderRadius: '7px', fontSize: '0.8rem', cursor: 'pointer', color: '#fff', fontWeight: 600 }}>
-                Actualizar
-              </button>
-            </div>
-          )}
-
-          {updateDownloaded && (
-            <button onClick={() => window.electronAPI.installUpdate()} style={{ width: '100%', padding: '0.6rem', background: 'linear-gradient(135deg,#22c55e,#16a34a)', border: 'none', borderRadius: '7px', fontSize: '0.83rem', cursor: 'pointer', color: '#fff', fontWeight: 700 }}>
-              ✅ Reiniciar y actualizar
-            </button>
-          )}
-        </div>
-      )}
 
     </div>
   );

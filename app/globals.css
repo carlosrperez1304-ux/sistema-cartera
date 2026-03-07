@@ -2433,43 +2433,43 @@ body.electron-mode .topbar { -webkit-app-region: no-drag; }
    ESTILO STRIPE — SOLO ELECTRON DESKTOP
 ═══════════════════════════════════════════════════════════ */
 body.is-electron {
-  --bg: #f6f9fc;
-  --bg-card: #ffffff;
-  --surface: #ffffff;
-  --surface-2: #f6f9fc;
-  --surface-3: #e3e8ee;
-  --border: #e3e8ee;
-  --text: #0a2540;
-  --text-muted: #425466;
-  --text-light: #697386;
-  --primary: #635bff;
-  --primary-hover: #5851ea;
-  --primary-light: #f0efff;
+  --bg:        #f5f4ef;
+  --bg-card:   #faf9f5;
+  --surface:   #faf9f5;
+  --surface-2: #f0efe9;
+  --surface-3: #e8e7e0;
+  --border:    #e0dfd8;
+  --text:       #1a1915;
+  --text-muted: #6b6a62;
+  --text-light: #9a998f;
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  --primary-light: rgba(99,102,241,0.1);
 }
 
 body.is-electron .sidebar {
-  background: #ffffff;
-  border-right: 1px solid #e3e8ee;
+  background: #faf9f5;
+  border-right: 1px solid #e0dfd8;
 }
 
 body.is-electron .topbar {
-  background: #ffffff;
-  border-bottom: 1px solid #e3e8ee;
+  background: #f5f4ef;
+  border-bottom: 1px solid #e0dfd8;
 }
 
 body.is-electron .card {
-  border: 1px solid #e3e8ee;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  border: 1px solid #e0dfd8;
+  box-shadow: 0 1px 3px rgba(26,25,21,0.05);
 }
 
 body.is-electron .table-header {
-  background: #f6f9fc;
+  background: #f0efe9;
 }
 
 body.is-electron input:focus,
 body.is-electron select:focus {
-  border-color: #635bff;
-  box-shadow: 0 0 0 3px rgba(99,91,255,0.15);
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -2479,8 +2479,8 @@ body.is-electron select:focus {
 /* SIDEBAR */
 body.is-electron .sidebar {
   width: 200px;
-  background: var(--bg-card, #fff);
-  border-right: 1px solid var(--border, #e3e8ee);
+  background: var(--bg-card, #faf9f5);
+  border-right: 1px solid var(--border, #e0dfd8);
   padding: 1rem 0;
 }
 
@@ -2521,8 +2521,8 @@ body.is-electron .sidebar-label {
 /* TOPBAR */
 body.is-electron .topbar {
   height: 52px;
-  background: var(--bg-card, #fff);
-  border-bottom: 1px solid var(--border, #e3e8ee);
+  background: var(--bg, #f5f4ef);
+  border-bottom: 1px solid var(--border, #e0dfd8);
   padding: 0 2rem;
   display: flex;
   align-items: center;
@@ -2535,8 +2535,8 @@ body.is-electron .topbar {
 
 /* TARJETAS */
 body.is-electron .card {
-  background: var(--bg-card, #fff);
-  border: 1px solid var(--border, #e3e8ee);
+  background: var(--bg-card, #faf9f5);
+  border: 1px solid var(--border, #e0dfd8);
   border-radius: 8px;
   padding: 1.25rem 1.5rem;
   box-shadow: none;
