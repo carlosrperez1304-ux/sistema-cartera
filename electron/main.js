@@ -4,6 +4,12 @@ const fs   = require('fs');
 const os   = require('os');
 const { exec } = require('child_process');
 const crypto = require('crypto');
+const { autoUpdater } = require('electron-updater');
+const log = require('electron-log');
+
+autoUpdater.logger = log;
+autoUpdater.logger.transports.file.level = 'info';
+autoUpdater.autoDownload = false;
 
 // ── URL de producción en Vercel ─────────────────────────────
 const PROD_URL = 'https://sistema-cartera.vercel.app';
@@ -117,6 +123,22 @@ function createMainWindow() {
   });
   mainWin.loadURL(PROD_URL);
   mainWin.setMenuBarVisibility(false);
+
+  setTimeout(() => {
+    autoUpdater.checkForUpdates();
+  }, 3000);
+
+  autoUpdater.on('update-available', (info) => {
+    mainWin.webContents.send('update-available', info.version);
+  });
+
+  autoUpdater.on('download-progress', (progress) => {
+    mainWin.webContents.send('download-progress', Math.round(progress.percent));
+  });
+
+  autoUpdater.on('update-downloaded', () => {
+    mainWin.webContents.send('update-downloaded');
+  });
 
   // Cuando la página cargó: cerrar splash y mostrar la app
   mainWin.webContents.once('did-finish-load', () => {
