@@ -2673,7 +2673,7 @@ export default function App() {
     }
 
     notasDashboard.forEach(n => {
-      items.push({ icon: '📝', text: `${n.usuario}: ${n.texto}`, color: '#06b6d4' });
+      items.push({ icon: '📝', text: `${n.nombre || n.usuario}: ${n.texto}`, color: '#06b6d4' });
     });
 
     if (items.length === 0) {
@@ -3197,7 +3197,7 @@ export default function App() {
                       {notasDashboard.map(n => (
                         <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.5rem 0.75rem', gap: '0.5rem' }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#6366f1' }}>{n.usuario} </span>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#6366f1' }}>{n.nombre || n.usuario} </span>
                             <span style={{ fontSize: '0.82rem', color: '#334155' }}>{n.texto}</span>
                           </div>
                           <button onClick={() => eliminarNota(n.id)} title="Eliminar nota" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', fontSize: '0.85rem', flexShrink: 0, padding: '0 0.2rem' }}>✕</button>
