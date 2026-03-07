@@ -387,6 +387,7 @@ export default function App() {
   const [tempMonto, setTempMonto] = useState('');
   const [editingContactoId, setEditingContactoId] = useState(null);
   const [tempContacto, setTempContacto] = useState('');
+  const [vistaReact, setVistaReact] = useState('no-generaron');
   const [editingCreditoMontoId, setEditingCreditoMontoId] = useState(null);
   const [tempCreditoMonto, setTempCreditoMonto] = useState('');
   const [showPagoModal, setShowPagoModal] = useState(false);
@@ -3301,8 +3302,6 @@ export default function App() {
               });
               const noGeneraron = candidatos.filter(c => c.estado === 'No Generaron');
               const archivados  = candidatos.filter(c => c.estado === 'Archivado');
-              const [vistaReact, setVistaReact] = useState('no-generaron');
-
               const reactivarCliente = (cliente) => {
                 const a = { ...cliente, estado: 'Cotizado', historial: [...(cliente.historial || []), { fecha: new Date().toISOString(), accion: 'Reactivado desde sección Reactivación', usuario: currentUser || session?.user?.username || 'SISTEMA' }] };
                 actualizarCliente(a);
