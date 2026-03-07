@@ -2460,3 +2460,159 @@ body.is-electron select:focus {
   border-color: #635bff;
   box-shadow: 0 0 0 3px rgba(99,91,255,0.15);
 }
+
+/* ═══════════════════════════════════════════════════════════
+   REDISEÑO STRIPE/INFINITY — SOLO ELECTRON
+═══════════════════════════════════════════════════════════ */
+
+/* SIDEBAR */
+body.is-electron .sidebar {
+  width: 200px;
+  background: var(--bg-card, #fff);
+  border-right: 1px solid var(--border, #e3e8ee);
+  padding: 1rem 0;
+}
+
+body.is-electron .sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 1.2rem;
+  font-size: 0.83rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  border-radius: 0;
+  transition: all 0.15s;
+  border-left: 2px solid transparent;
+}
+
+body.is-electron .sidebar-item:hover {
+  color: var(--text);
+  background: var(--surface-2, #f6f9fc);
+}
+
+body.is-electron .sidebar-item.active {
+  color: var(--brand, #6366f1);
+  font-weight: 600;
+  background: none;
+  border-left: 2px solid var(--brand, #6366f1);
+}
+
+body.is-electron .sidebar-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-light, #697386);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 1rem 1.2rem 0.3rem;
+}
+
+/* TOPBAR */
+body.is-electron .topbar {
+  height: 52px;
+  background: var(--bg-card, #fff);
+  border-bottom: 1px solid var(--border, #e3e8ee);
+  padding: 0 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: none;
+}
+
+/* TARJETAS */
+body.is-electron .card {
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border, #e3e8ee);
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: none;
+}
+
+body.is-electron .card-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.5rem;
+}
+
+body.is-electron .card-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+body.is-electron .card-sub {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 0.3rem;
+}
+
+/* TABLA */
+body.is-electron .table-wrapper {
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border, #e3e8ee);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+body.is-electron thead th {
+  background: var(--surface-2, #f6f9fc);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border, #e3e8ee);
+}
+
+body.is-electron tbody tr td {
+  padding: 0.85rem 1rem;
+  font-size: 0.83rem;
+  border-bottom: 1px solid var(--border, #e3e8ee);
+  color: var(--text);
+}
+
+body.is-electron tbody tr:last-child td {
+  border-bottom: none;
+}
+
+body.is-electron tbody tr:hover td {
+  background: var(--surface-2, #f6f9fc);
+}
+
+/* SECCIONES */
+body.is-electron .section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+body.is-electron .section-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+body.is-electron .section-action {
+  font-size: 0.78rem;
+  color: var(--brand, #6366f1);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+/* INPUTS */
+body.is-electron input:focus,
+body.is-electron select:focus,
+body.is-electron textarea:focus {
+  border-color: var(--brand, #6366f1);
+  box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.15);
+  outline: none;
+}
