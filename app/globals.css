@@ -1126,6 +1126,7 @@ tr.row-selected:hover { background: #dbeafe !important; }
 .badge-vencido      { background: #fee2e2; color: #991b1b; border-color: #fca5a5; animation: pulseBadge 2.5s infinite; }
 .badge-suspendido   { background: linear-gradient(135deg, #e11d48, #f43f5e); color: white; }
 .badge-no-generaron { background: var(--surface-2); color: #475569; border-color: var(--border-2); }
+.badge-archivado    { background: #f1f5f9; color: #94a3b8; border-color: #cbd5e1; font-style: italic; }
 .badge-activo       { background: #cffafe; color: #155e75; border-color: #67e8f9; }
 .badge-por-vencer   { background: #fef3c7; color: #78350f; border-color: #fde68a; }
 .badge-credito-vencido { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
@@ -1139,6 +1140,7 @@ tr.row-selected:hover { background: #dbeafe !important; }
 [data-theme='dark'] .badge-facturado    { background: rgba(19,78,74,0.3);   color: #5eead4; border-color: rgba(20,184,166,0.4); }
 [data-theme='dark'] .badge-vencido      { background: rgba(153,27,27,0.3);  color: #fca5a5; border-color: rgba(239,68,68,0.4); }
 [data-theme='dark'] .badge-no-generaron { background: var(--surface-2);     color: #E2E8F0; border-color: var(--border-2); }
+[data-theme='dark'] .badge-archivado    { background: rgba(148,163,184,0.1); color: #64748b; border-color: rgba(148,163,184,0.25); font-style: italic; }
 [data-theme='dark'] .badge-activo       { background: rgba(21,94,117,0.3);  color: #67e8f9; border-color: rgba(6,182,212,0.4); }
 [data-theme='dark'] .badge-por-vencer   { background: rgba(120,53,15,0.3);  color: #fde68a; border-color: rgba(217,119,6,0.4); }
 [data-theme='dark'] .badge-credito-vencido { background: rgba(153,27,27,0.3);  color: #fca5a5; border-color: rgba(239,68,68,0.4); }

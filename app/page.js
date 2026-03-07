@@ -330,6 +330,7 @@ export default function App() {
   const [showModal, setShowModal] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState(null);
   const [menuAbiertoDir, setMenuAbiertoDir] = useState('down');
+  const [mostrarArchivados, setMostrarArchivados] = useState(false);
   const [showGmailPanel, setShowGmailPanel] = useState(false);
   const [gmailEmails, setGmailEmails] = useState([]);
   const [gmailLoading, setGmailLoading] = useState(false);
@@ -695,6 +696,7 @@ export default function App() {
   };
 
   const estadoActivoCliente = (cliente) => {
+    if (cliente.estado === 'Archivado') return 'Archivado';
     const docs = cotizaciones[cliente.id] || [];
     if (!docs.length) {
       // Sin documentos: 'Cotizado' solo es válido si el usuario marcó el proceso manualmente
@@ -703,6 +705,28 @@ export default function App() {
       return cliente.estado;
     }
     return docs.reduce((a, b) => (a.id > b.id ? a : b)).estado || cliente.estado || 'Cotizado';
+  };
+
+  const mesesSinActividad = (cliente) => {
+    const historial = cliente.historial || [];
+    // Buscar última acción positiva
+    const acciones = ['Marco Pagado', 'Marco Facturado', 'Marco Notificado', 'Notificado'];
+    const entradas = historial
+      .filter(h => h.fecha && acciones.some(a => (h.accion || '').includes(a)))
+      .sort((a, b) => b.fecha.localeCompare(a.fecha));
+    if (entradas.length === 0) {
+      // Usar mes/año del cliente
+      if (cliente.mes && cliente.anio) {
+        const hoy = new Date();
+        const diff = (hoy.getFullYear() - parseInt(cliente.anio)) * 12 + (hoy.getMonth() + 1 - parseInt(cliente.mes));
+        return diff > 0 ? diff : 0;
+      }
+      return null;
+    }
+    const ultima = new Date(entradas[0].fecha);
+    const hoy = new Date();
+    const diff = (hoy.getFullYear() - ultima.getFullYear()) * 12 + (hoy.getMonth() - ultima.getMonth());
+    return Math.max(0, diff);
   };
 
   const calcularSaldoCredito = (credito) => {
@@ -827,6 +851,8 @@ export default function App() {
 
   const clientesFiltrados = useMemo(() => {
     let resultado = datosActuales.clientes;
+    // Excluir archivados del listado principal salvo que se active el toggle
+    if (!mostrarArchivados) resultado = resultado.filter(c => c.estado !== 'Archivado');
     const myUsername = (session?.user?.username || '').toLowerCase();
     if (filter === 'delegaciones') {
       // Solo clientes delegados (creados por otro usuario)
@@ -2785,6 +2811,7 @@ export default function App() {
             {tienePermiso('acceder_delegaciones') && <div className={`sidebar-item ${activeTab === 'delegations' ? 'active' : ''}`} onClick={() => { setActiveTab('delegations'); cargarDelegations(); }} style={{ position: 'relative' }}><span className="icon"><ArrowLeftRight size={14}/></span> Delegations{delegationsPendientes.length > 0 && <span style={{ position: 'absolute', top: '6px', right: '8px', width: '8px', height: '8px', background: '#f97316', borderRadius: '50%' }}></span>}</div>}
             {esContabilidad && tienePermiso('ver_conciliacion') && <div className={`sidebar-item ${activeTab === 'conciliacion' ? 'active' : ''}`} onClick={() => setActiveTab('conciliacion')}><span className="icon"><List size={14}/></span> Conciliación</div>}
             {esContabilidad && <div className={`sidebar-item ${activeTab === 'validar_pagos' ? 'active' : ''}`} onClick={() => { setActiveTab('validar_pagos'); cargarPagosPendientes(); }}><span className="icon"><Check size={14}/></span> Validar Pagos{pagosPendientesCount > 0 && <span style={{ marginLeft:'6px', background:'#f97316', color:'#fff', borderRadius:'10px', padding:'0 6px', fontSize:'0.7rem', fontWeight:700 }}>{pagosPendientesCount}</span>}</div>}
+            {tienePermiso('ver_clientes') && (() => { const noGen = datosActuales.clientes.filter(c => c.estado === 'No Generaron' || c.estado === 'Archivado').length; return <div className={`sidebar-item ${activeTab === 'reactivacion' ? 'active' : ''}`} onClick={() => setActiveTab('reactivacion')} style={{ position: 'relative' }}><span className="icon"><Archive size={14}/></span> Reactivación{noGen > 0 && <span style={{ marginLeft:'6px', background:'#64748b', color:'#fff', borderRadius:'10px', padding:'0 6px', fontSize:'0.7rem', fontWeight:700 }}>{noGen}</span>}</div>; })()}
             <div className="sidebar-item" onClick={() => { abrirCargaMasiva(); }}><span className="icon"><Upload size={14}/></span> Carga Masiva PDF</div>
             {esAdmin && <div className={`sidebar-item ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => { cargarUsuariosAdmin(); setActiveTab('usuarios'); }}><span className="icon"><Users size={14}/></span> Usuarios</div>}
           </div>
@@ -3260,6 +3287,124 @@ export default function App() {
             </div>
           </div>
 
+          {/* TAB REACTIVACIÓN */}
+          <div className={`tab-content ${activeTab === 'reactivacion' ? 'active' : ''}`}>
+            {(() => {
+              const myUsername = (session?.user?.username || '').toLowerCase();
+              const candidatos = datosActuales.clientes.filter(c => {
+                if (!puedeVerTodo && c.creadoPor.toLowerCase() !== myUsername) return false;
+                return c.estado === 'No Generaron' || c.estado === 'Archivado';
+              }).sort((a, b) => {
+                const ma = mesesSinActividad(a) ?? 0;
+                const mb = mesesSinActividad(b) ?? 0;
+                return mb - ma;
+              });
+              const noGeneraron = candidatos.filter(c => c.estado === 'No Generaron');
+              const archivados  = candidatos.filter(c => c.estado === 'Archivado');
+              const [vistaReact, setVistaReact] = useState('no-generaron');
+
+              const reactivarCliente = (cliente) => {
+                const a = { ...cliente, estado: 'Cotizado', historial: [...(cliente.historial || []), { fecha: new Date().toISOString(), accion: 'Reactivado desde sección Reactivación', usuario: currentUser || session?.user?.username || 'SISTEMA' }] };
+                actualizarCliente(a);
+                showToast(`${cliente.nombre} reactivado`, 'success');
+              };
+
+              const archivarCliente = (cliente) => {
+                const esArchivado = cliente.estado === 'Archivado';
+                const nuevoEstado = esArchivado ? 'No Generaron' : 'Archivado';
+                const a = { ...cliente, estado: nuevoEstado, historial: [...(cliente.historial || []), { fecha: new Date().toISOString(), accion: esArchivado ? 'Cliente desarchivado' : 'Cliente archivado', usuario: currentUser || session?.user?.username || 'SISTEMA' }] };
+                actualizarCliente(a);
+                showToast(esArchivado ? `${cliente.nombre} desarchivado` : `${cliente.nombre} archivado`, 'info');
+              };
+
+              const lista = vistaReact === 'archivados' ? archivados : noGeneraron;
+
+              return (
+                <div style={{ padding: '1.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                    <div>
+                      <h2 style={{ fontWeight: 800, fontSize: '1.15rem', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Archive size={18} style={{ color: '#64748b' }}/> Reactivación de Clientes
+                      </h2>
+                      <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                        {noGeneraron.length} sin generar · {archivados.length} archivados
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                      <button onClick={() => setVistaReact('no-generaron')} className="btn btn-secondary" style={{ background: vistaReact === 'no-generaron' ? 'var(--navy)' : '', color: vistaReact === 'no-generaron' ? 'white' : '', fontSize: '0.8rem' }}>
+                        No Generaron <span style={{ marginLeft: '4px', background: vistaReact === 'no-generaron' ? 'rgba(255,255,255,0.2)' : 'var(--border-2)', borderRadius: '10px', padding: '0 6px', fontSize: '0.72rem', fontWeight: 700 }}>{noGeneraron.length}</span>
+                      </button>
+                      <button onClick={() => setVistaReact('archivados')} className="btn btn-secondary" style={{ background: vistaReact === 'archivados' ? '#64748b' : '', color: vistaReact === 'archivados' ? 'white' : '', fontSize: '0.8rem' }}>
+                        <Archive size={13}/> Archivados <span style={{ marginLeft: '4px', background: vistaReact === 'archivados' ? 'rgba(255,255,255,0.2)' : 'var(--border-2)', borderRadius: '10px', padding: '0 6px', fontSize: '0.72rem', fontWeight: 700 }}>{archivados.length}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {lista.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '4rem 2rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px' }}>
+                      <Archive size={40} style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}/>
+                      <p style={{ color: 'var(--text-muted)', fontWeight: 600 }}>
+                        {vistaReact === 'archivados' ? 'No hay clientes archivados' : 'No hay clientes sin generar'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', overflow: 'hidden' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                        <thead>
+                          <tr style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
+                            <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 700, color: 'var(--text-muted)', fontSize: '0.75rem' }}>Cliente</th>
+                            <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 700, color: 'var(--text-muted)', fontSize: '0.75rem' }}>Teléfono</th>
+                            <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontWeight: 700, color: 'var(--text-muted)', fontSize: '0.75rem' }}>Sin actividad</th>
+                            <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 700, color: 'var(--text-muted)', fontSize: '0.75rem' }}>Acciones</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {lista.map((cliente, idx) => {
+                            const meses = mesesSinActividad(cliente);
+                            const urgente = meses !== null && meses >= 3;
+                            return (
+                              <tr key={cliente.id} style={{ borderBottom: '1px solid var(--border)', background: idx % 2 === 0 ? 'transparent' : 'var(--surface-2)' }}>
+                                <td style={{ padding: '0.75rem 1rem' }}>
+                                  <div style={{ fontWeight: 700, color: 'var(--text)' }}>{cliente.nombre}</div>
+                                  {cliente.codigoCliente && <div style={{ fontSize: '0.72rem', color: 'var(--accent)', fontWeight: 700 }}>#{cliente.codigoCliente}</div>}
+                                </td>
+                                <td style={{ padding: '0.75rem 1rem', fontFamily: 'var(--mono)', fontSize: '0.78rem', fontWeight: 700, color: cliente.contacto ? '#3b7dd8' : 'var(--text-muted)' }}>
+                                  {cliente.contacto || '—'}
+                                </td>
+                                <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                                  {meses !== null ? (
+                                    <span style={{ fontWeight: 800, fontSize: '0.82rem', color: urgente ? '#dc2626' : '#f97316', background: urgente ? '#fee2e2' : '#fff7ed', border: `1px solid ${urgente ? '#fca5a5' : '#fcd9b4'}`, borderRadius: '20px', padding: '0.2rem 0.65rem' }}>
+                                      {meses} {meses === 1 ? 'mes' : 'meses'}
+                                    </span>
+                                  ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                                </td>
+                                <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
+                                  <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                                    {cliente.contacto && (
+                                      <button onClick={() => abrirWhatsappModal(cliente)} title="WhatsApp" style={{ padding: '0.35rem 0.6rem', border: '1.5px solid #e2e8f0', borderRadius: '7px', background: 'none', cursor: 'pointer', color: '#16a34a', display: 'flex', alignItems: 'center' }}>
+                                        <MessageCircle size={14}/>
+                                      </button>
+                                    )}
+                                    <button onClick={() => reactivarCliente(cliente)} title="Reactivar como Cotizado" style={{ padding: '0.35rem 0.75rem', border: 'none', borderRadius: '7px', background: '#dcfce7', color: '#15803d', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                      <PlayCircle size={13}/> Reactivar
+                                    </button>
+                                    <button onClick={() => archivarCliente(cliente)} title={cliente.estado === 'Archivado' ? 'Desarchivar' : 'Archivar'} style={{ padding: '0.35rem 0.6rem', border: '1.5px solid #e2e8f0', borderRadius: '7px', background: 'none', cursor: 'pointer', color: cliente.estado === 'Archivado' ? '#0369a1' : '#64748b', display: 'flex', alignItems: 'center' }}>
+                                      <Archive size={14}/>
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+
           {/* TAB AGENDA DEL DÍA */}
           <div className={`tab-content ${activeTab === 'agenda' ? 'active' : ''}`}>
             {(() => {
@@ -3558,6 +3703,7 @@ export default function App() {
                 <button className="btn btn-secondary" onClick={() => setVistaCards(false)} style={{ background: !vistaCards ? 'var(--navy)' : '', color: !vistaCards ? 'white' : '' }} title="Tabla"><ClipboardList size={14}/></button>
                 <button className="btn btn-secondary" onClick={() => setVistaCards(true)} style={{ background: vistaCards ? 'var(--navy)' : '', color: vistaCards ? 'white' : '' }} title="Tarjetas"><FileText size={14}/></button>
                 <button className="btn btn-secondary" onClick={() => setModoCompacto(m => !m)} style={{ background: modoCompacto ? 'var(--navy)' : '', color: modoCompacto ? 'white' : '' }} title="Modo compacto"><Ban size={14}/></button>
+                <button className="btn btn-secondary" onClick={() => setMostrarArchivados(v => !v)} style={{ background: mostrarArchivados ? '#64748b' : '', color: mostrarArchivados ? 'white' : '', fontSize: '0.75rem', gap: '0.3rem' }} title="Mostrar/ocultar archivados"><Archive size={13}/>{mostrarArchivados ? ' Ocultar archivados' : ' Ver archivados'}</button>
                 <button className="btn btn-secondary" onClick={() => setShowBusquedaAvanzada(b => !b)} style={{ background: showBusquedaAvanzada ? 'var(--accent)' : '', color: showBusquedaAvanzada ? 'white' : '', position: 'relative' }} title="Filtros avanzados">
                   <SlidersHorizontal size={14}/>{(filtroMontoMin || filtroMontoMax || filtroEstados.length > 0 || filtroAgente) && <span style={{ position: 'absolute', top: '-4px', right: '-4px', width: '8px', height: '8px', background: '#f97316', borderRadius: '50%' }}></span>}
                 </button>
@@ -3779,6 +3925,17 @@ export default function App() {
                                         ) : (
                                           <><PauseCircle size={15}/> Suspender cliente</>
                                         )}
+                                      </button>
+                                    )}
+                                    {!esModoPasado && (estadoActivoCliente(cliente) === 'No Generaron' || estadoActivoCliente(cliente) === 'Archivado') && (
+                                      <button onClick={() => {
+                                        const esArchivado = cliente.estado === 'Archivado';
+                                        const nuevoEstado = esArchivado ? 'No Generaron' : 'Archivado';
+                                        const a = { ...cliente, estado: nuevoEstado, historial: [...(cliente.historial || []), { fecha: new Date().toISOString(), accion: esArchivado ? 'Cliente desarchivado' : 'Cliente archivado', usuario: currentUser || 'SISTEMA' }] };
+                                        actualizarCliente(a); setMenuAbierto(null);
+                                      }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 1rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: cliente.estado === 'Archivado' ? '#0369a1' : '#64748b', fontWeight: 600, borderBottom: '1px solid #f1f5f9' }}>
+                                        <Archive size={15}/>
+                                        {cliente.estado === 'Archivado' ? 'Desarchivar' : 'Archivar'}
                                       </button>
                                     )}
                                     {tienePermiso('eliminar_clientes') && (
