@@ -197,6 +197,12 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  // — Versión de la app —
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.electronAPI?.getVersion) return;
+    window.electronAPI.getVersion().then(v => setAppVersion(v)).catch(() => {});
+  }, []);
+
   // — Auto-update listeners —
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -517,6 +523,7 @@ export default function App() {
   const [busquedaGlobal, setBusquedaGlobal] = useState('');
   const [showBusquedaGlobal, setShowBusquedaGlobal] = useState(false);
   const [horaActual, setHoraActual] = useState('');
+  const [appVersion, setAppVersion] = useState('');
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [updateVersion, setUpdateVersion] = useState('');
   const [downloadProgress, setDownloadProgress] = useState(0);
@@ -3162,6 +3169,7 @@ export default function App() {
                 <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid var(--border)' }}>
                   <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text)' }}>{session?.user?.name || session?.user?.username}</div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>{session?.user?.rol}{empresaActual ? ` · ${empresaActual.nombre}` : ''}</div>
+                  {appVersion && <div style={{ fontSize: '0.7rem', color: 'var(--text-xlight)', marginTop: '0.15rem' }}>v{appVersion}</div>}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.3rem' }}>
                     <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }}></div>
                     <span style={{ fontSize: '0.7rem', color: '#22c55e', fontWeight: 600 }}>En línea</span>
