@@ -2580,27 +2580,46 @@ export default function App() {
 
   // ── Ticker de notificaciones ────────────────────────────────
   useEffect(() => {
+    if (!clientes.length) return;
     const items = [];
-    const creditosVencidos = creditos.filter(c => c.estado === 'Vencido');
-    creditosVencidos.slice(0, 3).forEach(c => {
-      items.push({ icon: '⚠', text: `${c.nombre} tiene un crédito vencido`, color: '#ef4444' });
+
+    const pagados = clientes.filter(c => c.estado === 'Pagado');
+    pagados.forEach(c => {
+      items.push({ icon: '💳', text: `${c.nombre} está pendiente de facturar`, color: '#22c55e' });
     });
-    const pendientesCotizar = clientes.filter(c => c.estado === 'No Generaron');
-    if (pendientesCotizar.length > 0) {
-      items.push({ icon: '📋', text: `${pendientesCotizar.length} clientes pendientes por cotizar`, color: '#f59e0b' });
+
+    const cotizados = clientes.filter(c => c.estado === 'Cotizado');
+    if (cotizados.length <= 3) {
+      cotizados.forEach(c => {
+        items.push({ icon: '🟠', text: `${c.nombre} está pendiente de notificar`, color: '#f97316' });
+      });
+    } else {
+      items.push({ icon: '🟠', text: `${cotizados.length} clientes cotizados pendientes de notificar`, color: '#f97316' });
     }
+
     const notificados = clientes.filter(c => c.estado === 'Notificado');
-    notificados.slice(0, 3).forEach(c => {
-      items.push({ icon: '💬', text: `${c.nombre} está notificado — pendiente de pago`, color: '#6366f1' });
-    });
-    const hoy = new Date().toDateString();
-    const pagadosHoy = clientes.filter(c => c.estado === 'Pagado' && c.fechaPago && new Date(c.fechaPago).toDateString() === hoy);
-    pagadosHoy.forEach(c => {
-      items.push({ icon: '✅', text: `${c.nombre} pagó hoy — ${c.monto}`, color: '#22c55e' });
-    });
-    if (items.length === 0) {
-      items.push({ icon: '✨', text: 'Todo al día — sin alertas pendientes', color: '#6366f1' });
+    if (notificados.length <= 3) {
+      notificados.forEach(c => {
+        items.push({ icon: '💬', text: `${c.nombre} está notificado — esperando pago`, color: '#6366f1' });
+      });
+    } else {
+      items.push({ icon: '💬', text: `${notificados.length} clientes notificados esperando pago`, color: '#6366f1' });
     }
+
+    const creditosVencidos = creditos.filter(c => c.estado === 'Vencido');
+    creditosVencidos.slice(0, 5).forEach(c => {
+      items.push({ icon: '🔴', text: `Crédito de ${c.nombre} está vencido`, color: '#ef4444' });
+    });
+
+    const vencidos = clientes.filter(c => c.estado === 'Vencido');
+    if (vencidos.length > 0) {
+      items.push({ icon: '⚠️', text: `${vencidos.length} clientes vencidos requieren atención`, color: '#ef4444' });
+    }
+
+    if (items.length === 0) {
+      items.push({ icon: '✨', text: 'Todo al día — sin pendientes', color: '#22c55e' });
+    }
+
     setTickerItems(items);
     setTickerIndex(0);
   }, [clientes, creditos]);
