@@ -2991,7 +2991,7 @@ export default function App() {
             <div style={{ width: '28px', height: '28px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(99,102,241,0.4)' }}>
               <BarChart2 size={14} color="#fff"/>
             </div>
-            <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#3d3c35', letterSpacing: '-0.02em' }}>Carta<span style={{ color: '#6366f1' }}>Master</span></span>
+            <span style={{ fontWeight: 300, fontSize: '0.95rem', color: '#6366f1', letterSpacing: '-0.02em' }}>Pay<span style={{ fontWeight: 800, color: '#3d3c35' }}>Track</span></span>
           </div>
           {/* Zona scrollable */}
           <div className="sidebar-scroll">
