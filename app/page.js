@@ -4023,9 +4023,12 @@ export default function App() {
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 {(() => { const av = getAvatar(cliente.nombre); return <div className="avatar avatar-sm" style={{ background: av.color }}>{av.letra}</div>; })()}
                                 <div>
+                                  <div style={{ display:'flex', alignItems:'center', gap:'0.25rem', flexWrap:'wrap' }}>
                                   <span onClick={() => { setHistorialPagosCliente(cliente); setShowHistorialPagosModal(true); }} className="nombre-cliente" title="Ver historial de pagos">{cliente.nombre}</span>
-                                  {esClienteNuevo(cliente) && <span title="Cliente nuevo este mes" style={{ fontSize:'0.62rem', fontWeight:700, background:'#dcfce7', color:'#15803d', border:'1px solid #86efac', borderRadius:'20px', padding:'0.1rem 0.45rem', marginLeft:'0.3rem', verticalAlign:'middle' }}>NUEVO</span>}
-                                  {esMorosoRecurrente(cliente) && <span title="Ha sido notificado sin pagar en 2+ meses" style={{ fontSize:'0.62rem', fontWeight:700, background:'#fef2f2', color:'#dc2626', border:'1px solid #fca5a5', borderRadius:'20px', padding:'0.1rem 0.45rem', marginLeft:'0.3rem', verticalAlign:'middle' }}>⚠ Moroso</span>}
+                                  {esClienteNuevo(cliente) && <span title="Cliente nuevo este mes" style={{ fontSize:'0.62rem', fontWeight:700, background:'#dcfce7', color:'#15803d', border:'1px solid #86efac', borderRadius:'20px', padding:'0.1rem 0.45rem', verticalAlign:'middle' }}>NUEVO</span>}
+                                  {esMorosoRecurrente(cliente) && <span title="Ha sido notificado sin pagar en 2+ meses" style={{ fontSize:'0.62rem', fontWeight:700, background:'#fef2f2', color:'#dc2626', border:'1px solid #fca5a5', borderRadius:'20px', padding:'0.1rem 0.45rem', verticalAlign:'middle' }}>⚠ Moroso</span>}
+                                  <button onClick={() => { setTagClienteId(cliente.id); setTagInput(''); setShowTagModal(true); }} style={{ background:'none', border:'none', cursor:'pointer', opacity:0.35, padding:'0 0.15rem', display:'flex', alignItems:'center' }} title="Agregar etiqueta"><Tag size={12}/></button>
+                                  </div>
                                   {(tags[cliente.id] || []).length > 0 && (
                                     <div className="tags-wrap">
                                       {(tags[cliente.id] || []).map(tag => (
@@ -4040,7 +4043,6 @@ export default function App() {
                                     </div>
                                   )}
                                 </div>
-                                <button onClick={() => { setTagClienteId(cliente.id); setTagInput(''); setShowTagModal(true); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem', opacity: 0.4, padding: '0 0.2rem' }} title="Agregar etiqueta"><Tag size={13}/></button>
                               </div>
                             </td>
                             {puedeVerTodo && <td>
