@@ -1227,6 +1227,8 @@ tr.row-selected:hover { background: #dbeafe !important; }
 }
 .nombre-cliente:hover { color: var(--brand); }
 
+tr:hover .instancia-badge { opacity: 1 !important; }
+
 /* ═══════════════════════════════════════════════════════════
    PROCESO ICONS
 ═══════════════════════════════════════════════════════════ */

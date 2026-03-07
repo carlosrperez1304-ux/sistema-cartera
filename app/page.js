@@ -1155,6 +1155,14 @@ export default function App() {
     return cliente.created_at.startsWith(mesActual);
   };
 
+  const formatTelefono = (tel) => {
+    if (!tel || tel === '—') return '—';
+    const limpio = tel.replace(/[\s\(\)\-\.]/g, '');
+    if (limpio.startsWith('+1')) return '+1' + limpio.slice(2);
+    if (limpio.startsWith('+')) return limpio.slice(0, 12);
+    return limpio.slice(0, 10);
+  };
+
   const iniciarEdicionCreditoMonto = (credito) => { setEditingCreditoMontoId(credito.id); setTempCreditoMonto(credito.monto || ''); };
   const guardarCreditoMontoInline = (creditoId) => {
     const montoNorm = tempCreditoMonto.replace(',', '.');
@@ -3992,25 +4000,25 @@ export default function App() {
                 ) : (
                   <table className={modoCompacto ? 'compact-mode' : ''}>
                     <thead><tr>
-                      <th style={{ width:'32px' }}><input type="checkbox" onChange={toggleTodos} checked={clientesPaginados.length > 0 && clientesPaginados.every(c => clientesSeleccionados.includes(c.id))} style={{ cursor:'pointer' }} title="Seleccionar todos" /></th>
+                      <th style={{ width:'32px', textAlign:'center' }}><input type="checkbox" onChange={toggleTodos} checked={clientesPaginados.length > 0 && clientesPaginados.every(c => clientesSeleccionados.includes(c.id))} style={{ cursor:'pointer' }} title="Seleccionar todos" /></th>
                       <th style={{ width:'60px', display:'none' }}>ID</th>
-                      <th style={{ width:'70px' }}>Código</th>
-                      <th>Cliente</th>
-                      {puedeVerTodo && <th style={{ width:'90px' }}>Agente</th>}
-                      <th style={{ width:'120px' }}>Estado</th>
-                      <th style={{ width:'130px' }}>Teléfono</th>
-                      <th style={{ width:'100px' }}>Monto</th>
-                      <th style={{ width:'110px' }}>Proceso</th>
-                      <th style={{ width:'120px', textAlign:'right' }}>Opciones</th>
+                      <th style={{ width:'80px', textAlign:'center' }}>CÓDIGO</th>
+                      <th style={{ textAlign:'left' }}>CLIENTE</th>
+                      {puedeVerTodo && <th style={{ width:'90px', textAlign:'center' }}>AGENTE</th>}
+                      <th style={{ width:'130px', textAlign:'center' }}>ESTADO</th>
+                      <th style={{ width:'140px', textAlign:'center' }}>TELÉFONO</th>
+                      <th style={{ width:'90px', textAlign:'center' }}>MONTO</th>
+                      <th style={{ width:'160px', textAlign:'center' }}>PROCESO</th>
+                      <th style={{ width:'100px', textAlign:'center' }}>OPCIONES</th>
                     </tr></thead>
                     <tbody>
                       {clientesPaginados.map(cliente => {
                         const estaSuspendido = cliente.suspendido === true;
                         return (
                           <tr key={cliente.id} className={`${estaSuspendido ? 'cliente-suspendido' : ''} ${clientesSeleccionados.includes(cliente.id) ? 'row-selected' : ''}`}>
-                            <td><input type="checkbox" checked={clientesSeleccionados.includes(cliente.id)} onChange={() => toggleSeleccion(cliente.id)} style={{ cursor:'pointer' }} /></td>
+                            <td style={{ width:'32px', textAlign:'center' }}><input type="checkbox" checked={clientesSeleccionados.includes(cliente.id)} onChange={() => toggleSeleccion(cliente.id)} style={{ cursor:'pointer' }} /></td>
                             <td style={{ display:'none' }}><div className="id-with-led"><span className={`status-led ${estaSuspendido ? 'suspended' : esClienteActivo(cliente) ? 'active' : 'inactive'}`}></span><strong>{cliente.id}</strong></div></td>
-                            <td><strong style={{ fontFamily: 'var(--mono)', color: 'var(--accent)' }}>{cliente.codigoCliente || '—'}</strong></td>
+                            <td style={{ width:'80px', textAlign:'center' }}><strong style={{ fontFamily: 'var(--mono)', color: 'var(--accent)' }}>{cliente.codigoCliente || '—'}</strong></td>
                             <td>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 {(() => { const av = getAvatar(cliente.nombre); return <div className="avatar avatar-sm" style={{ background: av.color }}>{av.letra}</div>; })()}
@@ -4026,7 +4034,7 @@ export default function App() {
                                     </div>
                                   )}
                                   {cliente.nota && (
-                                    <div onClick={() => abrirNotaModal(cliente)} title={cliente.nota} style={{ display:'inline-flex', alignItems:'center', gap:'0.3rem', marginTop:'0.2rem', cursor:'pointer', background:'#fef9c3', border:'1px solid #fde047', borderRadius:'5px', padding:'0.1rem 0.45rem', maxWidth:'220px' }}>
+                                    <div onClick={() => abrirNotaModal(cliente)} title={cliente.nota} className="instancia-badge" style={{ display:'inline-flex', alignItems:'center', gap:'0.3rem', marginTop:'0.2rem', cursor:'pointer', background:'#fef9c3', border:'1px solid #fde047', borderRadius:'5px', padding:'0.1rem 0.45rem', maxWidth:'220px', opacity:0, transition:'opacity 0.2s ease' }}>
                                       <StickyNote size={11} style={{ color:'#a16207', flexShrink:0 }}/>
                                       <span style={{ fontSize:'0.68rem', fontWeight:600, color:'#92400e', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{cliente.nota.length > 35 ? cliente.nota.slice(0, 35) + '…' : cliente.nota}</span>
                                     </div>
@@ -4042,19 +4050,19 @@ export default function App() {
                               )}
                             </td>}
 
-                            <td><span className={`badge badge-${estadoActivoCliente(cliente).toLowerCase().replace(/ /g, '-')}`}>{estadoActivoCliente(cliente)}</span></td>
+                            <td style={{ width:'130px', textAlign:'center' }}><span className={`badge badge-${estadoActivoCliente(cliente).toLowerCase().replace(/ /g, '-')}`}>{estadoActivoCliente(cliente)}</span></td>
 
-                            <td>
+                            <td style={{ width:'140px', textAlign:'center', fontSize:'0.78rem', letterSpacing:'-0.3px', whiteSpace:'nowrap' }}>
                               {editingContactoId === cliente.id ? (
                                 <input type="tel" value={tempContacto} onChange={e => setTempContacto(e.target.value)} onBlur={() => guardarContactoInline(cliente.id)} onKeyDown={e => { if (e.key === 'Enter') guardarContactoInline(cliente.id); else if (e.key === 'Escape') cancelarEdicionContacto(); }} autoFocus style={{ width: '110px', padding: '0.25rem 0.4rem', border: '2px solid var(--brand)', borderRadius: '6px', fontSize: '0.74rem', fontFamily: 'var(--mono)', fontWeight: 700 }} />
                               ) : (
-                                <span onDoubleClick={() => !esModoPasado && (setEditingContactoId(cliente.id), setTempContacto(cliente.contacto || ''))} title={esModoPasado ? '' : 'Doble clic para editar'} style={{ cursor: esModoPasado ? 'default' : 'text', fontSize: '0.74rem', fontFamily: 'var(--mono)', fontWeight: 700, color: cliente.contacto ? '#3b7dd8' : 'var(--text-muted)', letterSpacing: '0.03em' }}>
-                                  {cliente.contacto || '—'}
+                                <span onDoubleClick={() => !esModoPasado && (setEditingContactoId(cliente.id), setTempContacto(cliente.contacto || ''))} title={esModoPasado ? '' : 'Doble clic para editar'} style={{ cursor: esModoPasado ? 'default' : 'text', fontFamily: 'var(--mono)', fontWeight: 700, color: cliente.contacto ? '#3b7dd8' : 'var(--text-muted)' }}>
+                                  {formatTelefono(cliente.contacto)}
                                 </span>
                               )}
                             </td>
 
-                            <td>
+                            <td style={{ width:'90px', textAlign:'center' }}>
                               {!tienePermiso('ver_montos') ? (
                                 <span style={{ color: 'var(--text-muted)', letterSpacing: '0.1em', fontWeight: 700 }}>***</span>
                               ) : editingMontoId === cliente.id ? (
@@ -4069,7 +4077,7 @@ export default function App() {
                               )}
                             </td>
 
-                            <td>
+                            <td style={{ width:'160px', textAlign:'center' }}>
                               <div className="proceso-icons">
                                 <button className={`proceso-icon cotizado ${cliente.fechaCotizacion ? 'done' : ''}`} disabled={esModoPasado} title={cliente.fechaCotizacion ? 'Cotizado' : 'Marcar Cotizado'} onClick={() => { if (esModoPasado) return; const a = { ...cliente }; if (!a.fechaCotizacion) { a.fechaCotizacion = new Date().toISOString().split('T')[0]; a.estado = 'Cotizado'; } else { a.fechaCotizacion = ''; a.fechaNotificacion = ''; a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'No Generaron'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaCotizacion ? 'Marco Cotizado' : 'Desmarco Cotizado', usuario: currentUser || session?.user?.username || 'Sistema' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}><ClipboardList size={13}/></button>
                                 <button className={`proceso-icon notificado ${cliente.fechaNotificacion ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaCotizacion} style={{ opacity: !cliente.fechaCotizacion ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaCotizacion) return; if (!cliente.fechaNotificacion) { abrirWhatsappModal(cliente); } else { const a = { ...cliente, fechaNotificacion: '', fechaPago: '', fechaFacturacion: '', pagosRealizados: [], estado: 'Cotizado' }; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: 'Desmarco Notificado', usuario: currentUser || session?.user?.username || 'Sistema' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, 'Cotizado'); } }}><Mail size={13}/></button>
@@ -4078,7 +4086,7 @@ export default function App() {
                               </div>
                             </td>
 
-                            <td style={{ position: 'relative' }}>
+                            <td style={{ width:'100px', textAlign:'center', position: 'relative' }}>
                               <div style={{ position: 'relative', display: 'inline-block' }}>
                                 <button
                                   onClick={(e) => { const rect = e.currentTarget.getBoundingClientRect(); const spaceBelow = window.innerHeight - rect.bottom; setMenuAbiertoDir(spaceBelow < 240 ? 'up' : 'down'); setMenuAbierto(prev => prev === cliente.id ? null : cliente.id); }}
@@ -4087,7 +4095,7 @@ export default function App() {
                                   <MoreVertical size={15}/>
                                 </button>
                                 {menuAbierto === cliente.id && (
-                                  <div style={{ position: 'absolute', right: 0, ...(menuAbiertoDir === 'up' ? { bottom: '110%', top: 'auto' } : { top: '110%' }), background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 999, minWidth: '200px', overflow: 'hidden' }}>
+                                  <div style={{ position: 'absolute', right: 0, top: '110%', background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 9999, minWidth: '200px', overflow: 'hidden' }}>
                                     {cliente.contacto && (
                                       <button onClick={() => { abrirWhatsappModal(cliente); setMenuAbierto(null); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 1rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#16a34a', fontWeight: 600, borderBottom: '1px solid #f1f5f9' }}>
                                         <Phone size={15}/>
