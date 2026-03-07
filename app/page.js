@@ -2616,7 +2616,7 @@ export default function App() {
 
     const creditosVencidos = creditos.filter(c => c.estado === 'Vencido');
     creditosVencidos.slice(0, 5).forEach(c => {
-      items.push({ icon: '🔴', text: `Crédito de ${c.nombre} está vencido`, color: '#ef4444' });
+      items.push({ icon: '🔴', text: `Crédito de ${c.cliente || c.nombre || '—'} está vencido`, color: '#ef4444' });
     });
 
     const vencidos = clientes.filter(c => c.estado === 'Vencido');
