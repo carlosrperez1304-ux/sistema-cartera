@@ -185,13 +185,14 @@ ipcMain.handle('validate-activation', async (event, codigo) => {
   return result;
 });
 
-// ── IPC: versión de la app ───────────────────────────────────
-ipcMain.handle('get-version', () => app.getVersion());
-
 // ── IPC: controles de ventana ────────────────────────────────
 ipcMain.on('window-minimize', () => { const win = BrowserWindow.getFocusedWindow() || mainWin; if (win) win.minimize(); });
 ipcMain.on('window-maximize', () => { const win = BrowserWindow.getFocusedWindow() || mainWin; if (win) win.isMaximized() ? win.unmaximize() : win.maximize(); });
 ipcMain.on('window-close',    () => { const win = BrowserWindow.getFocusedWindow() || mainWin; if (win) win.close(); });
+
+ipcMain.handle('get-version', () => {
+  return app.getVersion();
+});
 
 // ── IPC: modo mini ───────────────────────────────────────────
 ipcMain.handle('toggle-mini', () => {
