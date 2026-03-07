@@ -8,4 +8,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   toggleMini:     () => ipcRenderer.invoke('toggle-mini'),
   sendPDFWhatsApp: (base64, filename, phone, message) =>
     ipcRenderer.invoke('send-pdf-whatsapp', { base64, filename, phone, message }),
+  // Auto-update
+  onUpdateAvailable:  (cb) => ipcRenderer.on('update-available',  (_, version) => cb(version)),
+  onDownloadProgress: (cb) => ipcRenderer.on('download-progress', (_, percent) => cb(percent)),
+  onUpdateDownloaded: (cb) => ipcRenderer.on('update-downloaded', () => cb()),
+  startDownload:  () => ipcRenderer.send('start-download'),
+  installUpdate:  () => ipcRenderer.send('install-update'),
 });

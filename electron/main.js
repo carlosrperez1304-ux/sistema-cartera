@@ -4,6 +4,14 @@ const fs   = require('fs');
 const os   = require('os');
 const { exec } = require('child_process');
 const crypto = require('crypto');
+const { autoUpdater } = require('electron-updater');
+const log = require('electron-log');
+
+// ── Auto-updater config ─────────────────────────────────────
+autoUpdater.logger = log;
+autoUpdater.logger.transports.file.level = 'info';
+autoUpdater.autoDownload = false;
+// ───────────────────────────────────────────────────────────
 
 // ── URL de producción en Vercel ─────────────────────────────
 const PROD_URL = 'https://sistema-cartera.vercel.app';
@@ -122,6 +130,8 @@ function createMainWindow() {
   mainWin.webContents.once('did-finish-load', () => {
     closeSplash();
     mainWin.show();
+    // Verificar actualizaciones 3s después de abrir
+    setTimeout(() => autoUpdater.checkForUpdates().catch(e => log.warn('[updater]', e.message)), 3000);
   });
 
   mainWin.webContents.setWindowOpenHandler(({ url }) => {
@@ -184,6 +194,33 @@ ipcMain.handle('validate-activation', async (event, codigo) => {
 
   return result;
 });
+
+// ── Auto-updater events ──────────────────────────────────────
+autoUpdater.on('update-available', (info) => {
+  if (mainWin) mainWin.webContents.send('update-available', info.version);
+});
+
+autoUpdater.on('update-not-available', () => {
+  log.info('[updater] App actualizada');
+});
+
+autoUpdater.on('download-progress', (progress) => {
+  if (mainWin) mainWin.webContents.send('download-progress', Math.round(progress.percent));
+});
+
+autoUpdater.on('update-downloaded', () => {
+  if (mainWin) mainWin.webContents.send('update-downloaded');
+});
+
+autoUpdater.on('error', (err) => {
+  log.error('[updater]', err.message);
+});
+
+// IPC — iniciar descarga
+ipcMain.on('start-download', () => autoUpdater.downloadUpdate());
+
+// IPC — instalar y reiniciar
+ipcMain.on('install-update', () => autoUpdater.quitAndInstall());
 
 // ── IPC: controles de ventana ────────────────────────────────
 ipcMain.on('window-minimize', () => { const win = BrowserWindow.getFocusedWindow() || mainWin; if (win) win.minimize(); });

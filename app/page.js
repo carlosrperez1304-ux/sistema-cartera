@@ -197,6 +197,22 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  // — Auto-update listeners —
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.electronAPI?.isElectron) return;
+    window.electronAPI.onUpdateAvailable((version) => {
+      setUpdateAvailable(true);
+      setUpdateVersion(version);
+    });
+    window.electronAPI.onDownloadProgress((percent) => {
+      setDownloadProgress(percent);
+    });
+    window.electronAPI.onUpdateDownloaded(() => {
+      setUpdateDownloaded(true);
+      setDownloading(false);
+    });
+  }, []);
+
   // — Notas del dashboard —
   const cargarNotasDashboard = useCallback(async () => {
     try {
@@ -499,6 +515,11 @@ export default function App() {
   const [busquedaGlobal, setBusquedaGlobal] = useState('');
   const [showBusquedaGlobal, setShowBusquedaGlobal] = useState(false);
   const [horaActual, setHoraActual] = useState('');
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [updateVersion, setUpdateVersion] = useState('');
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [updateDownloaded, setUpdateDownloaded] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [showWhatsappModal, setShowWhatsappModal] = useState(false);
   const [whatsappCliente, setWhatsappCliente] = useState(null);
   const [whatsappMensaje, setWhatsappMensaje] = useState('');
@@ -7392,6 +7413,54 @@ export default function App() {
           </div>
         ))}
       </div>
+
+      {/* Modal de actualización */}
+      {updateAvailable && typeof window !== 'undefined' && window.electronAPI?.isElectron && (
+        <div style={{
+          position: 'fixed', bottom: '1.5rem', right: '1.5rem',
+          background: 'var(--surface)', border: '1px solid var(--border)',
+          borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+          padding: '1.25rem', width: '300px', zIndex: 99999,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#6366f1', flexShrink: 0 }}/>
+            <span style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text)' }}>Nueva versión disponible</span>
+          </div>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+            PayTrack v{updateVersion} está disponible. Actualiza para obtener las últimas mejoras.
+          </p>
+
+          {downloading && (
+            <div style={{ marginBottom: '0.75rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Descargando...</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6366f1' }}>{downloadProgress}%</span>
+              </div>
+              <div style={{ height: '6px', background: 'var(--border)', borderRadius: '999px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${downloadProgress}%`, background: 'linear-gradient(90deg,#6366f1,#7c3aed)', borderRadius: '999px', transition: 'width 0.3s ease' }}/>
+              </div>
+            </div>
+          )}
+
+          {!downloading && !updateDownloaded && (
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button onClick={() => setUpdateAvailable(false)} style={{ flex: 1, padding: '0.5rem', background: 'none', border: '1px solid var(--border)', borderRadius: '7px', fontSize: '0.8rem', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                Ahora no
+              </button>
+              <button onClick={() => { setDownloading(true); window.electronAPI.startDownload(); }} style={{ flex: 1, padding: '0.5rem', background: 'linear-gradient(135deg,#6366f1,#7c3aed)', border: 'none', borderRadius: '7px', fontSize: '0.8rem', cursor: 'pointer', color: '#fff', fontWeight: 600 }}>
+                Actualizar
+              </button>
+            </div>
+          )}
+
+          {updateDownloaded && (
+            <button onClick={() => window.electronAPI.installUpdate()} style={{ width: '100%', padding: '0.6rem', background: 'linear-gradient(135deg,#22c55e,#16a34a)', border: 'none', borderRadius: '7px', fontSize: '0.83rem', cursor: 'pointer', color: '#fff', fontWeight: 700 }}>
+              ✅ Reiniciar y actualizar
+            </button>
+          )}
+        </div>
+      )}
+
     </div>
   );
 }
