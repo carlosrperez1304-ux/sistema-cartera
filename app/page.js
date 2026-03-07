@@ -344,6 +344,9 @@ export default function App() {
   const [gmailReply, setGmailReply] = useState(null);
   const [gmailReplyBody, setGmailReplyBody] = useState('');
   const [gmailSending, setGmailSending] = useState(false);
+  const [tickerIndex, setTickerIndex] = useState(0);
+  const [tickerVisible, setTickerVisible] = useState(true);
+  const [tickerItems, setTickerItems] = useState([]);
   const [gmailSelected, setGmailSelected] = useState(null);
   const [gmailSearch, setGmailSearch] = useState('');
   const [graficasVisibles, setGraficasVisibles] = useState(false);
@@ -2693,6 +2696,46 @@ export default function App() {
     );
   }
 
+  // ── Ticker de notificaciones ────────────────────────────────
+  useEffect(() => {
+    const items = [];
+    const creditosVencidos = creditos.filter(c => c.estado === 'Vencido');
+    creditosVencidos.slice(0, 3).forEach(c => {
+      items.push({ icon: '⚠', text: `${c.nombre} tiene un crédito vencido`, color: '#ef4444' });
+    });
+    const pendientesCotizar = clientes.filter(c => c.estado === 'No Generaron');
+    if (pendientesCotizar.length > 0) {
+      items.push({ icon: '📋', text: `${pendientesCotizar.length} clientes pendientes por cotizar`, color: '#f59e0b' });
+    }
+    const notificados = clientes.filter(c => c.estado === 'Notificado');
+    notificados.slice(0, 3).forEach(c => {
+      items.push({ icon: '💬', text: `${c.nombre} está notificado — pendiente de pago`, color: '#6366f1' });
+    });
+    const hoy = new Date().toDateString();
+    const pagadosHoy = clientes.filter(c => c.estado === 'Pagado' && c.fechaPago && new Date(c.fechaPago).toDateString() === hoy);
+    pagadosHoy.forEach(c => {
+      items.push({ icon: '✅', text: `${c.nombre} pagó hoy — ${c.monto}`, color: '#22c55e' });
+    });
+    if (items.length === 0) {
+      items.push({ icon: '✨', text: 'Todo al día — sin alertas pendientes', color: '#6366f1' });
+    }
+    setTickerItems(items);
+    setTickerIndex(0);
+  }, [clientes, creditos]);
+
+  useEffect(() => {
+    if (tickerItems.length === 0) return;
+    const interval = setInterval(() => {
+      setTickerVisible(false);
+      setTimeout(() => {
+        setTickerIndex(prev => (prev + 1) % tickerItems.length);
+        setTickerVisible(true);
+      }, 400);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [tickerItems]);
+  // ────────────────────────────────────────────────────────────
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
 
@@ -2743,8 +2786,20 @@ export default function App() {
               <span style={{ color: '#fff', fontSize: '0.65rem', fontWeight: 800 }}>C</span>
             </div>
             <span style={{ color: '#e8e8f0', fontSize: '0.78rem', fontWeight: 600 }}>CartaMaster</span>
-            <span style={{ color: '#5a5a7a', fontSize: '0.72rem' }}>· Sistema de Gestión de Cartera</span>
           </div>
+          {tickerItems.length > 0 && (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '0 1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', opacity: tickerVisible ? 1 : 0, transform: tickerVisible ? 'translateY(0)' : 'translateY(-6px)', transition: 'opacity 0.3s ease, transform 0.3s ease' }}>
+                <span style={{ fontSize: '0.75rem' }}>{tickerItems[tickerIndex]?.icon}</span>
+                <span style={{ fontSize: '0.72rem', color: tickerItems[tickerIndex]?.color || '#e8e8f0', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '500px' }}>
+                  {tickerItems[tickerIndex]?.text}
+                </span>
+                <span style={{ fontSize: '0.65rem', color: '#5a5a7a', marginLeft: '0.3rem' }}>
+                  {tickerIndex + 1}/{tickerItems.length}
+                </span>
+              </div>
+            </div>
+          )}
           <div style={{ display: 'flex', gap: '0.3rem', WebkitAppRegion: 'no-drag' }}>
             <button onClick={() => window.electronAPI?.toggleMini()} title="Modo mini" style={{ width: '28px', height: '20px', background: 'none', border: 'none', cursor: 'pointer', color: '#7878a0', borderRadius: '4px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.1)'} onMouseLeave={e => e.currentTarget.style.background='none'}><Minimize2 size={10}/></button>
             <button onClick={() => window.electronAPI?.minimizeWindow()} title="Minimizar" style={{ width: '28px', height: '20px', background: 'none', border: 'none', cursor: 'pointer', color: '#7878a0', borderRadius: '4px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.1)'} onMouseLeave={e => e.currentTarget.style.background='none'}>─</button>
