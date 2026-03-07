@@ -2578,6 +2578,46 @@ export default function App() {
     });
   };
 
+  // ── Ticker de notificaciones ────────────────────────────────
+  useEffect(() => {
+    const items = [];
+    const creditosVencidos = creditos.filter(c => c.estado === 'Vencido');
+    creditosVencidos.slice(0, 3).forEach(c => {
+      items.push({ icon: '⚠', text: `${c.nombre} tiene un crédito vencido`, color: '#ef4444' });
+    });
+    const pendientesCotizar = clientes.filter(c => c.estado === 'No Generaron');
+    if (pendientesCotizar.length > 0) {
+      items.push({ icon: '📋', text: `${pendientesCotizar.length} clientes pendientes por cotizar`, color: '#f59e0b' });
+    }
+    const notificados = clientes.filter(c => c.estado === 'Notificado');
+    notificados.slice(0, 3).forEach(c => {
+      items.push({ icon: '💬', text: `${c.nombre} está notificado — pendiente de pago`, color: '#6366f1' });
+    });
+    const hoy = new Date().toDateString();
+    const pagadosHoy = clientes.filter(c => c.estado === 'Pagado' && c.fechaPago && new Date(c.fechaPago).toDateString() === hoy);
+    pagadosHoy.forEach(c => {
+      items.push({ icon: '✅', text: `${c.nombre} pagó hoy — ${c.monto}`, color: '#22c55e' });
+    });
+    if (items.length === 0) {
+      items.push({ icon: '✨', text: 'Todo al día — sin alertas pendientes', color: '#6366f1' });
+    }
+    setTickerItems(items);
+    setTickerIndex(0);
+  }, [clientes, creditos]);
+
+  useEffect(() => {
+    if (tickerItems.length === 0) return;
+    const interval = setInterval(() => {
+      setTickerVisible(false);
+      setTimeout(() => {
+        setTickerIndex(prev => (prev + 1) % tickerItems.length);
+        setTickerVisible(true);
+      }, 400);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [tickerItems]);
+  // ────────────────────────────────────────────────────────────
+
   if (!hydrated || sessionStatus === 'loading') return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#f0f3f8', fontSize: '1.1rem', color: '#64748b' }}>Cargando...</div>;
 
   if (!isAuthenticated && !session) {
@@ -2695,46 +2735,6 @@ export default function App() {
       </div>
     );
   }
-
-  // ── Ticker de notificaciones ────────────────────────────────
-  useEffect(() => {
-    const items = [];
-    const creditosVencidos = creditos.filter(c => c.estado === 'Vencido');
-    creditosVencidos.slice(0, 3).forEach(c => {
-      items.push({ icon: '⚠', text: `${c.nombre} tiene un crédito vencido`, color: '#ef4444' });
-    });
-    const pendientesCotizar = clientes.filter(c => c.estado === 'No Generaron');
-    if (pendientesCotizar.length > 0) {
-      items.push({ icon: '📋', text: `${pendientesCotizar.length} clientes pendientes por cotizar`, color: '#f59e0b' });
-    }
-    const notificados = clientes.filter(c => c.estado === 'Notificado');
-    notificados.slice(0, 3).forEach(c => {
-      items.push({ icon: '💬', text: `${c.nombre} está notificado — pendiente de pago`, color: '#6366f1' });
-    });
-    const hoy = new Date().toDateString();
-    const pagadosHoy = clientes.filter(c => c.estado === 'Pagado' && c.fechaPago && new Date(c.fechaPago).toDateString() === hoy);
-    pagadosHoy.forEach(c => {
-      items.push({ icon: '✅', text: `${c.nombre} pagó hoy — ${c.monto}`, color: '#22c55e' });
-    });
-    if (items.length === 0) {
-      items.push({ icon: '✨', text: 'Todo al día — sin alertas pendientes', color: '#6366f1' });
-    }
-    setTickerItems(items);
-    setTickerIndex(0);
-  }, [clientes, creditos]);
-
-  useEffect(() => {
-    if (tickerItems.length === 0) return;
-    const interval = setInterval(() => {
-      setTickerVisible(false);
-      setTimeout(() => {
-        setTickerIndex(prev => (prev + 1) % tickerItems.length);
-        setTickerVisible(true);
-      }, 400);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [tickerItems]);
-  // ────────────────────────────────────────────────────────────
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
