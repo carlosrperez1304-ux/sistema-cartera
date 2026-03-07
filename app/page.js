@@ -328,6 +328,7 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('todos');
   const [showModal, setShowModal] = useState(false);
+  const [duplicadosAlerta, setDuplicadosAlerta] = useState([]);
   const [menuAbierto, setMenuAbierto] = useState(null);
   const [menuAbiertoDir, setMenuAbiertoDir] = useState('down');
   const [mostrarArchivados, setMostrarArchivados] = useState(false);
@@ -945,7 +946,34 @@ export default function App() {
     setShowModal(true);
   };
 
-  const cerrarModal = () => { setShowModal(false); setEditingCliente(null); setPdfError(''); };
+  const cerrarModal = () => { setShowModal(false); setEditingCliente(null); setPdfError(''); setDuplicadosAlerta([]); };
+
+  const detectarDuplicados = (nombre, contacto) => {
+    if (editingCliente) return; // al editar no es necesario
+    const norm = (s) => (s || '').toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s]/g, '').trim();
+    const normTel = (t) => (t || '').replace(/\D/g, '');
+    const nNombre = norm(nombre);
+    const nTel = normTel(contacto);
+    if (!nNombre && !nTel) { setDuplicadosAlerta([]); return; }
+    const encontrados = clientes.filter(c => {
+      if (nTel.length >= 7 && normTel(c.contacto) === nTel) return true;
+      if (nNombre.length >= 3) {
+        const cN = norm(c.nombre);
+        if (cN === nNombre) return true;
+        if (cN.length > 3 && (cN.includes(nNombre) || nNombre.includes(cN))) return true;
+        const words = nNombre.split(/\s+/).filter(w => w.length > 2);
+        if (words.length > 0) {
+          const cWords = cN.split(/\s+/);
+          const hits = words.filter(w => cWords.some(cw => cw === w || cw.includes(w)));
+          if (hits.length / words.length >= 0.6) return true;
+        }
+      }
+      return false;
+    });
+    setDuplicadosAlerta(encontrados.slice(0, 3));
+  };
 
   // Lee una factura PDF y autocompleta el campo monto
   const leerFacturaPDF = async (archivo) => {
@@ -2709,18 +2737,19 @@ export default function App() {
 
       {/* ── ELECTRON: Custom Titlebar ─────────────────────────── */}
       {isElectron && !isMiniMode && (
-        <div className="electron-titlebar">
-          <div className="electron-titlebar-brand">
-            <BarChart2 size={13} style={{ color: '#6366f1' }}/>
-            <span>CartaMaster</span>
-            {session?.user?.nombre && <span className="electron-user-badge">{session.user.nombre}</span>}
+        <div style={{ height: '36px', background: '#1e1e2e', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 1rem', WebkitAppRegion: 'drag', flexShrink: 0, zIndex: 9999 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ width: '20px', height: '20px', background: 'linear-gradient(135deg, #6366f1, #7c3aed)', borderRadius: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ color: '#fff', fontSize: '0.65rem', fontWeight: 800 }}>C</span>
+            </div>
+            <span style={{ color: '#e8e8f0', fontSize: '0.78rem', fontWeight: 600 }}>CartaMaster</span>
+            <span style={{ color: '#5a5a7a', fontSize: '0.72rem' }}>· Sistema de Gestión de Cartera</span>
           </div>
-          <div style={{ flex: 1, WebkitAppRegion: 'drag' }}/>
-          <div className="electron-win-controls">
-            <button className="electron-win-btn" onClick={() => window.electronAPI?.toggleMini()} title="Modo mini"><Minimize2 size={11}/></button>
-            <button className="electron-win-btn" onClick={() => window.electronAPI?.windowControl('minimize')} title="Minimizar"><Minus size={11}/></button>
-            <button className="electron-win-btn" onClick={() => window.electronAPI?.windowControl('maximize')} title="Maximizar"><Square size={11}/></button>
-            <button className="electron-win-btn close-btn" onClick={() => window.electronAPI?.windowControl('close')} title="Cerrar"><X size={11}/></button>
+          <div style={{ display: 'flex', gap: '0.3rem', WebkitAppRegion: 'no-drag' }}>
+            <button onClick={() => window.electronAPI?.toggleMini()} title="Modo mini" style={{ width: '28px', height: '20px', background: 'none', border: 'none', cursor: 'pointer', color: '#7878a0', borderRadius: '4px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.1)'} onMouseLeave={e => e.currentTarget.style.background='none'}><Minimize2 size={10}/></button>
+            <button onClick={() => window.electronAPI?.minimizeWindow()} title="Minimizar" style={{ width: '28px', height: '20px', background: 'none', border: 'none', cursor: 'pointer', color: '#7878a0', borderRadius: '4px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.1)'} onMouseLeave={e => e.currentTarget.style.background='none'}>─</button>
+            <button onClick={() => window.electronAPI?.maximizeWindow()} title="Maximizar" style={{ width: '28px', height: '20px', background: 'none', border: 'none', cursor: 'pointer', color: '#7878a0', borderRadius: '4px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.1)'} onMouseLeave={e => e.currentTarget.style.background='none'}>□</button>
+            <button onClick={() => window.electronAPI?.closeWindow()} title="Cerrar" style={{ width: '28px', height: '20px', background: 'none', border: 'none', cursor: 'pointer', color: '#7878a0', borderRadius: '4px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => { e.currentTarget.style.background='#ef4444'; e.currentTarget.style.color='#fff'; }} onMouseLeave={e => { e.currentTarget.style.background='none'; e.currentTarget.style.color='#7878a0'; }}>✕</button>
           </div>
         </div>
       )}
@@ -2935,20 +2964,28 @@ export default function App() {
 
           </div>{/* fin sidebar-scroll */}
 
-          {/*  User footer — siempre fijo abajo  */}
-          <div className="sidebar-user-footer">
-            <div className="sidebar-user-avatar">
-              {(currentUser || session?.user?.name || 'U').charAt(0).toUpperCase()}
+          {/* Footer usuario sidebar */}
+          <div style={{ padding: '0.75rem', borderTop: '1px solid var(--border)', margin: '0.5rem', borderRadius: '12px', background: 'var(--surface-2)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.6rem' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #7c3aed)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.9rem', flexShrink: 0 }}>
+                {(currentUser || session?.user?.username || 'U').charAt(0).toUpperCase()}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentUser || session?.user?.username}</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{esAdmin ? 'Administrador' : esEditor ? 'Editor' : 'Viewer'}{empresaActual ? ` · ${empresaActual.nombre}` : ''}</div>
+              </div>
             </div>
-            <div className="sidebar-user-info">
-              <div className="sidebar-user-name">{currentUser || session?.user?.name || 'Usuario'}</div>
-              <div className="sidebar-user-role">{esAdmin ? 'Administrador' : esEditor ? 'Editor' : 'Viewer'}{empresaActual ? ` · ${empresaActual.nombre}` : ''}</div>
-            </div>
-            <div className="sidebar-user-actions">
-              {tienePermiso('acceder_configuracion') && <button className="sidebar-icon-btn" onClick={() => { setSettingsSection('config'); setShowSettingsPanel(true); }} title="Configuración">
-                <Settings size={14}/>
-              </button>}
-              <button className="sidebar-icon-btn" onClick={() => { window._manualLogout = true; signOut({ callbackUrl: "/" }); setTimeout(() => { window.location.href = "/"; }, 500); }} title="Cerrar sesión">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flex: 1 }}>
+                <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#22c55e' }}></div>
+                <span style={{ fontSize: '0.7rem', color: '#22c55e', fontWeight: 600 }}>En línea</span>
+              </div>
+              {tienePermiso('acceder_configuracion') && (
+                <button onClick={() => { setSettingsSection('config'); setShowSettingsPanel(true); }} title="Preferencias" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0.3rem', borderRadius: '6px', display: 'flex', alignItems: 'center' }}>
+                  <Settings size={14}/>
+                </button>
+              )}
+              <button onClick={() => { window._manualLogout = true; signOut({ callbackUrl: '/' }); setTimeout(() => { window.location.href = '/'; }, 500); }} title="Cerrar sesión" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0.3rem', borderRadius: '6px', display: 'flex', alignItems: 'center' }}>
                 <LogOut size={14}/>
               </button>
             </div>
@@ -4848,12 +4885,25 @@ export default function App() {
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Contacto (Teléfono)</label>
-                    <input type="text" value={formData.contacto} onChange={(e) => setFormData({ ...formData, contacto: e.target.value })} style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+                    <input type="text" value={formData.contacto} onChange={(e) => { setFormData({ ...formData, contacto: e.target.value }); detectarDuplicados(formData.nombre, e.target.value); }} style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
                   </div>
                 </div>
                 <div className="form-group" style={{ margin: 0 }}>
                   <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Nombre del Cliente *</label>
-                  <input type="text" value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+                  <input type="text" value={formData.nombre} onChange={(e) => { setFormData({ ...formData, nombre: e.target.value }); detectarDuplicados(e.target.value, formData.contacto); }} required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: `1.5px solid ${!editingCliente && duplicadosAlerta.length > 0 ? '#f59e0b' : '#e2e8f0'}`, fontSize: '0.9rem', boxSizing: 'border-box', transition: 'border-color 0.2s' }} />
+                  {!editingCliente && duplicadosAlerta.length > 0 && (
+                    <div style={{ marginTop: '0.5rem', background: 'rgba(234,179,8,0.07)', border: '1px solid rgba(234,179,8,0.3)', borderRadius: '8px', padding: '0.6rem 0.8rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', fontWeight: 700, color: '#92400e' }}>
+                        <AlertTriangle size={12}/> Posible duplicado
+                      </div>
+                      {duplicadosAlerta.map(d => (
+                        <div key={d.id} style={{ fontSize: '0.76rem', color: '#78350f', display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ fontWeight: 600 }}>{d.nombre}</span>
+                          <span style={{ color: '#a16207' }}>{d.contacto || '—'} · {d.estado}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                   <div className="form-group" style={{ margin: 0 }}>
