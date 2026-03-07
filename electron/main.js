@@ -187,7 +187,17 @@ ipcMain.handle('validate-activation', async (event, codigo) => {
 
 // ── IPC: controles de ventana ────────────────────────────────
 ipcMain.on('window-minimize', () => { const win = BrowserWindow.getFocusedWindow() || mainWin; if (win) win.minimize(); });
-ipcMain.on('window-maximize', () => { const win = BrowserWindow.getFocusedWindow() || mainWin; if (win) win.isMaximized() ? win.unmaximize() : win.maximize(); });
+ipcMain.on('window-maximize', () => {
+  const win = BrowserWindow.getFocusedWindow() || mainWin;
+  if (!win) return;
+  if (win.isFullScreen()) {
+    win.setFullScreen(false);
+  } else if (win.isMaximized()) {
+    win.unmaximize();
+  } else {
+    win.maximize();
+  }
+});
 ipcMain.on('window-close',    () => { const win = BrowserWindow.getFocusedWindow() || mainWin; if (win) win.close(); });
 
 // ── IPC: modo mini ───────────────────────────────────────────
