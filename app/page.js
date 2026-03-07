@@ -4,7 +4,7 @@ import { getSupabaseBrowser } from '../lib/supabase-browser.js';
 import * as XLSX from 'xlsx';
 import { signIn, signOut, useSession } from 'next-auth/react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Pencil, Trash2, Plus, Download, Send, FolderOpen, Save, RefreshCw, CheckCircle, XCircle, AlertTriangle, HelpCircle, Info, Phone, MessageCircle, MapPin, Mail, Pin, DollarSign, ClipboardList, FileText, FileEdit, Archive, Tag, Sun, Moon, Eye, EyeOff, SlidersHorizontal, Clock, Loader2, Inbox, Ban, MessageSquare, BarChart2, Lock, Search, Calendar, Bell, Target, Palette, MoreVertical, Edit2, StickyNote, FileSearch, BookOpen, PauseCircle, PlayCircle, Menu, X, Settings, LogOut, UserPlus, CreditCard, Upload, ChevronDown, LayoutGrid, Users, ArrowLeftRight, List, Check, Briefcase, Rocket, Monitor, Minus, Square, Minimize2, Maximize2, Command } from 'lucide-react';
+import { Pencil, Trash2, Plus, Download, Send, FolderOpen, Save, RefreshCw, CheckCircle, XCircle, AlertTriangle, HelpCircle, Info, Phone, MessageCircle, MapPin, Mail, Pin, DollarSign, ClipboardList, FileText, FileEdit, Archive, Tag, Sun, Moon, Eye, EyeOff, SlidersHorizontal, Clock, Loader2, Inbox, Ban, MessageSquare, BarChart2, Lock, Search, Calendar, Bell, Target, Palette, MoreVertical, Edit2, StickyNote, FileSearch, BookOpen, PauseCircle, PlayCircle, Menu, X, Settings, LogOut, UserPlus, CreditCard, Upload, ChevronDown, LayoutGrid, Users, ArrowLeftRight, List, Check, Briefcase, Rocket, Monitor, Minus, Square, Minimize2, Maximize2, Command, CircleDollarSign } from 'lucide-react';
 import COT_PLANTILLAS from '../lib/cotPlantillas.js';
 
 export default function App() {
@@ -2989,7 +2989,7 @@ export default function App() {
           {/* Logo — fuera del scroll, siempre visible */}
           <div style={{ padding: '1.1rem 1rem', borderBottom: '1px solid #e0dfd8', display: 'flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0 }}>
             <div style={{ width: '28px', height: '28px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(99,102,241,0.4)' }}>
-              <BarChart2 size={14} color="#fff"/>
+              <CircleDollarSign size={15} color="#fff" strokeWidth={2}/>
             </div>
             <span style={{ fontWeight: 300, fontSize: '0.95rem', color: '#6366f1', letterSpacing: '-0.02em' }}>Pay<span style={{ fontWeight: 800, color: '#3d3c35' }}>Track</span></span>
           </div>
