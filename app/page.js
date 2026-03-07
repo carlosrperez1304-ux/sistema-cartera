@@ -57,6 +57,7 @@ export default function App() {
   // Sesión expirada — detectar cuando pasa de authenticated → unauthenticated
   const [sessionExpired, setSessionExpired] = useState(false);
   const [showNotifPanel, setShowNotifPanel] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [bancoMovimientos, setBancoMovimientos] = useState([]);
   const [bancoArchivoNombre, setBancoArchivoNombre] = useState('');
@@ -2628,6 +2629,16 @@ export default function App() {
     });
   };
 
+  // ── Cerrar user menu al clic fuera ──────────────────────────
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('.user-menu-container')) setShowUserMenu(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+  // ────────────────────────────────────────────────────────────
+
   // ── Ticker de notificaciones ────────────────────────────────
   useEffect(() => {
     if (!clientes.length) return;
@@ -3003,6 +3014,7 @@ export default function App() {
           <div style={{ position: 'relative' }}>
             <button className="topbar-icon-btn" onClick={() => setShowNotifPanel(v => !v)} title="Notificaciones" style={{ position: 'relative' }}>
               <Bell size={16}/>
+
               {(estadisticas.vencido > 0 || esDespuesDel15) && (
                 <span style={{ position: 'absolute', top: '4px', right: '4px', width: '8px', height: '8px', background: '#ef4444', borderRadius: '50%', display: 'block' }} />
               )}
@@ -3038,6 +3050,41 @@ export default function App() {
                   </div>
                 </div>
               </>
+            )}
+          </div>
+
+          {/* AVATAR USUARIO */}
+          <div className="user-menu-container" style={{ position: 'relative' }}>
+            <div
+              onClick={() => setShowUserMenu(v => !v)}
+              style={{ width: '34px', height: '34px', borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #7c3aed)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer', border: '2px solid var(--border)', transition: 'transform 0.15s ease' }}
+              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+              title={session?.user?.name || session?.user?.username}
+            >
+              {(session?.user?.name || session?.user?.username || 'U').charAt(0).toUpperCase()}
+            </div>
+            {showUserMenu && (
+              <div style={{ position: 'absolute', top: '42px', right: 0, background: 'var(--bg-card, #fff)', border: '1px solid var(--border)', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: '200px', zIndex: 9999, overflow: 'hidden' }}>
+                <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text)' }}>{session?.user?.name || session?.user?.username}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>{session?.user?.rol}{empresaActual ? ` · ${empresaActual.nombre}` : ''}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.3rem' }}>
+                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }}></div>
+                    <span style={{ fontSize: '0.7rem', color: '#22c55e', fontWeight: 600 }}>En línea</span>
+                  </div>
+                </div>
+                <div style={{ padding: '0.4rem' }}>
+                  {tienePermiso('acceder_configuracion') && (
+                    <button onClick={() => { setSettingsSection('config'); setShowSettingsPanel(true); setShowUserMenu(false); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.75rem', background: 'none', border: 'none', cursor: 'pointer', borderRadius: '6px', fontSize: '0.83rem', color: 'var(--text)', textAlign: 'left' }} onMouseEnter={e => e.currentTarget.style.background='var(--surface-2, #f6f9fc)'} onMouseLeave={e => e.currentTarget.style.background='none'}>
+                      <Settings size={14}/> Preferencias
+                    </button>
+                  )}
+                  <button onClick={() => { setShowUserMenu(false); window._manualLogout = true; signOut({ callbackUrl: '/' }); setTimeout(() => { window.location.href = '/'; }, 500); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.75rem', background: 'none', border: 'none', cursor: 'pointer', borderRadius: '6px', fontSize: '0.83rem', color: '#ef4444', textAlign: 'left' }} onMouseEnter={e => e.currentTarget.style.background='#fff1f2'} onMouseLeave={e => e.currentTarget.style.background='none'}>
+                    <LogOut size={14}/> Cerrar sesión
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -3101,32 +3148,6 @@ export default function App() {
 
           </div>{/* fin sidebar-scroll */}
 
-          {/* Footer usuario sidebar */}
-          <div style={{ padding: '0.75rem', borderTop: '1px solid var(--border)', margin: '0.5rem', borderRadius: '12px', background: 'var(--surface-2)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.6rem' }}>
-              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #7c3aed)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.9rem', flexShrink: 0 }}>
-                {(currentUser || session?.user?.username || 'U').charAt(0).toUpperCase()}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentUser || session?.user?.username}</div>
-                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{esAdmin ? 'Administrador' : esEditor ? 'Editor' : 'Viewer'}{empresaActual ? ` · ${empresaActual.nombre}` : ''}</div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flex: 1 }}>
-                <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#22c55e' }}></div>
-                <span style={{ fontSize: '0.7rem', color: '#22c55e', fontWeight: 600 }}>En línea</span>
-              </div>
-              {tienePermiso('acceder_configuracion') && (
-                <button onClick={() => { setSettingsSection('config'); setShowSettingsPanel(true); }} title="Preferencias" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0.3rem', borderRadius: '6px', display: 'flex', alignItems: 'center' }}>
-                  <Settings size={14}/>
-                </button>
-              )}
-              <button onClick={() => { window._manualLogout = true; signOut({ callbackUrl: '/' }); setTimeout(() => { window.location.href = '/'; }, 500); }} title="Cerrar sesión" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0.3rem', borderRadius: '6px', display: 'flex', alignItems: 'center' }}>
-                <LogOut size={14}/>
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* CONTENT */}
