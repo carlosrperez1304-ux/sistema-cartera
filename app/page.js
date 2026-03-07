@@ -199,15 +199,17 @@ export default function App() {
 
   // — Auto-update listeners —
   useEffect(() => {
-    if (typeof window === 'undefined' || !window.electronAPI?.isElectron) return;
-    window.electronAPI.onUpdateAvailable((version) => {
+    if (typeof window === 'undefined') return;
+    if (!window.electronAPI?.isElectron) return;
+
+    window.electronAPI.onUpdateAvailable?.((version) => {
       setUpdateAvailable(true);
       setUpdateVersion(version);
     });
-    window.electronAPI.onDownloadProgress((percent) => {
+    window.electronAPI.onDownloadProgress?.((percent) => {
       setDownloadProgress(percent);
     });
-    window.electronAPI.onUpdateDownloaded(() => {
+    window.electronAPI.onUpdateDownloaded?.(() => {
       setUpdateDownloaded(true);
       setDownloading(false);
     });
