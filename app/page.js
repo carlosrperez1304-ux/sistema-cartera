@@ -412,6 +412,7 @@ export default function App() {
     if (typeof window !== 'undefined' && window.electronAPI?.isElectron) {
       setIsElectron(true);
       document.body.classList.add('electron-mode');
+      document.body.classList.add('is-electron');
       const handleResize = () => setIsMiniMode(window.innerWidth <= 380);
       handleResize();
       window.addEventListener('resize', handleResize);

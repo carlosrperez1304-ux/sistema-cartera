@@ -2417,3 +2417,46 @@ body.electron-mode .topbar { -webkit-app-region: no-drag; }
 .text-mono { font-family: var(--mono); }
 .text-muted { color: var(--text-muted); }
 .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ═══════════════════════════════════════════════════════════
+   ESTILO STRIPE — SOLO ELECTRON DESKTOP
+═══════════════════════════════════════════════════════════ */
+body.is-electron {
+  --bg: #f6f9fc;
+  --bg-card: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f6f9fc;
+  --surface-3: #e3e8ee;
+  --border: #e3e8ee;
+  --text: #0a2540;
+  --text-muted: #425466;
+  --text-light: #697386;
+  --primary: #635bff;
+  --primary-hover: #5851ea;
+  --primary-light: #f0efff;
+}
+
+body.is-electron .sidebar {
+  background: #ffffff;
+  border-right: 1px solid #e3e8ee;
+}
+
+body.is-electron .topbar {
+  background: #ffffff;
+  border-bottom: 1px solid #e3e8ee;
+}
+
+body.is-electron .card {
+  border: 1px solid #e3e8ee;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+body.is-electron .table-header {
+  background: #f6f9fc;
+}
+
+body.is-electron input:focus,
+body.is-electron select:focus {
+  border-color: #635bff;
+  box-shadow: 0 0 0 3px rgba(99,91,255,0.15);
+}
