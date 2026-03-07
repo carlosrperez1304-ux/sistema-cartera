@@ -150,10 +150,9 @@ app.whenReady().then(async () => {
     console.warn('[activation] Validación fallida:', result.error);
   }
 
-  // Sin código o inválido: crear activación ANTES de cerrar splash
-  // (evita que window-all-closed cierre la app entre los dos pasos)
-  createActivationWindow();
+  // Sin código o inválido: cerrar splash y mostrar activación
   closeSplash();
+  createActivationWindow();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createActivationWindow();
