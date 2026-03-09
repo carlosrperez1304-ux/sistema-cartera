@@ -16,6 +16,7 @@ export async function POST(req) {
 
   const empresa_id = auth.session.user.empresa_id;
 
+  // 1. Resetear todos los clientes
   const { error } = await db()
     .from('clientes')
     .update({
@@ -30,6 +31,40 @@ export async function POST(req) {
     .eq('empresa_id', empresa_id);
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
+
+  // 2. Restaurar monto/estado de clientes que ya tienen cotizaciones subidas
+  //    en el mes actual (no perder trabajo reciente al hacer cierre automático)
+  const inicioMes = new Date();
+  inicioMes.setDate(1);
+  inicioMes.setHours(0, 0, 0, 0);
+
+  const { data: cotsMes } = await db()
+    .from('cotizaciones')
+    .select('cliente_id, monto, fecha')
+    .gte('fecha', inicioMes.toISOString())
+    .not('monto', 'is', null)
+    .order('fecha', { ascending: false });
+
+  if (cotsMes && cotsMes.length > 0) {
+    // Tomar solo la cotización más reciente por cliente
+    const porCliente = {};
+    for (const c of cotsMes) {
+      if (!porCliente[c.cliente_id] && parseFloat(c.monto) > 0) {
+        porCliente[c.cliente_id] = c;
+      }
+    }
+    // Restaurar en batch
+    for (const [clienteId, cot] of Object.entries(porCliente)) {
+      await db()
+        .from('clientes')
+        .update({
+          monto: parseFloat(cot.monto),
+          estado: 'Cotizado',
+          fecha_cotizacion: cot.fecha ? cot.fecha.split('T')[0] : null,
+        })
+        .eq('id', parseInt(clienteId));
+    }
+  }
 
   return Response.json({ ok: true });
 }
