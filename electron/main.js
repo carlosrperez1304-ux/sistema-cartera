@@ -212,6 +212,10 @@ ipcMain.on('window-minimize', () => { const win = BrowserWindow.getFocusedWindow
 ipcMain.on('window-maximize', () => { const win = BrowserWindow.getFocusedWindow() || mainWin; if (win) win.isMaximized() ? win.unmaximize() : win.maximize(); });
 ipcMain.on('window-close',    () => { const win = BrowserWindow.getFocusedWindow() || mainWin; if (win) win.close(); });
 
+// ── IPC: auto-update (descarga e instalación) ────────────────
+ipcMain.on('start-download',  () => { autoUpdater.downloadUpdate(); });
+ipcMain.on('install-update',  () => { autoUpdater.quitAndInstall(); });
+
 ipcMain.handle('get-version', () => {
   return app.getVersion();
 });
