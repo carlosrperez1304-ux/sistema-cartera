@@ -16,6 +16,19 @@ export async function POST(req) {
 
   const empresa_id = auth.session.user.empresa_id;
 
+  const inicioMes = new Date();
+  inicioMes.setDate(1);
+  inicioMes.setHours(0, 0, 0, 0);
+  const inicioMesStr = inicioMes.toISOString().split('T')[0];
+
+  // 0. Guardar clientes que ya tienen fecha_notificacion en el mes actual
+  //    antes de resetear, para restaurarla después
+  const { data: notificadosMes } = await db()
+    .from('clientes')
+    .select('id, fecha_notificacion')
+    .eq('empresa_id', empresa_id)
+    .gte('fecha_notificacion', inicioMesStr);
+
   // 1. Resetear todos los clientes
   const { error } = await db()
     .from('clientes')
@@ -34,10 +47,6 @@ export async function POST(req) {
 
   // 2. Restaurar monto/estado de clientes que ya tienen cotizaciones subidas
   //    en el mes actual (no perder trabajo reciente al hacer cierre automático)
-  const inicioMes = new Date();
-  inicioMes.setDate(1);
-  inicioMes.setHours(0, 0, 0, 0);
-
   const { data: cotsMes } = await db()
     .from('cotizaciones')
     .select('cliente_id, monto, fecha')
@@ -63,6 +72,20 @@ export async function POST(req) {
           fecha_cotizacion: cot.fecha ? cot.fecha.split('T')[0] : null,
         })
         .eq('id', parseInt(clienteId));
+    }
+  }
+
+  // 3. Restaurar fecha_notificacion para clientes que ya habían notificado
+  //    en el mes actual — el estado pasa a 'Notificado' (sobreescribe 'Cotizado')
+  if (notificadosMes && notificadosMes.length > 0) {
+    for (const c of notificadosMes) {
+      await db()
+        .from('clientes')
+        .update({
+          fecha_notificacion: c.fecha_notificacion,
+          estado: 'Notificado',
+        })
+        .eq('id', c.id);
     }
   }
 
