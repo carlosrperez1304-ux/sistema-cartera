@@ -2971,7 +2971,6 @@ export default function App() {
                 type="text"
                 value={busquedaGlobal}
                 onChange={e => { setBusquedaGlobal(e.target.value); setShowBusquedaGlobal(true); }}
-                onFocus={() => setShowBusquedaGlobal(true)}
                 onBlur={() => setTimeout(() => setShowBusquedaGlobal(false), 180)}
                 placeholder="Buscar cliente..."
                 style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.82rem', color: 'var(--text)', width: '100%' }}
