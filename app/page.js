@@ -184,13 +184,15 @@ export default function App() {
       .finally(() => setHydrated(true));
   }, [session?.user, sessionStatus]);
 
-  // — Reloj en tiempo real —
+  // — Reloj en tiempo real (usa ref para evitar re-renders globales cada segundo) —
+  const clockRef = useRef(null);
   useEffect(() => {
     const actualizar = () => {
+      if (!clockRef.current) return;
       const ahora = new Date();
       const hora = ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       const fecha = ahora.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
-      setHoraActual(`${fecha} · ${hora}`);
+      clockRef.current.textContent = `${fecha} · ${hora}`;
     };
     actualizar();
     const interval = setInterval(actualizar, 1000);
@@ -3010,9 +3012,7 @@ export default function App() {
               );
             })()}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', letterSpacing: '0.02em', marginLeft: '1rem' }}>
-            {horaActual}
-          </div>
+          <div ref={clockRef} style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', letterSpacing: '0.02em', marginLeft: '1rem' }} />
         </div>
 
         <div className="topbar-right">

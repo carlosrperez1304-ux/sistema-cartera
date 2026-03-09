@@ -49,6 +49,7 @@ export async function GET(req) {
   if (ids.length === 0) return Response.json({});
 
   // 2. Obtener cotizaciones sin base64 para esos clientes
+  // Nota: no se selecciona 'datos' (base64) para mantener payload liviano
   const { data, error } = await db()
     .from('cotizaciones')
     .select('id, cliente_id, nombre, fecha, monto, estado, tipo')
