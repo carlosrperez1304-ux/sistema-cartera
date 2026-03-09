@@ -90,6 +90,27 @@
     .msg.error { color: #f87171; background: rgba(248,113,113,0.08); }
     .msg.success { color: #4ade80; background: rgba(74,222,128,0.08); }
     .msg.hidden { visibility: hidden; }
+    .close-btn {
+      position: fixed;
+      top: 12px;
+      right: 14px;
+      width: 28px;
+      height: 28px;
+      background: transparent;
+      border: none;
+      border-radius: 6px;
+      color: #52525b;
+      font-size: 1rem;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.12s, color 0.12s;
+      -webkit-app-region: no-drag;
+      padding: 0;
+    }
+    .close-btn:hover { background: rgba(248,113,113,0.15); color: #f87171; }
     .divider {
       width: 40px;
       height: 2px;
@@ -100,6 +121,7 @@
   </style>
 </head>
 <body>
+  <button class="close-btn" onclick="window.activationAPI.closeWindow()" title="Cerrar">✕</button>
   <div class="container">
     <img class="logo" src="assets/icon.png" alt="PayTrack" onerror="this.style.display='none'">
     <h1>PayTrack</h1>

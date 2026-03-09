@@ -87,7 +87,7 @@ function closeSplash() {
 function createActivationWindow() {
   activationWin = new BrowserWindow({
     width: 460,
-    height: 420,
+    height: 500,
     resizable: false,
     frame: false,
     titleBarStyle: 'hidden',
@@ -209,8 +209,39 @@ ipcMain.handle('validate-activation', async (event, codigo) => {
 
 // ── IPC: controles de ventana ────────────────────────────────
 ipcMain.on('window-minimize', () => { const win = BrowserWindow.getFocusedWindow() || mainWin; if (win) win.minimize(); });
-ipcMain.on('window-maximize', () => { const win = BrowserWindow.getFocusedWindow() || mainWin; if (win) win.isMaximized() ? win.unmaximize() : win.maximize(); });
-ipcMain.on('window-close',    () => { const win = BrowserWindow.getFocusedWindow() || mainWin; if (win) win.close(); });
+ipcMain.on('window-maximize', () => {
+  const win = BrowserWindow.getFocusedWindow() || mainWin;
+  if (!win) return;
+  if (win.isFullScreen()) {
+    win.setFullScreen(false);
+  } else if (win.isMaximized()) {
+    win.unmaximize();
+  } else {
+    win.maximize();
+  }
+});
+ipcMain.on('window-close', () => {
+  // Si hay ventana de activación visible, cerrarla y salir
+  if (activationWin && !activationWin.isDestroyed()) {
+    activationWin.destroy();
+    activationWin = null;
+    app.quit();
+    return;
+  }
+  // Para la ventana principal: usar destroy() + quit() para garantizar cierre completo
+  // (evita que beforeunload del sitio web en Vercel bloquee el cierre)
+  if (mainWin && !mainWin.isDestroyed()) {
+    mainWin.destroy();
+    mainWin = null;
+  }
+  app.quit();
+});
+
+ipcMain.handle('toggle-fullscreen', () => {
+  const win = BrowserWindow.getFocusedWindow() || mainWin;
+  if (!win) return;
+  win.setFullScreen(!win.isFullScreen());
+});
 
 // ── IPC: auto-update (descarga e instalación) ────────────────
 ipcMain.on('start-download',  () => { autoUpdater.downloadUpdate(); });
