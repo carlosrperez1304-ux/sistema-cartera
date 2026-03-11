@@ -18,9 +18,10 @@ export async function PATCH(req, { params }) {
 
   const body = await req.json();
   const update = {};
-  if (body.estado !== undefined) update.estado = body.estado;
-  if (body.monto  !== undefined) update.monto  = parseFloat(body.monto);
-  if (body.nombre !== undefined) update.nombre = body.nombre;
+  if (body.estado      !== undefined) update.estado      = body.estado;
+  if (body.monto       !== undefined) update.monto       = parseFloat(body.monto);
+  if (body.nombre      !== undefined) update.nombre      = body.nombre;
+  if (body.cliente_id  !== undefined) update.cliente_id  = parseInt(body.cliente_id);
 
   const { data, error } = await db()
     .from('cotizaciones')

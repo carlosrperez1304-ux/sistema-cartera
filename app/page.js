@@ -590,6 +590,10 @@ export default function App() {
   const [archivosEnProceso, setArchivosEnProceso] = useState([]);
   const [cargaMasivaProcesando, setCargaMasivaProcesando] = useState(false);
   const [clientesConDoc, setClientesConDoc] = useState(new Set()); // IDs que ya tienen documento
+  const [tabCargaMasiva, setTabCargaMasiva] = useState('subir'); // 'subir' | 'vincular'
+  const [busquedaVincular, setBusquedaVincular] = useState('');
+  const [vincularSelects, setVincularSelects] = useState({}); // { docId: nuevoClienteId }
+  const [vincularLoading, setVincularLoading] = useState(null);
   const [showGenMasivaModal, setShowGenMasivaModal] = useState(false);
   const [genMasivaActivo, setGenMasivaActivo] = useState(false);
   const [genMasivaProgreso, setGenMasivaProgreso] = useState({ total: 0, done: 0, ok: 0, error: 0 });
@@ -2281,6 +2285,51 @@ export default function App() {
       errores > 0 ? `${errores} no se pudo${errores !== 1 ? 'n' : ''} guardar` : null,
     ].filter(Boolean).join(' · ');
     showToast(msg, errores > 0 && guardados === 0 ? 'error' : guardados > 0 ? 'success' : 'info');
+  };
+
+  const vincularDocumento = async (doc, nuevoClienteId) => {
+    if (!nuevoClienteId || nuevoClienteId === doc.clienteId) return;
+    setVincularLoading(doc.id);
+    try {
+      const res = await fetch(`/api/cotizaciones/${doc.clienteId}/${doc.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cliente_id: parseInt(nuevoClienteId) }),
+      });
+      if (res.ok) {
+        setCotizaciones(prev => {
+          const oldDocs = (prev[doc.clienteId] || []).filter(d => d.id !== doc.id);
+          const newDoc  = { ...doc, clienteId: parseInt(nuevoClienteId) };
+          const newDocs = [...(prev[nuevoClienteId] || []), newDoc];
+          return { ...prev, [doc.clienteId]: oldDocs, [parseInt(nuevoClienteId)]: newDocs };
+        });
+        setVincularSelects(prev => { const n = { ...prev }; delete n[doc.id]; return n; });
+        showToast('Documento vinculado correctamente', 'success');
+      } else { showToast('Error al vincular documento', 'error'); }
+    } catch { showToast('Error al vincular documento', 'error'); }
+    setVincularLoading(null);
+  };
+
+  const borrarDocsAgente = async (username) => {
+    if (!confirm(`¿Eliminar TODOS los documentos de @${username} y reiniciar sus clientes?\n\nEsta acción no se puede deshacer.`)) return;
+    try {
+      const res = await fetch('/api/admin/borrar-docs-agente', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const clientesAgente = datosActuales.clientes.filter(c => c.creadoPor === username);
+        setCotizaciones(prev => {
+          const next = { ...prev };
+          clientesAgente.forEach(c => { delete next[c.id]; });
+          return next;
+        });
+        await cargarClientes();
+        showToast(`Documentos eliminados · ${data.reset || 0} clientes reiniciados`, 'success');
+      } else { showToast('Error al eliminar documentos', 'error'); }
+    } catch { showToast('Error al eliminar documentos', 'error'); }
   };
 
   // ─── GESTIÓN DE USUARIOS ─────────────────────────────────
@@ -4937,10 +4986,15 @@ export default function App() {
                               </div>
                             </div>
                           )}
-                          <div style={{ marginTop: '0.75rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
+                          <div style={{ marginTop: '0.75rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                             <button onClick={() => { setFiltroAgente(agente); setActiveTab('cartera'); }} style={{ width: '100%', padding: '0.5rem', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}>
                               Ver cartera de {nombreUsuario}
                             </button>
+                            {totalDocs > 0 && (
+                              <button onClick={() => borrarDocsAgente(agente)} style={{ width: '100%', padding: '0.45rem', background: 'transparent', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: '8px', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer' }}>
+                                Eliminar todos los documentos
+                              </button>
+                            )}
                           </div>
                         </div>
                       );
@@ -7143,10 +7197,81 @@ export default function App() {
           <div className="modal-content" style={{ maxWidth: '780px' }}>
             <div className="modal-header">
               <h2><FolderOpen size={15}/> Carga Masiva de Documentos</h2>
-              <button className="close-btn" onClick={() => { setShowCargaMasivaModal(false); setArchivosEnProceso([]); }}>×</button>
+              <button className="close-btn" onClick={() => { setShowCargaMasivaModal(false); setArchivosEnProceso([]); setBusquedaVincular(''); setTabCargaMasiva('subir'); }}>×</button>
             </div>
 
-            {archivosEnProceso.length === 0 ? (
+            {/* Tabs */}
+            <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid var(--border)', marginBottom: '1.25rem' }}>
+              {[{ key: 'subir', label: 'Subir PDFs' }, { key: 'vincular', label: 'Vincular existentes' }].map(t => (
+                <button key={t.key} onClick={() => setTabCargaMasiva(t.key)} style={{ padding: '0.55rem 1.2rem', fontWeight: 700, fontSize: '0.85rem', border: 'none', borderBottom: tabCargaMasiva === t.key ? '2px solid var(--accent)' : '2px solid transparent', background: 'transparent', color: tabCargaMasiva === t.key ? 'var(--accent)' : 'var(--text-muted)', cursor: 'pointer', marginBottom: '-2px' }}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {tabCargaMasiva === 'vincular' ? (
+              /* ── Tab Vincular existentes ── */
+              <div>
+                <p style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Busca un documento ya subido por nombre y vincúlalo al cliente correcto.</p>
+                <input
+                  type="text"
+                  value={busquedaVincular}
+                  onChange={e => setBusquedaVincular(e.target.value)}
+                  placeholder="Escribe el nombre del documento…"
+                  style={{ width: '100%', padding: '0.65rem 0.9rem', borderRadius: '8px', border: '1.5px solid var(--border2)', fontSize: '0.9rem', marginBottom: '1rem', boxSizing: 'border-box', background: 'var(--surface2)' }}
+                  autoFocus
+                />
+                {busquedaVincular.trim() && (() => {
+                  const term = busquedaVincular.toLowerCase();
+                  const resultados = [];
+                  Object.entries(cotizaciones).forEach(([cid, docs]) => {
+                    docs.forEach(doc => {
+                      if (doc.nombre && doc.nombre.toLowerCase().includes(term)) {
+                        resultados.push({ ...doc, clienteId: parseInt(cid) });
+                      }
+                    });
+                  });
+                  if (resultados.length === 0) return <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontSize: '0.88rem' }}>No se encontraron documentos con ese nombre.</div>;
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxHeight: '380px', overflowY: 'auto' }}>
+                      {resultados.slice(0, 30).map(doc => {
+                        const clienteActual = datosActuales.clientes.find(c => c.id === doc.clienteId);
+                        const nuevoId = vincularSelects[doc.id];
+                        return (
+                          <div key={doc.id} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                            <FileText size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                            <div style={{ flex: 1, minWidth: '180px' }}>
+                              <div style={{ fontWeight: 700, fontSize: '0.83rem', color: 'var(--text)' }}>{doc.nombre}</div>
+                              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                                Cliente actual: <b>{clienteActual?.nombre || `#${doc.clienteId}`}</b>
+                                {doc.monto ? ` · $${parseFloat(doc.monto).toLocaleString('en-US')}` : ''}
+                              </div>
+                            </div>
+                            <select
+                              value={nuevoId || ''}
+                              onChange={e => setVincularSelects(prev => ({ ...prev, [doc.id]: e.target.value ? parseInt(e.target.value) : null }))}
+                              style={{ padding: '0.4rem 0.6rem', borderRadius: '7px', border: '1.5px solid var(--border2)', fontSize: '0.8rem', background: 'var(--surface)', minWidth: '160px' }}
+                            >
+                              <option value="">— Cambiar cliente —</option>
+                              {datosActuales.clientes.map(c => (
+                                <option key={c.id} value={c.id}>{c.nombre}</option>
+                              ))}
+                            </select>
+                            <button
+                              onClick={() => vincularDocumento(doc, nuevoId)}
+                              disabled={!nuevoId || vincularLoading === doc.id}
+                              style={{ padding: '0.4rem 0.9rem', background: nuevoId ? 'var(--accent)' : 'var(--border)', color: nuevoId ? 'white' : 'var(--text-muted)', border: 'none', borderRadius: '7px', fontWeight: 700, fontSize: '0.78rem', cursor: nuevoId ? 'pointer' : 'not-allowed' }}
+                            >
+                              {vincularLoading === doc.id ? '…' : 'Vincular'}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            ) : archivosEnProceso.length === 0 ? (
               /* ── Zona de carga ── */
               <div>
                 <label
@@ -7261,11 +7386,11 @@ export default function App() {
             )}
 
             <div className="form-actions" style={{ marginTop: '1.25rem' }}>
-              <button className="btn btn-secondary" onClick={() => { setShowCargaMasivaModal(false); setArchivosEnProceso([]); }}>Cancelar</button>
-              {archivosEnProceso.length > 0 && (
+              <button className="btn btn-secondary" onClick={() => { setShowCargaMasivaModal(false); setArchivosEnProceso([]); setBusquedaVincular(''); setTabCargaMasiva('subir'); }}>Cerrar</button>
+              {tabCargaMasiva === 'subir' && archivosEnProceso.length > 0 && (
                 <button className="btn btn-secondary" onClick={() => setArchivosEnProceso([])}><RefreshCw size={13}/> Seleccionar otros archivos</button>
               )}
-              {archivosEnProceso.length > 0 && (
+              {tabCargaMasiva === 'subir' && archivosEnProceso.length > 0 && (
                 <button
                   className="btn btn-primary"
                   onClick={confirmarCargaMasiva}
