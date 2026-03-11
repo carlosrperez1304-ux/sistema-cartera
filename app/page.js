@@ -1296,6 +1296,7 @@ export default function App() {
         setPagoRechazandoId(null);
         setMotivoRechazo('');
         cargarPagosPendientes();
+        cargarClientes();
       }
     } catch (e) { showToast('Error al validar pago', 'error'); }
   };
