@@ -89,5 +89,14 @@ export async function POST(req) {
     }
   }
 
+  // 4. Limpiar documentos del mes anterior (retención: 30 días o fin de mes)
+  const primerDiaMesActual = new Date();
+  primerDiaMesActual.setDate(1);
+  primerDiaMesActual.setHours(0, 0, 0, 0);
+  await db()
+    .from('cotizaciones')
+    .delete()
+    .lt('fecha', primerDiaMesActual.toISOString());
+
   return Response.json({ ok: true });
 }

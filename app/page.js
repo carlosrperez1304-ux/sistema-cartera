@@ -288,34 +288,7 @@ export default function App() {
     } catch { /* offline — mantener datos en pantalla */ }
   }, []);
 
-  // Cierre automático de mes — solo en montaje inicial, separado de cargarClientes
-  // para no ejecutarse en cada evento Realtime y evitar condiciones de carrera
-  useEffect(() => {
-    if (!session?.user) return;
-    const ejecutarCierre = async () => {
-      try {
-        const [resC, resDelC, resCreditos] = await Promise.all([
-          fetch('/api/clientes'),
-          fetch('/api/delegacion-clientes'),
-          fetch('/api/creditos'),
-        ]);
-        const propios   = resC.ok      ? await resC.json()      : [];
-        const delegados = resDelC.ok   ? await resDelC.json()   : [];
-        const creds     = resCreditos.ok ? await resCreditos.json() : [];
-        const mapa = new Map();
-        [...(Array.isArray(propios) ? propios : []),
-         ...(Array.isArray(delegados) ? delegados : [])].forEach(c => mapa.set(c.id, c));
-        const todos = [...mapa.values()];
-        const huboReinicio = await cierreAutomaticoMes(todos, Array.isArray(creds) ? creds : []);
-        if (huboReinicio) {
-          cargarClientes();
-          cargarCreditos();
-        }
-      } catch { /* sin conexión — ignorar cierre */ }
-    };
-    ejecutarCierre();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user?.username]);
+  // Cierre automático removido — el cierre de mes es manual (solo admin/supervisor)
 
   // Carga inicial + suscripción Supabase Realtime
   useEffect(() => {
@@ -1724,20 +1697,31 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  const descargarMesExcel = () => {
+  const ejecutarCierreMes = async () => {
     const mesActual = obtenerMesActual();
     const mesNombre = obtenerNombreMes(mesActual);
-    const snapshotDatos = { clientes: JSON.parse(JSON.stringify(clientes)), creditos: JSON.parse(JSON.stringify(creditos)), fechaGuardado: new Date().toISOString() };
-    setHistorialMeses({ ...historialMeses, [mesActual]: snapshotDatos });
-    fetch('/api/historial-meses', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ mes_key: mesActual, datos: snapshotDatos }) }).catch(() => {});
-    const datosCartera = clientes.map(c => ({ 'ID': c.id, 'Cliente': c.nombre, 'Contacto': c.contacto || '', 'Estado': c.estado, 'Monto': parseFloat(c.monto || 0), 'Mes': c.mes + '/' + c.año, 'Fecha Cotización': c.fechaCotizacion || '', 'Fecha Notificación': c.fechaNotificacion || '', 'Fecha Pago': c.fechaPago || '', 'Fecha Facturación': c.fechaFacturacion || '', 'Suspendido': c.suspendido ? 'Sí' : 'No', 'Comentario': c.comentario || '' }));
-    const datosCreditos2 = creditos.map(c => ({ 'ID': c.id, 'Nº Orden': c.numeroOrden, 'Cliente': c.cliente, 'Monto': parseFloat(c.monto || 0), 'Fecha Inicio': c.fechaInicio, 'Plazo (meses)': c.plazoMeses, 'Fecha Vencimiento': c.fechaVencimiento, 'Estado': c.estado, 'Comentario': c.comentario || '' }));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(datosCartera), 'Cartera');
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(datosCreditos2), 'Créditos');
-    XLSX.writeFile(wb, `Reporte_${mesNombre.replace(/ /g, '_')}.xlsx`);
     setShowDescargaMesModal(false);
-    showToast(`Mes ${mesNombre} guardado correctamente`, 'success');
+    showToast('Ejecutando cierre de mes…', 'info');
+    try {
+      // 1. Guardar snapshot del mes actual en historial
+      const snapshotDatos = { clientes: JSON.parse(JSON.stringify(clientes)), creditos: JSON.parse(JSON.stringify(creditos)), fechaGuardado: new Date().toISOString() };
+      setHistorialMeses({ ...historialMeses, [mesActual]: snapshotDatos });
+      await fetch('/api/historial-meses', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mes_key: mesActual, datos: snapshotDatos }) });
+      // 2. Descargar Excel del mes
+      const datosCartera = clientes.map(c => ({ 'ID': c.id, 'Cliente': c.nombre, 'Contacto': c.contacto || '', 'Estado': c.estado, 'Monto': parseFloat(c.monto || 0), 'Mes': c.mes + '/' + c.año, 'Fecha Cotización': c.fechaCotizacion || '', 'Fecha Notificación': c.fechaNotificacion || '', 'Fecha Pago': c.fechaPago || '', 'Fecha Facturación': c.fechaFacturacion || '', 'Suspendido': c.suspendido ? 'Sí' : 'No', 'Comentario': c.comentario || '' }));
+      const datosCreditos2 = creditos.map(c => ({ 'ID': c.id, 'Nº Orden': c.numeroOrden, 'Cliente': c.cliente, 'Monto': parseFloat(c.monto || 0), 'Fecha Inicio': c.fechaInicio, 'Plazo (meses)': c.plazoMeses, 'Fecha Vencimiento': c.fechaVencimiento, 'Estado': c.estado, 'Comentario': c.comentario || '' }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(datosCartera), 'Cartera');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(datosCreditos2), 'Créditos');
+      XLSX.writeFile(wb, `Reporte_${mesNombre.replace(/ /g, '_')}.xlsx`);
+      // 3. Reiniciar clientes y limpiar documentos del mes anterior
+      const res = await fetch('/api/clientes/reiniciar-mes', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+      if (!res.ok) { showToast('Error al reiniciar clientes', 'error'); return; }
+      // 4. Recargar datos
+      await cargarClientes();
+      setCotizaciones({});
+      showToast(`Cierre de ${mesNombre} completado · Clientes reiniciados · Documentos del mes anterior eliminados`, 'success');
+    } catch { showToast('Error durante el cierre de mes', 'error'); }
   };
 
   // ─── DOCUMENTOS / COTIZACIONES ───────────────────────────
@@ -3302,6 +3286,7 @@ export default function App() {
             {esContabilidad && <div className={`sidebar-item ${activeTab === 'validar_pagos' ? 'active' : ''}`} onClick={() => { setActiveTab('validar_pagos'); cargarPagosPendientes(); }}><span className="icon"><Check size={14}/></span> Validar Pagos{pagosPendientesCount > 0 && <span style={{ marginLeft:'6px', background:'#f97316', color:'#fff', borderRadius:'10px', padding:'0 6px', fontSize:'0.7rem', fontWeight:700 }}>{pagosPendientesCount}</span>}</div>}
             {tienePermiso('ver_clientes') && (() => { const noGen = datosActuales.clientes.filter(c => c.estado === 'No Generaron' || c.estado === 'Archivado').length; return <div className={`sidebar-item ${activeTab === 'reactivacion' ? 'active' : ''}`} onClick={() => setActiveTab('reactivacion')} style={{ position: 'relative' }}><span className="icon"><Archive size={14}/></span> Reactivación{noGen > 0 && <span style={{ marginLeft:'6px', background:'#64748b', color:'#fff', borderRadius:'10px', padding:'0 6px', fontSize:'0.7rem', fontWeight:700 }}>{noGen}</span>}</div>; })()}
             <div className="sidebar-item" onClick={() => { abrirCargaMasiva(); }}><span className="icon"><Upload size={14}/></span> Carga Masiva PDF</div>
+            {['admin', 'supervisor_cobro', 'supervisor_contabilidad'].includes(session?.user?.rol) && <div className="sidebar-item" style={{ color: '#dc2626', fontWeight: 700 }} onClick={() => setShowDescargaMesModal(true)}><span className="icon"><Save size={14}/></span> Cierre de Mes</div>}
             {esAdmin && <div className={`sidebar-item ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => { cargarUsuariosAdmin(); setActiveTab('usuarios'); }}><span className="icon"><Users size={14}/></span> Usuarios</div>}
           </div>
           <div className="sidebar-section">
@@ -5823,15 +5808,21 @@ export default function App() {
             </div>
           </div>
 
-          {/* Modal Guardar Mes */}
+          {/* Modal Cierre de Mes */}
           <div className={`modal ${showDescargaMesModal ? 'show' : ''}`}>
             <div className="nota-modal-content">
-              <div className="modal-header"><h2><Save size={15}/> Guardar y Descargar Mes</h2><button className="close-btn" onClick={() => setShowDescargaMesModal(false)}>✕</button></div>
-              <p style={{ fontSize: '0.88rem', color: '#64748b', marginBottom: '1.5rem' }}>Selecciona el formato de descarga:</p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <button className="btn btn-primary" onClick={descargarMesExcel} style={{ width: '100%', justifyContent: 'center' }}><BarChart2 size={13}/> Descargar en Excel</button>
+              <div className="modal-header"><h2><Save size={15}/> Cierre de Mes — {obtenerNombreMes(obtenerMesActual())}</h2><button className="close-btn" onClick={() => setShowDescargaMesModal(false)}>✕</button></div>
+              <p style={{ fontSize: '0.88rem', color: '#64748b', marginBottom: '1rem' }}>Esta acción realizará lo siguiente:</p>
+              <ul style={{ fontSize: '0.85rem', color: 'var(--text)', lineHeight: 1.8, marginBottom: '1.5rem', paddingLeft: '1.2rem' }}>
+                <li>Guarda el snapshot del mes en el historial</li>
+                <li>Descarga el reporte Excel del mes</li>
+                <li>Reinicia todos los clientes a "No Generaron"</li>
+                <li>Elimina los documentos del mes anterior</li>
+              </ul>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button className="btn btn-secondary" onClick={() => setShowDescargaMesModal(false)} style={{ flex: 1 }}>Cancelar</button>
+                <button className="btn btn-primary" onClick={ejecutarCierreMes} style={{ flex: 1 }}><Save size={13}/> Confirmar Cierre</button>
               </div>
-              <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '1rem', textAlign: 'center' }}>El mes se guardará en el historial automáticamente</p>
             </div>
           </div>
 
