@@ -1,6 +1,9 @@
 import { db } from '../../../../lib/supabase.js';
 import { requireAuth, checkCsrf } from '../../../../lib/security.js';
 
+export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
+
 // GET — documentos de un cliente (incluye base64 para previsualización)
 export async function GET(req, { params }) {
   const auth = await requireAuth(req);

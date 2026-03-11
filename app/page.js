@@ -325,6 +325,7 @@ export default function App() {
     cargarClientes();
     cargarCreditos();
     cargarNotasDashboard();
+    cargarTodosDocumentos();
 
     // Supabase Realtime — reemplaza el setInterval por eventos en tiempo real
     const supabase = getSupabaseBrowser();
@@ -2259,19 +2260,25 @@ export default function App() {
           const saved = await res.json();
           setCotizaciones(prev => ({ ...prev, [arch.clienteAsignado.id]: (prev[arch.clienteAsignado.id] || []).map(d => d.id === nueva.id ? { ...d, id: saved.id } : d) }));
           guardados++;
-        } else { errores++; }
-      } catch { errores++; }
-      if (arch.montoDetectado) {
-        const clienteActual = clientes.find(c => c.id === arch.clienteAsignado.id);
-        if (clienteActual) actualizarCliente({ ...clienteActual, monto: arch.montoDetectado.toString() });
+          if (arch.montoDetectado) {
+            const clienteActual = clientes.find(c => c.id === arch.clienteAsignado.id);
+            if (clienteActual) actualizarCliente({ ...clienteActual, monto: arch.montoDetectado.toString() });
+          }
+        } else {
+          errores++;
+          setCotizaciones(prev => ({ ...prev, [arch.clienteAsignado.id]: (prev[arch.clienteAsignado.id] || []).filter(d => d.id !== nueva.id) }));
+        }
+      } catch {
+        errores++;
+        setCotizaciones(prev => ({ ...prev, [arch.clienteAsignado.id]: (prev[arch.clienteAsignado.id] || []).filter(d => d.id !== nueva.id) }));
       }
     }
     const msg = [
-      `${guardados} documento${guardados !== 1 ? 's' : ''} guardado${guardados !== 1 ? 's' : ''}`,
+      guardados > 0 ? `${guardados} documento${guardados !== 1 ? 's' : ''} guardado${guardados !== 1 ? 's' : ''}` : null,
       omitidos > 0 ? `${omitidos} omitido${omitidos !== 1 ? 's' : ''} (ya tenían documento)` : null,
-      errores > 0 ? `${errores} sin vincular` : null,
+      errores > 0 ? `${errores} no se pudo${errores !== 1 ? 'n' : ''} guardar` : null,
     ].filter(Boolean).join(' · ');
-    showToast(msg, guardados > 0 ? 'success' : 'error');
+    showToast(msg, errores > 0 && guardados === 0 ? 'error' : guardados > 0 ? 'success' : 'info');
   };
 
   // ─── GESTIÓN DE USUARIOS ─────────────────────────────────
@@ -4868,7 +4875,11 @@ export default function App() {
                     {agentes.map(agente => {
                       const clientesAgente = datosActuales.clientes.filter(c => c.creadoPor === agente);
                       const creditosAgente = datosActuales.creditos.filter(c => c.creadoPor === agente);
-                      const totalMonto = clientesAgente.reduce((s, c) => s + (parseFloat(c.monto) || 0), 0);
+                      const totalMonto = clientesAgente.reduce((s, c) => {
+                        const docs = cotizaciones[c.id] || [];
+                        const montoCots = docs.reduce((sum, d) => sum + (parseFloat(d.monto) || 0), 0);
+                        return s + (montoCots > 0 ? montoCots : (parseFloat(c.monto) || 0));
+                      }, 0);
                       const totalCreditos = creditosAgente.reduce((s, c) => s + (parseFloat(c.monto) || 0), 0);
                       const estadoCount = clientesAgente.reduce((acc, c) => { acc[c.estado] = (acc[c.estado] || 0) + 1; return acc; }, {});
                       const nombreUsuario = usuarios[agente]?.nombre || agente;

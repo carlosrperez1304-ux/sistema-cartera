@@ -18,6 +18,11 @@ const securityHeaders = [
 
 const nextConfig = {
   turbopack: {},
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
+  },
   // Evita que webpack intente bundlear pdfjs-dist en el servidor.
   // Lo usa directamente como módulo nativo de Node.js (sin canvas, sin worker).
   serverExternalPackages: ['pdfjs-dist'],
