@@ -570,6 +570,8 @@ export default function App() {
   const [busquedaVincular, setBusquedaVincular] = useState('');
   const [vincularSelects, setVincularSelects] = useState({}); // { docId: nuevoClienteId }
   const [vincularLoading, setVincularLoading] = useState(null);
+  const [showBuscadorDocsModal, setShowBuscadorDocsModal] = useState(false);
+  const [busquedaDocsGlobal, setBusquedaDocsGlobal] = useState('');
   const [showGenMasivaModal, setShowGenMasivaModal] = useState(false);
   const [genMasivaActivo, setGenMasivaActivo] = useState(false);
   const [genMasivaProgreso, setGenMasivaProgreso] = useState({ total: 0, done: 0, ok: 0, error: 0 });
@@ -3992,9 +3994,12 @@ export default function App() {
                 <button className="btn btn-primary" style={{ fontSize: '0.78rem', padding: '0.4rem 0.9rem' }} onClick={() => { abrirCargaMasiva(); }}>
                   <FolderOpen size={13} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Carga Masiva
                 </button>
-                <span style={{ background: 'var(--surface2)', border: '1px solid var(--border)', padding: '0.4rem 0.85rem', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                <button style={{ background: 'var(--surface2)', border: '1px solid var(--border)', padding: '0.4rem 0.85rem', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 700, color: 'var(--accent)', cursor: 'pointer', display:'flex', alignItems:'center', gap:'0.3rem' }} onClick={() => { setBusquedaDocsGlobal(''); setVincularSelects({}); setShowBuscadorDocsModal(true); }}>
+                  <Search size={12}/> Buscar documento
+                </button>
+                <button style={{ background: 'var(--surface2)', border: '1px solid var(--border)', padding: '0.4rem 0.85rem', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', cursor: 'pointer' }} onClick={() => { setBusquedaDocsGlobal(''); setVincularSelects({}); setShowBuscadorDocsModal(true); }}>
                   {Object.values(cotizaciones).reduce((s, d) => s + d.length, 0)} documentos en total
-                </span>
+                </button>
               </div>
             </div>
 
@@ -7182,6 +7187,87 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Modal Buscador de Documentos */}
+      {showBuscadorDocsModal && (() => {
+        const todosLosDocs = [];
+        Object.entries(cotizaciones).forEach(([cid, docs]) => {
+          const cliente = datosActuales.clientes.find(c => c.id === parseInt(cid));
+          docs.forEach(doc => todosLosDocs.push({ ...doc, clienteId: parseInt(cid), clienteNombre: cliente?.nombre || `#${cid}` }));
+        });
+        const term = busquedaDocsGlobal.trim().toLowerCase();
+        const filtrados = term
+          ? todosLosDocs.filter(d => (d.nombre || '').toLowerCase().includes(term) || (d.clienteNombre || '').toLowerCase().includes(term))
+          : todosLosDocs;
+        filtrados.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+        return (
+          <div className="modal show" onClick={e => { if (e.target === e.currentTarget) { setShowBuscadorDocsModal(false); setBusquedaDocsGlobal(''); setVincularSelects({}); } }}>
+            <div className="modal-content" style={{ maxWidth: '780px', width: '96vw', padding: 0, borderRadius: '16px', overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ background: 'linear-gradient(135deg, #1e2d4a, #2d4170)', padding: '1.25rem 1.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><FileText size={15}/> Todos los Documentos</h2>
+                  <div style={{ fontSize: '0.75rem', color: '#93c5fd', marginTop: '0.2rem' }}>{todosLosDocs.length} documentos subidos en total</div>
+                </div>
+                <button onClick={() => { setShowBuscadorDocsModal(false); setBusquedaDocsGlobal(''); setVincularSelects({}); }} style={{ color: '#fff', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16}/></button>
+              </div>
+              <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ position: 'relative' }}>
+                  <Search size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}/>
+                  <input
+                    type="text"
+                    value={busquedaDocsGlobal}
+                    onChange={e => setBusquedaDocsGlobal(e.target.value)}
+                    placeholder="Buscar por nombre de documento o cliente…"
+                    style={{ width: '100%', padding: '0.6rem 0.9rem 0.6rem 2.2rem', borderRadius: '8px', border: '1.5px solid var(--border2)', fontSize: '0.88rem', background: 'var(--surface2)', boxSizing: 'border-box' }}
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <div style={{ overflowY: 'auto', flex: 1, padding: '1rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {filtrados.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', fontSize: '0.88rem' }}>No se encontraron documentos.</div>
+                ) : filtrados.map(doc => {
+                  const nuevoId = vincularSelects[doc.id];
+                  return (
+                    <div key={doc.id} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '10px', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                      <FileText size={16} style={{ color: 'var(--accent)', flexShrink: 0 }}/>
+                      <div style={{ flex: 1, minWidth: '180px' }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.83rem', color: 'var(--text)' }}>{doc.nombre || 'Sin nombre'}</div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.15rem', display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+                          <span>Cliente: <b style={{ color: 'var(--text)' }}>{doc.clienteNombre}</b></span>
+                          {doc.monto ? <span>Monto: <b>${parseFloat(doc.monto).toLocaleString('en-US')}</b></span> : null}
+                          {doc.fecha ? <span>{new Date(doc.fecha).toLocaleDateString('es-DO')}</span> : null}
+                        </div>
+                      </div>
+                      {esAdmin && (
+                        <>
+                          <select
+                            value={nuevoId || ''}
+                            onChange={e => setVincularSelects(prev => ({ ...prev, [doc.id]: e.target.value ? parseInt(e.target.value) : null }))}
+                            style={{ padding: '0.4rem 0.6rem', borderRadius: '7px', border: '1.5px solid var(--border2)', fontSize: '0.8rem', background: 'var(--surface)', minWidth: '160px' }}
+                          >
+                            <option value="">— Cambiar cliente —</option>
+                            {datosActuales.clientes.map(c => (
+                              <option key={c.id} value={c.id}>{c.nombre}</option>
+                            ))}
+                          </select>
+                          <button
+                            onClick={() => vincularDocumento(doc, nuevoId)}
+                            disabled={!nuevoId || vincularLoading === doc.id}
+                            style={{ padding: '0.4rem 0.9rem', background: nuevoId ? 'var(--accent)' : 'var(--border)', color: nuevoId ? 'white' : 'var(--text-muted)', border: 'none', borderRadius: '7px', fontWeight: 700, fontSize: '0.78rem', cursor: nuevoId ? 'pointer' : 'not-allowed', flexShrink: 0 }}
+                          >
+                            {vincularLoading === doc.id ? '…' : 'Vincular'}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/*  Modal Carga Masiva  */}
       {showCargaMasivaModal && (
