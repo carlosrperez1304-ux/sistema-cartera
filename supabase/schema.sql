@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS pagos (
   nota            TEXT,
   estado          TEXT DEFAULT 'pendiente',
   creado_por      TEXT DEFAULT '',
-  empresa_id      BIGINT REFERENCES empresas(id) ON DELETE SET NULL,
+  empresa_id      BIGINT,
   validado_por    TEXT,
   validado_en     TIMESTAMPTZ,
   motivo_rechazo  TEXT,
