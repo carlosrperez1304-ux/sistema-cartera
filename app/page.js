@@ -4088,7 +4088,7 @@ export default function App() {
                 { key: 'vencido', label: 'Vencido', val: estadisticas.vencido, pct: estadisticas.vencidoPct, monto: estadisticas.montoVencido, color: '#dc2626' },
                 { key: 'no-generaron', label: 'No Generaron', val: estadisticas.noGeneraron, pct: estadisticas.noGeneraronPct, monto: null, color: '#64748b' },
                 { key: 'suspendido', label: 'Suspendidos', val: estadisticas.suspendido, pct: estadisticas.suspendidoPct, monto: estadisticas.montoSuspendido, color: '#dc2626' },
-                ...(estadisticas.sinDocumento > 0 ? [{ key: 'sin-documento', label: 'Sin Documento', val: estadisticas.sinDocumento, pct: total > 0 ? ((estadisticas.sinDocumento / total) * 100).toFixed(0) : 0, monto: null, color: '#b45309' }] : []),
+                ...(estadisticas.sinDocumento > 0 ? [{ key: 'sin-documento', label: 'Sin Documento', val: estadisticas.sinDocumento, pct: estadisticas.total > 0 ? ((estadisticas.sinDocumento / estadisticas.total) * 100).toFixed(0) : 0, monto: null, color: '#b45309' }] : []),
               ].map(s => (
                 <div key={s.key} className={`stat-card ${s.key}`} onClick={() => { setFilter(filter === s.key ? 'todos' : s.key); setPaginaActual(1); }} style={{ cursor: 'pointer', outline: filter === s.key ? `2px solid ${s.color}` : 'none', outlineOffset: '2px', transition: 'all 0.15s' }} title={filter === s.key ? 'Clic para quitar filtro' : `Filtrar por ${s.label}`}>
                   <div className="stat-label">{s.label}</div>
