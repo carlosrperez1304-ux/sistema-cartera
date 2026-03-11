@@ -869,6 +869,8 @@ export default function App() {
 
     // Combinar estado directo del cliente con cotizaciones cargadas
     const obtenerEstadoFinal = (c) => {
+      // Estados terminales del cliente tienen prioridad sobre el estado del documento
+      if (c.estado === 'Pagado' || c.estado === 'Facturado' || c.estado === 'Vencido') return c.estado;
       const docs = cotizaciones[c.id] || [];
       if (docs.length === 0) {
         // Sin documentos: 'Cotizado' solo es válido si se marcó el proceso manualmente
