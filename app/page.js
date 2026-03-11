@@ -4884,6 +4884,8 @@ export default function App() {
                         return s + (montoCots > 0 ? montoCots : (parseFloat(c.monto) || 0));
                       }, 0);
                       const totalCreditos = creditosAgente.reduce((s, c) => s + (parseFloat(c.monto) || 0), 0);
+                      const totalDocs = clientesAgente.reduce((s, c) => s + (cotizaciones[c.id] || []).length, 0);
+                      const clientesSinDoc = clientesAgente.filter(c => (cotizaciones[c.id] || []).length === 0 && c.estado === 'Cotizado').length;
                       const estadoCount = clientesAgente.reduce((acc, c) => { acc[c.estado] = (acc[c.estado] || 0) + 1; return acc; }, {});
                       const nombreUsuario = usuarios[agente]?.nombre || agente;
                       return (
@@ -4905,6 +4907,14 @@ export default function App() {
                             <div style={{ background: 'var(--surface2)', borderRadius: '9px', padding: '0.7rem', textAlign: 'center' }}>
                               <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#059669' }}>{creditosAgente.length}</div>
                               <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>CRÉDITOS</div>
+                            </div>
+                            <div style={{ background: 'var(--surface2)', borderRadius: '9px', padding: '0.7rem', textAlign: 'center' }}>
+                              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0284c7' }}>{totalDocs}</div>
+                              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>DOCUMENTOS</div>
+                            </div>
+                            <div style={{ background: clientesSinDoc > 0 ? '#fffbeb' : 'var(--surface2)', border: clientesSinDoc > 0 ? '1px solid #fde68a' : 'none', borderRadius: '9px', padding: '0.7rem', textAlign: 'center' }}>
+                              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: clientesSinDoc > 0 ? '#b45309' : 'var(--text-muted)' }}>{clientesSinDoc}</div>
+                              <div style={{ fontSize: '0.7rem', color: clientesSinDoc > 0 ? '#b45309' : 'var(--text-muted)', fontWeight: 600 }}>SIN DOCUMENTO</div>
                             </div>
                           </div>
                           <div style={{ marginBottom: '0.75rem' }}>
