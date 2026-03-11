@@ -7,7 +7,9 @@ export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const cliente_id = searchParams.get("cliente_id");
   const estado = searchParams.get("estado");
+  const empresa_id = auth.session.user.empresa_id;
   let query = db().from("pagos").select("*").order("created_at", { ascending: false });
+  if (empresa_id) query = query.eq("empresa_id", empresa_id);
   if (cliente_id) query = query.eq("cliente_id", parseInt(cliente_id));
   if (estado) query = query.eq("estado", estado);
   const { data, error } = await query;

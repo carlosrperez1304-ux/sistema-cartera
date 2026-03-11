@@ -299,6 +299,9 @@ export default function App() {
     cargarCreditos();
     cargarNotasDashboard();
     cargarTodosDocumentos();
+    if (['contabilidad', 'supervisor_cobro', 'supervisor_contabilidad', 'admin'].includes(session?.user?.rol)) {
+      cargarPagosPendientes();
+    }
 
     // Supabase Realtime — reemplaza el setInterval por eventos en tiempo real
     const supabase = getSupabaseBrowser();
@@ -1244,20 +1247,15 @@ export default function App() {
   };
   const cancelarEdicionCreditoMonto = () => { setEditingCreditoMontoId(null); setTempCreditoMonto(''); };
 
-  // Detectar gmail_ok en URL y cargar emails
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('gmail_ok')) {
-      cargarGmail();
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-  }, []);
-
-  // Auto-actualizar Gmail cada 3 minutos
-  useEffect(() => {
-    const interval = setInterval(() => { cargarGmail(); }, 10 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
+  // Gmail desactivado — descomentar para reactivar
+  // useEffect(() => {
+  //   const params = new URLSearchParams(window.location.search);
+  //   if (params.get('gmail_ok')) { cargarGmail(); window.history.replaceState({}, '', window.location.pathname); }
+  // }, []);
+  // useEffect(() => {
+  //   const interval = setInterval(() => { cargarGmail(); }, 10 * 60 * 1000);
+  //   return () => clearInterval(interval);
+  // }, []);
 
   const cargarGmail = async (q = '') => {
     setGmailLoading(true);
@@ -3066,8 +3064,8 @@ export default function App() {
               <FileText size={16}/>
             </button>
           )}
-          {/* GMAIL */}
-          {(
+          {/* GMAIL — desactivado temporalmente */}
+          {false && (
             <div style={{ position: 'relative' }}>
               <button className="topbar-icon-btn" onClick={() => { setShowGmailPanel(v => !v); if (!showGmailPanel) cargarGmail(); }} title="Gmail" style={{ position: 'relative' }}>
                 <Mail size={16}/>
