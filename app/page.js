@@ -6048,30 +6048,34 @@ export default function App() {
         const docs = cotizaciones[docsClienteId] || [];
         return (
           <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowDocsModal(false); }}>
-            <div className="modal-content" style={{ maxWidth: '560px' }}>
-              <div className="modal-header">
-                <h2><FileText size={15}/> Documentos — {cliente.nombre}</h2>
-                <button className="close-btn" onClick={() => setShowDocsModal(false)}>×</button>
+            <div className="modal-content" style={{ maxWidth: '620px', width: '96vw', padding: 0, borderRadius: '16px', overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+              {/* Header */}
+              <div style={{ background: 'linear-gradient(135deg, #1e2d4a, #2d4170)', padding: '1.25rem 1.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><FileText size={15}/> Documentos</h2>
+                  <div style={{ fontSize: '0.75rem', color: '#93c5fd', marginTop: '0.2rem' }}>{cliente.nombre} · {docs.length} documento{docs.length !== 1 ? 's' : ''}</div>
+                </div>
+                <button onClick={() => setShowDocsModal(false)} style={{ color: '#fff', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16}/></button>
               </div>
 
               {/* Acciones principales */}
-              <div style={{ display: 'flex', gap: '0.65rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-                {tienePermiso('subir_documentos') && <button className="btn btn-primary" onClick={() => { setShowDocsModal(false); abrirGenCotModal(cliente); }}><Pencil size={13}/> Generar Cotización</button>}
-                {tienePermiso('subir_documentos') && <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
+              <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {tienePermiso('subir_documentos') && <button className="btn btn-primary" style={{ fontSize: '0.78rem', padding: '0.4rem 0.85rem' }} onClick={() => { setShowDocsModal(false); abrirGenCotModal(cliente); }}><Pencil size={13}/> Generar Cotización</button>}
+                {tienePermiso('subir_documentos') && <label className="btn btn-secondary" style={{ cursor: 'pointer', fontSize: '0.78rem', padding: '0.4rem 0.85rem' }}>
                   <FolderOpen size={13}/> Subir PDF
                   <input type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => { subirDocumento(docsClienteId, e.target.files[0]); e.target.value = ''; }} />
                 </label>}
-                {tienePermiso('subir_documentos') && <button className="btn btn-secondary" onClick={() => setNuevaCotForm(f => ({ ...f, show: !f.show, monto: '', estado: 'Cotizado' }))}><Plus size={13}/> Nueva Cotización</button>}
+                {tienePermiso('subir_documentos') && <button className="btn btn-secondary" style={{ fontSize: '0.78rem', padding: '0.4rem 0.85rem' }} onClick={() => setNuevaCotForm(f => ({ ...f, show: !f.show, monto: '', estado: 'Cotizado' }))}><Plus size={13}/> Cotización manual</button>}
                 {docs.filter(d => d.base64).length > 0 && (
-                  <button className="btn btn-success" onClick={() => { setShowDocsModal(false); abrirNotifDocModal(cliente); }}>
-                    <Send size={13}/> Notificar con Documento
+                  <button className="btn btn-success" style={{ fontSize: '0.78rem', padding: '0.4rem 0.85rem' }} onClick={() => { setShowDocsModal(false); abrirNotifDocModal(cliente); }}>
+                    <Send size={13}/> Notificar
                   </button>
                 )}
               </div>
 
               {/* Formulario nueva cotización manual */}
               {nuevaCotForm.show && (
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem', padding: '0.75rem', background: 'var(--surface2)', borderRadius: '10px', border: '1px solid var(--border)', flexWrap: 'wrap' }}>
+                <div style={{ padding: '0.75rem 1.5rem', borderBottom: '1px solid var(--border)', background: 'var(--surface2)', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                   <input type="number" placeholder="Monto RD$" value={nuevaCotForm.monto} onChange={e => setNuevaCotForm(f => ({ ...f, monto: e.target.value }))} style={{ flex: '1', minWidth: '120px', padding: '0.4rem 0.65rem', borderRadius: '7px', border: '1px solid var(--border)', fontSize: '0.85rem' }} />
                   <select value={nuevaCotForm.estado} onChange={e => setNuevaCotForm(f => ({ ...f, estado: e.target.value }))} style={{ padding: '0.4rem 0.65rem', borderRadius: '7px', border: '1px solid var(--border)', fontSize: '0.85rem' }}>
                     {['Cotizado','Notificado','Pagado','Facturado','Vencido'].map(est => <option key={est} value={est}>{est}</option>)}
@@ -6081,42 +6085,42 @@ export default function App() {
                 </div>
               )}
 
-              {/* Lista de cotizaciones/documentos */}
-              {docs.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)', border: '2px dashed var(--border)', borderRadius: '12px' }}>
-                  <div style={{ marginBottom: '0.5rem', color: 'var(--text-muted)' }}><Inbox size={40}/></div>
-                  <p style={{ fontWeight: 600 }}>Sin cotizaciones aún</p>
-                  <p style={{ fontSize: '0.82rem', marginTop: '0.25rem' }}>Genera, sube un PDF o crea una cotización manual</p>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxHeight: '340px', overflowY: 'auto' }}>
-                  {docs.map(doc => {
-                    const ESTADO_COLORS = { Cotizado: '#ea580c', Notificado: '#0284c7', Pagado: '#059669', Facturado: '#16a34a', Vencido: '#dc2626' };
-                    const color = ESTADO_COLORS[doc.estado] || '#64748b';
-                    return (
-                      <div key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1rem', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '10px' }}>
-                        <div style={{ flexShrink: 0, color: 'var(--text-muted)' }}>{doc.tipo === 'generado' ? <ClipboardList size={22}/> : doc.tipo === 'manual' ? <FileEdit size={22}/> : doc.tipo === 'legacy' ? <Archive size={22}/> : <FileText size={22}/>}</div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.nombre || (doc.tipo === 'manual' ? 'Cotización manual' : doc.tipo === 'legacy' ? 'Datos anteriores' : '—')}</div>
-                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
-                            {new Date(doc.fecha).toLocaleDateString('es-DO')}
-                            {doc.monto && <span style={{ marginLeft: '0.5rem', color: '#059669', fontWeight: 700 }}>RD${parseFloat(doc.monto).toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>}
-                          </div>
-                        </div>
-                        <select value={doc.estado || 'Cotizado'} onChange={e => actualizarEstadoCotizacion(docsClienteId, doc.id, e.target.value)} style={{ padding: '0.25rem 0.5rem', borderRadius: '6px', border: `1.5px solid ${color}`, color, fontWeight: 700, fontSize: '0.75rem', background: color + '15', cursor: 'pointer' }}>
-                          {['Cotizado','Notificado','Pagado','Facturado','Vencido'].map(est => <option key={est} value={est}>{est}</option>)}
-                        </select>
-                        <div style={{ display: 'flex', gap: '0.3rem', flexShrink: 0 }}>
-                          {doc.base64 && <button onClick={() => descargarDocumento(doc)} className="btn btn-secondary" style={{ padding: '0.3rem 0.65rem', fontSize: '0.78rem' }}><Download size={13}/></button>}
-                          <button onClick={() => eliminarDocumento(docsClienteId, doc.id)} style={{ width: '30px', height: '30px', borderRadius: '7px', border: '1px solid #fca5a5', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Trash2 size={13}/></button>
+              {/* Lista de documentos */}
+              <div style={{ overflowY: 'auto', flex: 1, padding: '1rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {docs.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', border: '2px dashed var(--border)', borderRadius: '12px' }}>
+                    <Inbox size={40} style={{ marginBottom: '0.75rem', opacity: 0.4 }}/>
+                    <p style={{ fontWeight: 600, margin: '0 0 0.25rem' }}>Sin documentos aún</p>
+                    <p style={{ fontSize: '0.82rem', margin: 0 }}>Genera, sube un PDF o crea una cotización manual</p>
+                  </div>
+                ) : docs.map(doc => {
+                  const ESTADO_COLORS = { Cotizado: '#ea580c', Notificado: '#0284c7', Pagado: '#059669', Facturado: '#16a34a', Vencido: '#dc2626' };
+                  const color = ESTADO_COLORS[doc.estado] || '#64748b';
+                  const icono = doc.tipo === 'generado' ? <ClipboardList size={18}/> : doc.tipo === 'manual' ? <FileEdit size={18}/> : doc.tipo === 'legacy' ? <Archive size={18}/> : <FileText size={18}/>;
+                  return (
+                    <div key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1rem', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '10px' }}>
+                      <div style={{ flexShrink: 0, color: 'var(--accent)', width: '32px', height: '32px', background: 'var(--accent-glow, #eff6ff)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{icono}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.nombre || (doc.tipo === 'manual' ? 'Cotización manual' : doc.tipo === 'legacy' ? 'Datos anteriores' : '—')}</div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.15rem', display: 'flex', gap: '0.5rem' }}>
+                          <span>{new Date(doc.fecha).toLocaleDateString('es-DO')}</span>
+                          {doc.monto && <span style={{ color: '#059669', fontWeight: 700 }}>RD${parseFloat(doc.monto).toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-              <div style={{ marginTop: '1rem', fontSize: '0.73rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                <Save size={12}/> Documentos guardados localmente · Máx. recomendado: 3MB por archivo
+                      <select value={doc.estado || 'Cotizado'} onChange={e => actualizarEstadoCotizacion(docsClienteId, doc.id, e.target.value)} style={{ padding: '0.25rem 0.5rem', borderRadius: '6px', border: `1.5px solid ${color}`, color, fontWeight: 700, fontSize: '0.75rem', background: color + '15', cursor: 'pointer', flexShrink: 0 }}>
+                        {['Cotizado','Notificado','Pagado','Facturado','Vencido'].map(est => <option key={est} value={est}>{est}</option>)}
+                      </select>
+                      <div style={{ display: 'flex', gap: '0.3rem', flexShrink: 0 }}>
+                        {doc.base64 && <button onClick={() => descargarDocumento(doc)} style={{ width: '30px', height: '30px', borderRadius: '7px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Download size={13}/></button>}
+                        <button onClick={() => eliminarDocumento(docsClienteId, doc.id)} style={{ width: '30px', height: '30px', borderRadius: '7px', border: '1px solid #fca5a5', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Trash2 size={13}/></button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div style={{ padding: '0.65rem 1.5rem', borderTop: '1px solid var(--border)', fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                <Save size={11}/> Máx. recomendado: 3MB por archivo
               </div>
             </div>
           </div>
