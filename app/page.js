@@ -7194,7 +7194,7 @@ export default function App() {
 
             {/* Tabs */}
             <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid var(--border)', marginBottom: '1.25rem' }}>
-              {[{ key: 'subir', label: 'Subir PDFs' }, { key: 'vincular', label: 'Vincular existentes' }].map(t => (
+              {[{ key: 'subir', label: 'Subir PDFs' }].map(t => (
                 <button key={t.key} onClick={() => setTabCargaMasiva(t.key)} style={{ padding: '0.55rem 1.2rem', fontWeight: 700, fontSize: '0.85rem', border: 'none', borderBottom: tabCargaMasiva === t.key ? '2px solid var(--accent)' : '2px solid transparent', background: 'transparent', color: tabCargaMasiva === t.key ? 'var(--accent)' : 'var(--text-muted)', cursor: 'pointer', marginBottom: '-2px' }}>
                   {t.label}
                 </button>
