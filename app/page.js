@@ -912,11 +912,12 @@ export default function App() {
     const vencidos    = clientesEnriquecidos.filter(c => c._estado === 'Vencido');
     const suspendidos = clientesData.filter(c => c.suspendido === true);
     const noGeneraron = clientesEnriquecidos.filter(c => c._estado === 'No Generaron');
+    const sinDocumento = clientesEnriquecidos.filter(c => c._estado === 'Cotizado' && (cotizaciones[c.id] || []).length === 0);
     return {
       cotizado: cotizados.length, notificado: notificados.length,
       pagado: pagados.length, facturado: facturados.length,
       vencido: vencidos.length, suspendido: suspendidos.length,
-      noGeneraron: noGeneraron.length, total,
+      noGeneraron: noGeneraron.length, sinDocumento: sinDocumento.length, total,
       montoCotizado: sumMonto(cotizados), montoNotificado: sumMonto(notificados),
       montoPagado: sumMonto(pagados), montoFacturado: sumMonto(facturados),
       montoVencido: sumMonto(vencidos),
@@ -998,6 +999,7 @@ export default function App() {
     if (filtroEstados.length > 0) resultado = resultado.filter(c => filtroEstados.includes(estadoActivoCliente(c)));
     else if (filter !== 'todos' && filter !== 'delegaciones') {
       if (filter === 'no-generaron') resultado = resultado.filter(c => c.estado === 'No Generaron');
+      else if (filter === 'sin-documento') resultado = resultado.filter(c => estadoActivoCliente(c) === 'Cotizado' && (cotizaciones[c.id] || []).length === 0);
       else resultado = resultado.filter(c => estadoActivoCliente(c).toLowerCase() === filter);
     }
     resultado = [...resultado].sort((a, b) => {
@@ -4086,6 +4088,7 @@ export default function App() {
                 { key: 'vencido', label: 'Vencido', val: estadisticas.vencido, pct: estadisticas.vencidoPct, monto: estadisticas.montoVencido, color: '#dc2626' },
                 { key: 'no-generaron', label: 'No Generaron', val: estadisticas.noGeneraron, pct: estadisticas.noGeneraronPct, monto: null, color: '#64748b' },
                 { key: 'suspendido', label: 'Suspendidos', val: estadisticas.suspendido, pct: estadisticas.suspendidoPct, monto: estadisticas.montoSuspendido, color: '#dc2626' },
+                ...(estadisticas.sinDocumento > 0 ? [{ key: 'sin-documento', label: 'Sin Documento', val: estadisticas.sinDocumento, pct: total > 0 ? ((estadisticas.sinDocumento / total) * 100).toFixed(0) : 0, monto: null, color: '#b45309' }] : []),
               ].map(s => (
                 <div key={s.key} className={`stat-card ${s.key}`} onClick={() => { setFilter(filter === s.key ? 'todos' : s.key); setPaginaActual(1); }} style={{ cursor: 'pointer', outline: filter === s.key ? `2px solid ${s.color}` : 'none', outlineOffset: '2px', transition: 'all 0.15s' }} title={filter === s.key ? 'Clic para quitar filtro' : `Filtrar por ${s.label}`}>
                   <div className="stat-label">{s.label}</div>
