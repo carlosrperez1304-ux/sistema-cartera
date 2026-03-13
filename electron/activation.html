@@ -162,10 +162,18 @@
       btn.textContent = 'Verificando…';
       showMsg('', 'hidden');
 
+      // FIX: Timeout de 15 segundos en la UI — si main.js tarda más, desbloquear el botón
+      const timeout = setTimeout(() => {
+        showMsg('El servidor no respondió. Verifica tu conexión e intenta de nuevo.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Activar aplicación';
+      }, 15000);
+
       try {
         const result = await window.activationAPI.validate(code);
+        clearTimeout(timeout);
         if (result.ok) {
-          showMsg(`Activado para ${result.nombre_agente} — iniciando…`, 'success');
+          showMsg(`Activado — iniciando PayTrack…`, 'success');
           btn.textContent = 'Abriendo PayTrack…';
         } else {
           showMsg(result.error || 'Código inválido', 'error');
@@ -173,6 +181,7 @@
           btn.textContent = 'Activar aplicación';
         }
       } catch (err) {
+        clearTimeout(timeout);
         showMsg('Error de conexión. Verifica tu internet.', 'error');
         btn.disabled = false;
         btn.textContent = 'Activar aplicación';

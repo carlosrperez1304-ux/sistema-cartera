@@ -34,4 +34,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   startDownload: () => ipcRenderer.send('start-download'),
   installUpdate: () => ipcRenderer.send('install-update'),
+  // FIX: Recargar la URL real (usado por página offline — location.reload() no funciona en data:URI)
+  reloadApp: () => ipcRenderer.send('window-reload'),
 });

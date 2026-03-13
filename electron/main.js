@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, screen, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
 const fs   = require('fs');
 const os   = require('os');
@@ -50,15 +50,24 @@ function getOrCreateDeviceId() {
 
 // ── Validar código contra la API ────────────────────────────
 async function validateCodeWithAPI(codigo, device_id) {
+  const controller = new AbortController();
+  // FIX: Timeout de 12 segundos — si la API no responde, no queda bloqueado
+  const timer = setTimeout(() => controller.abort(), 12000);
   try {
     const res = await fetch(`${PROD_URL}/api/activaciones`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ codigo, device_id }),
+      signal: controller.signal,
     });
     return await res.json();
   } catch (err) {
+    if (err.name === 'AbortError') {
+      return { ok: false, error: 'El servidor tardó demasiado. Verifica tu conexión.' };
+    }
     return { ok: false, error: 'Sin conexión a internet' };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -66,6 +75,91 @@ async function validateCodeWithAPI(codigo, device_id) {
 let splashWin     = null;
 let activationWin = null;
 let mainWin       = null;
+let tray          = null;
+
+// ── System tray ───────────────────────────────────────────────
+function createTray() {
+  if (tray) return; // ya existe
+  const iconPath = path.join(__dirname, 'assets', 'icon.png');
+  const icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
+  tray = new Tray(icon);
+  tray.setToolTip('PayTrack');
+  updateTrayMenu();
+
+  // Clic en el ícono → mostrar/restaurar ventana principal
+  tray.on('click', () => {
+    if (mainWin && !mainWin.isDestroyed()) {
+      if (mainWin.isMinimized() || !mainWin.isVisible()) {
+        mainWin.show();
+        mainWin.focus();
+      } else {
+        mainWin.focus();
+      }
+    } else if (activationWin && !activationWin.isDestroyed()) {
+      activationWin.focus();
+    }
+  });
+}
+
+function updateTrayMenu() {
+  if (!tray) return;
+  const menu = Menu.buildFromTemplate([
+    {
+      label: 'PayTrack',
+      enabled: false,
+    },
+    { type: 'separator' },
+    {
+      label: 'Mostrar ventana',
+      click: () => {
+        if (mainWin && !mainWin.isDestroyed()) {
+          mainWin.show();
+          mainWin.focus();
+        } else if (activationWin && !activationWin.isDestroyed()) {
+          activationWin.show();
+          activationWin.focus();
+        }
+      },
+    },
+    { type: 'separator' },
+    {
+      label: 'Cerrar aplicación',
+      click: () => {
+        tray?.destroy();
+        tray = null;
+        if (mainWin && !mainWin.isDestroyed()) mainWin.destroy();
+        if (activationWin && !activationWin.isDestroyed()) activationWin.destroy();
+        app.quit();
+      },
+    },
+  ]);
+  tray.setContextMenu(menu);
+}
+
+// ── Listeners de autoUpdater (singleton — registrar una sola vez) ─
+// FIX: Si se registran dentro de createMainWindow() se duplican en
+// cada llamada (ej: tras re-activación). Se registran aquí al inicio.
+autoUpdater.on('error', (err) => {
+  log.error('[autoUpdater] Error:', err.message);
+  if (mainWin && !mainWin.isDestroyed()) {
+    mainWin.webContents.send('update-error', err.message);
+  }
+});
+autoUpdater.on('update-available', (info) => {
+  if (mainWin && !mainWin.isDestroyed()) {
+    mainWin.webContents.send('update-available', info.version);
+  }
+});
+autoUpdater.on('download-progress', (progress) => {
+  if (mainWin && !mainWin.isDestroyed()) {
+    mainWin.webContents.send('download-progress', Math.round(progress.percent));
+  }
+});
+autoUpdater.on('update-downloaded', () => {
+  if (mainWin && !mainWin.isDestroyed()) {
+    mainWin.webContents.send('update-downloaded');
+  }
+});
 
 function createSplashWindow() {
   splashWin = new BrowserWindow({
@@ -143,7 +237,7 @@ const OFFLINE_HTML = `<!DOCTYPE html>
   <div class="card">
     <h2>Sin conexión a Internet</h2>
     <p>PayTrack necesita conexión para cargar.<br>Verifica tu red y vuelve a intentarlo.</p>
-    <button onclick="location.reload()">Reintentar</button>
+    <button onclick="if(window.electronAPI)window.electronAPI.reloadApp();else location.reload()">Reintentar</button>
   </div>
 </body>
 </html>`;
@@ -187,42 +281,69 @@ function createMainWindow() {
     if (!mainWin.isVisible()) mainWin.show();
   });
 
-  // FIX C3: Manejo de errores del autoUpdater
-  autoUpdater.on('error', (err) => {
-    log.error('[autoUpdater] Error:', err.message);
-    if (mainWin && !mainWin.isDestroyed()) {
-      mainWin.webContents.send('update-error', err.message);
-    }
-  });
-
+  // Verificar actualizaciones después de que la app cargue
   setTimeout(() => {
     autoUpdater.checkForUpdates().catch((err) => {
       log.warn('[autoUpdater] checkForUpdates falló:', err.message);
     });
   }, 3000);
 
-  autoUpdater.on('update-available', (info) => {
-    if (mainWin && !mainWin.isDestroyed()) {
-      mainWin.webContents.send('update-available', info.version);
-    }
-  });
-
-  autoUpdater.on('download-progress', (progress) => {
-    if (mainWin && !mainWin.isDestroyed()) {
-      mainWin.webContents.send('download-progress', Math.round(progress.percent));
-    }
-  });
-
-  autoUpdater.on('update-downloaded', () => {
-    if (mainWin && !mainWin.isDestroyed()) {
-      mainWin.webContents.send('update-downloaded');
-    }
-  });
-
   // Cuando la página cargó: cerrar splash y mostrar la app
   mainWin.webContents.once('did-finish-load', () => {
     closeSplash();
     mainWin.show();
+  });
+
+  // Inyectar MutationObserver que detecta cuando el titlebar desaparece (logout)
+  // El div #electron-win-controls solo existe cuando el usuario está autenticado.
+  // Cuando no existe → mostrar botones flotantes de minimizar/cerrar.
+  mainWin.webContents.on('did-finish-load', () => {
+    mainWin.webContents.executeJavaScript(`
+      (function() {
+        function syncControls() {
+          const appControls = document.getElementById('electron-win-controls');
+          let floatWrap = document.getElementById('__electron-win-btns');
+
+          if (appControls) {
+            // App autenticada: ocultar/eliminar botones flotantes
+            if (floatWrap) floatWrap.remove();
+            return;
+          }
+
+          // Sin titlebar (login / sesión cerrada): mostrar botones flotantes
+          if (floatWrap) return; // ya están
+
+          floatWrap = document.createElement('div');
+          floatWrap.id = '__electron-win-btns';
+          floatWrap.style.cssText = 'position:fixed;top:10px;right:10px;z-index:99999;display:flex;gap:6px';
+
+          function mkBtn(symbol, title, hoverBg, color, fn) {
+            const b = document.createElement('button');
+            b.textContent = symbol;
+            b.title = title;
+            b.style.cssText = 'width:28px;height:28px;border:none;border-radius:6px;background:rgba(255,255,255,0.08);color:' + color + ';font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s';
+            b.onmouseenter = () => b.style.background = hoverBg;
+            b.onmouseleave = () => b.style.background = 'rgba(255,255,255,0.08)';
+            b.onclick = fn;
+            return b;
+          }
+
+          floatWrap.appendChild(mkBtn('─', 'Minimizar',
+            'rgba(255,255,255,0.2)', '#a1a1aa',
+            () => window.electronAPI?.minimizeWindow()));
+          floatWrap.appendChild(mkBtn('✕', 'Cerrar PayTrack',
+            'rgba(248,113,113,0.4)', '#f87171',
+            () => window.electronAPI?.closeWindow()));
+
+          document.body.appendChild(floatWrap);
+        }
+
+        // Ejecutar ahora y cada vez que React cambie el DOM
+        syncControls();
+        const obs = new MutationObserver(syncControls);
+        obs.observe(document.body, { childList: true, subtree: true });
+      })();
+    `).catch(() => {});
   });
 
   mainWin.webContents.setWindowOpenHandler(({ url }) => {
@@ -250,6 +371,7 @@ app.on('second-instance', () => {
 
 // ── Flujo principal al arrancar ─────────────────────────────
 app.whenReady().then(async () => {
+  createTray();
   createSplashWindow();
 
   const deviceId = getOrCreateDeviceId();
@@ -273,7 +395,12 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
+  // En Windows/Linux: destruir tray y salir
+  if (process.platform !== 'darwin') {
+    tray?.destroy();
+    tray = null;
+    app.quit();
+  }
 });
 
 // ── IPC: validar código de activación ───────────────────────
@@ -343,6 +470,17 @@ ipcMain.handle('toggle-fullscreen', () => {
   const win = BrowserWindow.getFocusedWindow() || mainWin;
   if (!win || win.isDestroyed()) return;
   win.setFullScreen(!win.isFullScreen());
+});
+
+// ── IPC: recargar la app (usado por página offline) ──────────
+ipcMain.on('window-reload', () => {
+  if (mainWin && !mainWin.isDestroyed()) {
+    mainWin.webContents.session.clearCache().then(() => {
+      mainWin.loadURL(PROD_URL).catch((err) => {
+        log.warn('[window-reload] loadURL error:', err.message);
+      });
+    });
+  }
 });
 
 // ── IPC: auto-update (descarga e instalación) ────────────────
