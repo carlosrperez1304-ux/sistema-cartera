@@ -629,10 +629,11 @@ export default function App() {
         if (cfg.color_acento)           setColorAcento(cfg.color_acento);
         if (cfg.recordatorio_dias)      setRecordatoriosDias(parseInt(cfg.recordatorio_dias) || 7);
         if (cfg.modo_compacto  != null) setModoCompacto(cfg.modo_compacto === 'true');
-        // Recordatorio mensual: activo si el mes coincide y no fue enviado aún
+        // Recordatorio mensual: activo automáticamente si es día 13 o después y no fue enviado aún
         const hoy = new Date();
         const mesActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
-        if (cfg.recordatorio_mes === mesActual && cfg.recordatorio_mes_enviado !== mesActual) {
+        const esDia13oMas = hoy.getDate() >= 13;
+        if (esDia13oMas && cfg.recordatorio_mes_enviado !== mesActual) {
           setRecordatorioActivo(true);
         }
       })
@@ -3314,7 +3315,6 @@ export default function App() {
             {tienePermiso('ver_clientes') && (() => { const noGen = datosActuales.clientes.filter(c => c.estado === 'No Generaron' || c.estado === 'Archivado').length; return <div className={`sidebar-item ${activeTab === 'reactivacion' ? 'active' : ''}`} onClick={() => setActiveTab('reactivacion')} style={{ position: 'relative' }}><span className="icon"><Archive size={14}/></span> Reactivación{noGen > 0 && <span style={{ marginLeft:'6px', background:'#64748b', color:'#fff', borderRadius:'10px', padding:'0 6px', fontSize:'0.7rem', fontWeight:700 }}>{noGen}</span>}</div>; })()}
             <div className="sidebar-item" onClick={() => { abrirCargaMasiva(); }}><span className="icon"><Upload size={14}/></span> Carga Masiva PDF</div>
             {['admin', 'supervisor_cobro', 'supervisor_contabilidad'].includes(session?.user?.rol) && <div className="sidebar-item" style={{ color: '#dc2626', fontWeight: 700 }} onClick={() => setShowDescargaMesModal(true)}><span className="icon"><Save size={14}/></span> Cierre de Mes</div>}
-            {esAdmin && <div className="sidebar-item" style={{ color: '#ea580c', fontWeight: 700 }} onClick={async () => { const hoy = new Date(); const mes = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}`; await fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ clave:'recordatorio_mes', valor: mes }) }); setRecordatorioActivo(true); setActiveTab('cartera'); showToast('Recordatorio del día 13 activado', 'success'); }}><span className="icon"><Bell size={14}/></span> Recordatorio día 13</div>}
             {esAdmin && <div className={`sidebar-item ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => { cargarUsuariosAdmin(); setActiveTab('usuarios'); }}><span className="icon"><Users size={14}/></span> Usuarios</div>}
           </div>
           <div className="sidebar-section">
