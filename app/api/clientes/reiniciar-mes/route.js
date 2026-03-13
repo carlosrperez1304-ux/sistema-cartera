@@ -1,5 +1,5 @@
 import { db } from '../../../../lib/supabase.js';
-import { requireAuth, checkCsrf } from '../../../../lib/security.js';
+import { requireAuth, checkCsrf, auditLog, getIP } from '../../../../lib/security.js';
 
 export async function POST(req) {
   const csrf = checkCsrf(req);
@@ -90,13 +90,16 @@ export async function POST(req) {
   }
 
   // 4. Limpiar documentos del mes anterior (retención: 30 días o fin de mes)
+  //    FIX: Filtrar por empresa_id para no borrar docs de otras empresas
   const primerDiaMesActual = new Date();
   primerDiaMesActual.setDate(1);
   primerDiaMesActual.setHours(0, 0, 0, 0);
-  await db()
-    .from('cotizaciones')
-    .delete()
-    .lt('fecha', primerDiaMesActual.toISOString());
+  const delQ = db().from('cotizaciones').delete().lt('fecha', primerDiaMesActual.toISOString());
+  if (empresa_id) await delQ.eq('empresa_id', empresa_id); else await delQ;
+
+  // 5. Registrar en audit log
+  auditLog('MONTH_CLOSE', auth.session.user.username, getIP(req),
+    `Cierre de mes ejecutado para empresa_id=${empresa_id || 'global'}`);
 
   return Response.json({ ok: true });
 }

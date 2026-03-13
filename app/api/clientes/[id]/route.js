@@ -1,5 +1,5 @@
 import { db } from '../../../../lib/supabase.js';
-import { requireAuth, checkCsrf, getIP, auditLog, sanitize } from '../../../../lib/security.js';
+import { requireAuth, checkCsrf, getIP, auditLog, sanitize, checkApiRateLimit } from '../../../../lib/security.js';
 import { getDelegationContext, logActividad } from '../../../../lib/delegation.js';
 
 // PUT — actualizar cliente
@@ -65,6 +65,8 @@ export async function PUT(req, { params }) {
   const { error } = await db().from('clientes').update(row).eq('id', id);
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
+  auditLog('CLIENT_UPDATE', username, getIP(req), `cliente id=${id} estado=${body.estado || ''}`);
+
   // Devolver el cliente actualizado con sus pagos
   const { data } = await db().from('clientes').select('*, pagos(*)').eq('id', id).single();
 
@@ -113,6 +115,6 @@ export async function DELETE(req, { params }) {
   const { error } = await db().from('clientes').delete().eq('id', id);
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
-  auditLog('DATA_READ', username, getIP(req), `DELETE cliente id=${id}`);
+  auditLog('CLIENT_DELETE', username, getIP(req), `cliente id=${id}`);
   return Response.json({ ok: true });
 }

@@ -1,5 +1,5 @@
 import { db } from "../../../lib/supabase.js";
-import { requireAuth, requireAdmin, checkCsrf, getIP, auditLog } from "../../../lib/security.js";
+import { requireAuth, requireAdmin, checkCsrf, getIP, auditLog, checkApiRateLimit } from "../../../lib/security.js";
 
 export async function GET(req) {
   const auth = await requireAuth(req);
@@ -18,6 +18,8 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
+  const rl = checkApiRateLimit(req, 'POST:/api/pagos');
+  if (rl.blocked) return Response.json({ error: rl.message }, { status: 429 });
   const csrf = checkCsrf(req);
   if (csrf) return Response.json({ error: csrf.error }, { status: csrf.status });
   const auth = await requireAuth(req);
@@ -43,7 +45,7 @@ export async function POST(req) {
   };
   const { data, error } = await db().from("pagos").insert(row).select().single();
   if (error) return Response.json({ error: error.message }, { status: 500 });
-  auditLog("DATA_READ", auth.session.user.username, getIP(req), `CREATE pago id=${data.id}`);
+  auditLog("PAGO_CREATE", auth.session.user.username, getIP(req), `pago id=${data.id} monto=${data.monto} cliente=${data.cliente_nombre}`);
   return Response.json(data, { status: 201 });
 }
 
@@ -64,7 +66,7 @@ export async function PUT(req) {
   if (motivo_rechazo) update.motivo_rechazo = motivo_rechazo;
   const { data, error } = await db().from("pagos").update(update).eq("id", id).select().single();
   if (error) return Response.json({ error: error.message }, { status: 500 });
-  auditLog("DATA_READ", auth.session.user.username, getIP(req), `UPDATE pago id=${id} estado=${estado}`);
+  auditLog("PAGO_UPDATE", auth.session.user.username, getIP(req), `pago id=${id} estado=${estado}`);
   return Response.json(data);
 }
 
@@ -78,6 +80,6 @@ export async function DELETE(req) {
   if (!id) return Response.json({ error: "Falta id" }, { status: 400 });
   const { error } = await db().from("pagos").delete().eq("id", parseInt(id));
   if (error) return Response.json({ error: error.message }, { status: 500 });
-  auditLog("DATA_READ", auth.session.user.username, getIP(req), `DELETE pago id=${id}`);
+  auditLog("PAGO_DELETE", auth.session.user.username, getIP(req), `pago id=${id}`);
   return Response.json({ ok: true });
 }

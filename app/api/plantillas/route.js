@@ -1,5 +1,5 @@
 import { db } from '../../../lib/supabase.js';
-import { requireAuth, checkCsrf } from '../../../lib/security.js';
+import { requireAuth, checkCsrf, sanitize } from '../../../lib/security.js';
 
 const PLANTILLAS_DEFAULT = [
   { nombre: 'Primer Aviso',           texto: 'Estimado cliente, le informamos que tiene una factura pendiente de pago. Por favor comuníquese con nosotros.', orden: 1 },
@@ -47,13 +47,17 @@ export async function POST(req) {
   if (!body.nombre || !body.texto) {
     return Response.json({ error: 'nombre y texto son obligatorios.' }, { status: 400 });
   }
+  // FIX: Límite de tamaño + sanitización
+  if (body.texto.length > 2000) {
+    return Response.json({ error: 'El texto de la plantilla no puede superar 2000 caracteres.' }, { status: 400 });
+  }
 
   const empresa_id = auth?.session?.user?.empresa_id || null;
-  const baseQ = db().from('plantillas');
-  const { data, error } = await (empresa_id ? baseQ.eq('empresa_id', empresa_id) : baseQ).insert({
-    nombre: body.nombre,
-    texto:  body.texto,
-    orden:  body.orden ?? 99,
+  const { data, error } = await db().from('plantillas').insert({
+    nombre:     sanitize(body.nombre, 128),
+    texto:      body.texto.slice(0, 2000),
+    orden:      body.orden ?? 99,
+    empresa_id: empresa_id || null,
   }).select().single();
 
   if (error) return Response.json({ error: error.message }, { status: 500 });

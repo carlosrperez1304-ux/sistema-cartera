@@ -1,5 +1,5 @@
 import { db } from '../../../../../lib/supabase.js';
-import { requireAuth, checkCsrf } from '../../../../../lib/security.js';
+import { requireAuth, checkCsrf, sanitize, auditLog, getIP } from '../../../../../lib/security.js';
 
 // PATCH — actualizar estado de una cotizacion
 export async function PATCH(req, { params }) {
@@ -18,10 +18,10 @@ export async function PATCH(req, { params }) {
 
   const body = await req.json();
   const update = {};
-  if (body.estado      !== undefined) update.estado      = body.estado;
-  if (body.monto       !== undefined) update.monto       = parseFloat(body.monto);
-  if (body.nombre      !== undefined) update.nombre      = body.nombre;
-  if (body.cliente_id  !== undefined) update.cliente_id  = parseInt(body.cliente_id);
+  if (body.estado     !== undefined) update.estado     = body.estado;
+  if (body.monto      !== undefined) update.monto      = parseFloat(body.monto);
+  if (body.nombre     !== undefined) update.nombre     = sanitize(body.nombre, 256);
+  if (body.cliente_id !== undefined) update.cliente_id = parseInt(body.cliente_id);
 
   const { data, error } = await db()
     .from('cotizaciones')
@@ -32,6 +32,7 @@ export async function PATCH(req, { params }) {
     .single();
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
+  auditLog('DOC_UPLOAD', auth.session.user.username, getIP(req), `PATCH cotizacion id=${docId} cliente=${clienteId}`);
   return Response.json({
     id:     data.id,
     nombre: data.nombre,
@@ -65,5 +66,6 @@ export async function DELETE(req, { params }) {
     .eq('cliente_id', clienteId);
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
+  auditLog('DOC_DELETE', auth.session.user.username, getIP(req), `DELETE cotizacion id=${docId} cliente=${clienteId}`);
   return Response.json({ ok: true });
 }

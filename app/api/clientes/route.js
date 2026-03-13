@@ -1,5 +1,5 @@
 import { db } from '../../../lib/supabase.js';
-import { requireAuth, checkCsrf, getIP, auditLog, sanitize } from '../../../lib/security.js';
+import { requireAuth, checkCsrf, getIP, auditLog, sanitize, checkApiRateLimit } from '../../../lib/security.js';
 
 // Roles que pueden ver TODOS los registros de todos los usuarios
 const ROLES_VER_TODO = ['admin', 'supervisor_cobro', 'supervisor_contabilidad'];
@@ -76,11 +76,17 @@ export async function GET(req) {
   const empresa_id   = auth.session.user.empresa_id || null;
   const puedeVerTodo = ROLES_VER_TODO.includes(userRol);
 
+  // FIX: Validar que username solo tenga caracteres seguros antes de usarlo en query
+  const safeUsername = /^[A-Za-z0-9_\-@.]+$/.test(username) ? username : '';
+  if (!safeUsername && !puedeVerTodo) {
+    return Response.json({ error: 'Usuario inválido' }, { status: 403 });
+  }
+
   let query = db().from('clientes').select('*, pagos(*)').order('id');
   // Filtrar por empresa si el usuario tiene empresa asignada
   if (empresa_id) query = query.eq('empresa_id', empresa_id);
   if (!puedeVerTodo) {
-    query = query.or(`creado_por.eq.${username},assigned_to.eq.${username}`);
+    query = query.or(`creado_por.eq.${safeUsername},assigned_to.eq.${safeUsername}`);
   }
 
   const { data, error } = await query;
@@ -90,6 +96,8 @@ export async function GET(req) {
 
 // POST — crear cliente (asigna creado_por al usuario actual)
 export async function POST(req) {
+  const rl = checkApiRateLimit(req, 'POST:/api/clientes');
+  if (rl.blocked) return Response.json({ error: rl.message }, { status: 429 });
   const csrf = checkCsrf(req);
   if (csrf) return Response.json({ error: csrf.error }, { status: csrf.status });
 
@@ -109,6 +117,6 @@ export async function POST(req) {
   const { data, error } = await db().from('clientes').insert(row).select().single();
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
-  auditLog('DATA_READ', auth.session.user.username, getIP(req), `CREATE cliente id=${data.id}`);
+  auditLog('CLIENT_CREATE', auth.session.user.username, getIP(req), `cliente id=${data.id} nombre="${data.nombre}"`);
   return Response.json(toFront({ ...data, pagos: [] }), { status: 201 });
 }

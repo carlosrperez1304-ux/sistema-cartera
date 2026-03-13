@@ -10,10 +10,28 @@ contextBridge.exposeInMainWorld('electronAPI', {
   sendPDFWhatsApp: (base64, filename, phone, message) =>
     ipcRenderer.invoke('send-pdf-whatsapp', { base64, filename, phone, message }),
   getVersion: () => ipcRenderer.invoke('get-version'),
-  // Auto-update
-  onUpdateAvailable:  (cb) => ipcRenderer.on('update-available',  (_, version) => cb(version)),
-  onDownloadProgress: (cb) => ipcRenderer.on('download-progress', (_, percent) => cb(percent)),
-  onUpdateDownloaded: (cb) => ipcRenderer.on('update-downloaded', () => cb()),
-  startDownload:  () => ipcRenderer.send('start-download'),
-  installUpdate:  () => ipcRenderer.send('install-update'),
+
+  // FIX: Retornar función de limpieza para evitar fuga de listeners al re-renderizar
+  onUpdateAvailable: (cb) => {
+    const listener = (_, version) => cb(version);
+    ipcRenderer.on('update-available', listener);
+    return () => ipcRenderer.removeListener('update-available', listener);
+  },
+  onDownloadProgress: (cb) => {
+    const listener = (_, percent) => cb(percent);
+    ipcRenderer.on('download-progress', listener);
+    return () => ipcRenderer.removeListener('download-progress', listener);
+  },
+  onUpdateDownloaded: (cb) => {
+    // once: solo se dispara una vez, sin necesidad de cleanup manual
+    ipcRenderer.once('update-downloaded', () => cb());
+  },
+  onUpdateError: (cb) => {
+    const listener = (_, msg) => cb(msg);
+    ipcRenderer.on('update-error', listener);
+    return () => ipcRenderer.removeListener('update-error', listener);
+  },
+
+  startDownload: () => ipcRenderer.send('start-download'),
+  installUpdate: () => ipcRenderer.send('install-update'),
 });
