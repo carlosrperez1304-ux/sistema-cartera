@@ -364,6 +364,24 @@ export default function App() {
     };
   }, [session?.user?.username, cargarClientes, cargarCreditos]);
 
+  // Recordatorio día 13 — activa automáticamente basado en la fecha del dispositivo
+  useEffect(() => {
+    if (!session?.user) return;
+    const hoy = new Date();
+    const mesActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+    if (hoy.getDate() >= 13) {
+      // Verificar si ya fue enviado este mes
+      fetch('/api/config')
+        .then(r => r.ok ? r.json() : {})
+        .then(cfg => {
+          if (cfg.recordatorio_mes_enviado !== mesActual) {
+            setRecordatorioActivo(true);
+          }
+        })
+        .catch(() => setRecordatorioActivo(true)); // si falla el fetch, mostrar de todas formas
+    }
+  }, [session?.user]);
+
   // Detectar nueva versión desplegada — cerrar sesión y recargar automáticamente
   useEffect(() => {
     if (!session?.user) return;
@@ -629,12 +647,11 @@ export default function App() {
         if (cfg.color_acento)           setColorAcento(cfg.color_acento);
         if (cfg.recordatorio_dias)      setRecordatoriosDias(parseInt(cfg.recordatorio_dias) || 7);
         if (cfg.modo_compacto  != null) setModoCompacto(cfg.modo_compacto === 'true');
-        // Recordatorio mensual: activo automáticamente si es día 13 o después y no fue enviado aún
+        // Guardar si ya fue enviado este mes para usarlo en el efecto separado
         const hoy = new Date();
         const mesActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
-        const esDia13oMas = hoy.getDate() >= 13;
-        if (esDia13oMas && cfg.recordatorio_mes_enviado !== mesActual) {
-          setRecordatorioActivo(true);
+        if (cfg.recordatorio_mes_enviado === mesActual) {
+          setRecordatorioActivo(false);
         }
       })
       .catch(() => {});
