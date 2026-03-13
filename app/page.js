@@ -4113,14 +4113,14 @@ export default function App() {
                         <MessageCircle size={13}/> Enviar recordatorio
                       </button>
                     )}
-                    <button onClick={async () => {
+                    {esAdmin && <button onClick={async () => {
                       const hoy = new Date();
                       const mes = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
                       await fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ clave:'recordatorio_mes_enviado', valor: mes }) });
                       setRecordatorioActivo(false);
                     }} style={{ background:'rgba(255,255,255,0.2)', color:'white', border:'1px solid rgba(255,255,255,0.4)', borderRadius:'8px', padding:'0.5rem 0.75rem', fontSize:'0.8rem', cursor:'pointer' }}>
                       Descartar
-                    </button>
+                    </button>}
                   </div>
                 </div>
               );
