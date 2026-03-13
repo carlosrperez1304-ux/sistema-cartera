@@ -121,7 +121,10 @@ function createMainWindow() {
       nodeIntegration: false,
     },
   });
-  mainWin.loadURL(PROD_URL);
+  // Limpiar cache antes de cargar para garantizar versión más reciente
+  mainWin.webContents.session.clearCache().then(() => {
+    mainWin.loadURL(PROD_URL);
+  });
   mainWin.setMenuBarVisibility(false);
 
   setTimeout(() => {
