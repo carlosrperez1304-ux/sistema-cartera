@@ -616,6 +616,8 @@ export default function App() {
   const [waMasivoActivo, setWaMasivoActivo] = useState(false);
   const [waMasivoListoSiguiente, setWaMasivoListoSiguiente] = useState(false);
   const [waMasivoDestinosActual, setWaMasivoDestinosActual] = useState([]);
+  const [waMasivoEsRecordatorio, setWaMasivoEsRecordatorio] = useState(false);
+  const [waMasivoEnviados, setWaMasivoEnviados] = useState(0);
   const [recordatorioActivo, setRecordatorioActivo] = useState(false);
 
   // Cargar preferencias y datos desde API
@@ -2552,6 +2554,14 @@ export default function App() {
     if (i >= destinos.length) {
       showToast(`${destinos.length} clientes notificados`, 'success');
       setWaMasivoActivo(false); setShowWaMasivoModal(false); setClientesSeleccionados([]);
+      if (waMasivoEsRecordatorio) {
+        const hoy = new Date();
+        const mes = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+        await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave: 'recordatorio_mes_enviado', valor: mes }) });
+        setRecordatorioActivo(false);
+        setWaMasivoEsRecordatorio(false);
+        showToast('Recordatorio completado — banner cerrado para todos', 'success');
+      }
       return;
     }
     const c = destinos[i];
@@ -2590,8 +2600,8 @@ export default function App() {
   const siguienteWaMasivo = () => {
     const destinos = waMasivoDestinosActual;
     const i = waMasivoIndex;
-    // Marcar actual como Notificado
     marcarNotificado(destinos[i]);
+    setWaMasivoEnviados(prev => prev + 1);
     setWaMasivoListoSiguiente(false);
     enviarWaMasivoUno(destinos, i + 1);
   };
@@ -4111,9 +4121,11 @@ export default function App() {
                     <div>
                       <div style={{ color:'white', fontWeight:700, fontSize:'0.95rem' }}>Recordatorio de cobro — día 13</div>
                       <div style={{ color:'rgba(255,255,255,0.85)', fontSize:'0.8rem' }}>
-                        {pendientes.length > 0
-                          ? `${pendientes.length} cliente${pendientes.length !== 1 ? 's' : ''} notificado${pendientes.length !== 1 ? 's' : ''} sin confirmar pago`
-                          : 'Todos los clientes ya confirmaron pago este mes'}
+                        {waMasivoEnviados > 0
+                          ? `${waMasivoEnviados} enviado${waMasivoEnviados !== 1 ? 's' : ''} de ${pendientes.length + waMasivoEnviados} clientes`
+                          : pendientes.length > 0
+                            ? `${pendientes.length} cliente${pendientes.length !== 1 ? 's' : ''} sin confirmar pago`
+                            : 'Todos los clientes ya confirmaron pago este mes'}
                       </div>
                     </div>
                   </div>
@@ -4122,7 +4134,7 @@ export default function App() {
                       <button onClick={() => {
                         setClientesSeleccionados(pendientes.map(c => c.id));
                         setShowWaMasivoModal(true);
-                        setWaMasivoMensaje(getMsgRecordatorio()); setWaMasivoIndex(0); setWaMasivoActivo(false);
+                        setWaMasivoMensaje(getMsgRecordatorio()); setWaMasivoIndex(0); setWaMasivoActivo(false); setWaMasivoEsRecordatorio(true); setWaMasivoEnviados(0);
                       }} style={{ background:'white', color:'#ea580c', border:'none', borderRadius:'8px', padding:'0.5rem 1rem', fontWeight:700, fontSize:'0.83rem', cursor:'pointer', display:'flex', alignItems:'center', gap:'0.4rem' }}>
                         <MessageCircle size={13}/> Enviar recordatorio
                       </button>
