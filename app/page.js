@@ -337,6 +337,20 @@ export default function App() {
           debouncedCreditos();
         }
       )
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'config' },
+        (payload) => {
+          const { clave, valor } = payload.new || {};
+          if (clave === 'recordatorio_mes') {
+            const hoy = new Date();
+            const mesActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+            setRecordatorioActivo(valor === mesActual);
+          }
+          if (clave === 'recordatorio_mes_enviado') {
+            setRecordatorioActivo(false);
+          }
+        }
+      )
       .subscribe((status) => {
         if (status === 'CHANNEL_ERROR') {
           // Supabase Realtime no disponible — la app sigue funcionando con polling
