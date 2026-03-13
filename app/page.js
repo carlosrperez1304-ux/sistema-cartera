@@ -2583,7 +2583,7 @@ export default function App() {
       return;
     }
     const c = destinos[i];
-    const msg = getMsgFactura(c);
+    const msg = waMasivoMensaje.trim() ? waMasivoMensaje : getMsgFactura(c);
     const num = c.contacto.replace(/\D/g, '');
 
     // Cargar documento si existe
