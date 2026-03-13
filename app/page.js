@@ -3290,6 +3290,7 @@ export default function App() {
             {tienePermiso('ver_clientes') && (() => { const noGen = datosActuales.clientes.filter(c => c.estado === 'No Generaron' || c.estado === 'Archivado').length; return <div className={`sidebar-item ${activeTab === 'reactivacion' ? 'active' : ''}`} onClick={() => setActiveTab('reactivacion')} style={{ position: 'relative' }}><span className="icon"><Archive size={14}/></span> Reactivación{noGen > 0 && <span style={{ marginLeft:'6px', background:'#64748b', color:'#fff', borderRadius:'10px', padding:'0 6px', fontSize:'0.7rem', fontWeight:700 }}>{noGen}</span>}</div>; })()}
             <div className="sidebar-item" onClick={() => { abrirCargaMasiva(); }}><span className="icon"><Upload size={14}/></span> Carga Masiva PDF</div>
             {['admin', 'supervisor_cobro', 'supervisor_contabilidad'].includes(session?.user?.rol) && <div className="sidebar-item" style={{ color: '#dc2626', fontWeight: 700 }} onClick={() => setShowDescargaMesModal(true)}><span className="icon"><Save size={14}/></span> Cierre de Mes</div>}
+            {esAdmin && <div className="sidebar-item" style={{ color: '#ea580c', fontWeight: 700 }} onClick={async () => { const hoy = new Date(); const mes = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}`; await fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ clave:'recordatorio_mes', valor: mes }) }); setRecordatorioActivo(true); setActiveTab('cartera'); showToast('Recordatorio del día 13 activado', 'success'); }}><span className="icon"><Bell size={14}/></span> Recordatorio día 13</div>}
             {esAdmin && <div className={`sidebar-item ${activeTab === 'usuarios' ? 'active' : ''}`} onClick={() => { cargarUsuariosAdmin(); setActiveTab('usuarios'); }}><span className="icon"><Users size={14}/></span> Usuarios</div>}
           </div>
           <div className="sidebar-section">
@@ -4089,23 +4090,29 @@ export default function App() {
             {/* Banner de recordatorio mensual */}
             {recordatorioActivo && activeTab === 'cartera' && (() => {
               const pendientes = clientes.filter(c => c.estado === 'Notificado');
-              return pendientes.length > 0 ? (
+              return (
                 <div style={{ background:'linear-gradient(135deg,#f97316,#ea580c)', borderRadius:'12px', padding:'0.9rem 1.25rem', marginBottom:'1rem', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'1rem', flexWrap:'wrap', boxShadow:'0 4px 16px rgba(234,88,12,0.3)' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
                     <Bell size={20} style={{ color:'white', flexShrink:0 }}/>
                     <div>
                       <div style={{ color:'white', fontWeight:700, fontSize:'0.95rem' }}>Recordatorio de cobro — día 13</div>
-                      <div style={{ color:'rgba(255,255,255,0.85)', fontSize:'0.8rem' }}>{pendientes.length} cliente{pendientes.length !== 1 ? 's' : ''} notificado{pendientes.length !== 1 ? 's' : ''} sin confirmar pago</div>
+                      <div style={{ color:'rgba(255,255,255,0.85)', fontSize:'0.8rem' }}>
+                        {pendientes.length > 0
+                          ? `${pendientes.length} cliente${pendientes.length !== 1 ? 's' : ''} notificado${pendientes.length !== 1 ? 's' : ''} sin confirmar pago`
+                          : 'Todos los clientes ya confirmaron pago este mes'}
+                      </div>
                     </div>
                   </div>
                   <div style={{ display:'flex', gap:'0.5rem', flexShrink:0 }}>
-                    <button onClick={() => {
-                      setClientesSeleccionados(pendientes.map(c => c.id));
-                      setShowWaMasivoModal(true);
-                      setWaMasivoMensaje(getMsgRecordatorio()); setWaMasivoIndex(0); setWaMasivoActivo(false);
-                    }} style={{ background:'white', color:'#ea580c', border:'none', borderRadius:'8px', padding:'0.5rem 1rem', fontWeight:700, fontSize:'0.83rem', cursor:'pointer', display:'flex', alignItems:'center', gap:'0.4rem' }}>
-                      <MessageCircle size={13}/> Enviar recordatorio
-                    </button>
+                    {pendientes.length > 0 && (
+                      <button onClick={() => {
+                        setClientesSeleccionados(pendientes.map(c => c.id));
+                        setShowWaMasivoModal(true);
+                        setWaMasivoMensaje(getMsgRecordatorio()); setWaMasivoIndex(0); setWaMasivoActivo(false);
+                      }} style={{ background:'white', color:'#ea580c', border:'none', borderRadius:'8px', padding:'0.5rem 1rem', fontWeight:700, fontSize:'0.83rem', cursor:'pointer', display:'flex', alignItems:'center', gap:'0.4rem' }}>
+                        <MessageCircle size={13}/> Enviar recordatorio
+                      </button>
+                    )}
                     <button onClick={async () => {
                       const hoy = new Date();
                       const mes = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
@@ -4116,7 +4123,7 @@ export default function App() {
                     </button>
                   </div>
                 </div>
-              ) : null;
+              );
             })()}
 
             <div className="dashboard">
