@@ -2618,25 +2618,6 @@ export default function App() {
   const toggleSeleccion = (id) => setClientesSeleccionados(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   const toggleTodos = () => setClientesSeleccionados(prev => prev.length === clientesPaginados.length ? [] : clientesPaginados.map(c => c.id));
 
-  const iniciarWaMasivoAuto = () => {
-    const candidatos = clientes.filter(c => {
-      if (!c.contacto) return false;
-      if (['Pagado','Facturado','Notificado','No Generaron','Archivado'].includes(c.estado)) return false;
-      const docs = cotizaciones[c.id] || [];
-      return docs.length > 0;
-    });
-    if (candidatos.length === 0) {
-      showToast('No hay clientes con documento pendiente de notificar', 'error');
-      return;
-    }
-    setClientesSeleccionados(candidatos.map(c => c.id));
-    setWaMasivoMensaje('');
-    setWaMasivoIndex(0);
-    setWaMasivoActivo(false);
-    setShowWaMasivoModal(true);
-    showToast(`${candidatos.length} clientes listos para notificar`, 'info');
-  };
-
   const iniciarWaMasivo = () => {
     if (clientesSeleccionados.length === 0) { showToast('Selecciona al menos un cliente', 'error'); return; }
     setWaMasivoMensaje(''); setWaMasivoIndex(0); setWaMasivoActivo(false);
@@ -3573,12 +3554,11 @@ export default function App() {
               ))}
             </div>
 
-           {/* ACCESOS RÁPIDOS */}
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:'0.6rem', marginBottom:'1.25rem' }}>
+            {/* ACCESOS RÁPIDOS */}
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:'0.6rem', marginBottom:'1.25rem' }}>
               {[
                 { label:'Nueva Cotización', icon:<ClipboardList size={22}/>, action:() => { setActiveTab('cartera'); abrirModal(); } },
                 { label:'Ver Agenda', icon:<Clock size={22}/>, action:() => setActiveTab('agenda') },
-                { label:'Enviar Facturas', icon:<MessageCircle size={22}/>, action:() => iniciarWaMasivoAuto() },
                 { label:'Carga Masiva PDF', icon:<FolderOpen size={22}/>, action:() => { abrirCargaMasiva(); } },
                 { label:'Exportar Excel', icon:<BarChart2 size={22}/>, action:exportarTodosExcel },
               ].map((a,i) => (
@@ -3590,7 +3570,6 @@ export default function App() {
                 </button>
               ))}
             </div>
-
 
             {/* PANEL INFERIOR: alertas + recientes */}
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem', marginBottom:'1.25rem' }}>
