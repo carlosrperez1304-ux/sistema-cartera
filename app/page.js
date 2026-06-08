@@ -205,11 +205,43 @@ export default function App() {
     window.electronAPI.getVersion().then(v => setAppVersion(v)).catch(() => {});
   }, []);
 
-  // — Auto-update listeners —
+ // ── Watcher automático de carpeta ────────────────────────────
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!window.electronAPI?.isElectron) return;
 
+    const cleanupPdf = window.electronAPI.onPdfNuevoDetectado?.(async (data) => {
+      if (!data?.base64 || !data?.nombre) return;
+      showToast(`📄 Procesando: ${data.nombre}`, 'info');
+      try {
+        const byteStr = atob(data.base64.split(',')[1]);
+        const bytes = new Uint8Array(byteStr.length);
+        for (let i = 0; i < byteStr.length; i++) bytes[i] = byteStr.charCodeAt(i);
+        const file = new File([bytes], data.nombre, { type: 'application/pdf' });
+        await procesarArchivosMasivos([file]);
+      } catch (err) {
+        showToast('Error procesando PDF: ' + data.nombre, 'error');
+      }
+    });
+
+    const cleanupActivo = window.electronAPI.onWatcherActivo?.((data) => {
+      showToast(`👁️ Vigilando carpeta: ${data.carpeta}`, 'info');
+    });
+
+    window.electronAPI.onAbrirSeleccionarCarpeta?.(() => {
+      abrirCargaMasiva();
+    });
+
+    return () => {
+      cleanupPdf?.();
+      cleanupActivo?.();
+    };
+  }, []);
+
+  // — Auto-update listeners —
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!window.electronAPI?.isElectron) return;
     window.electronAPI.onUpdateAvailable?.((version) => {
       setUpdateAvailable(true);
       setUpdateVersion(version);
