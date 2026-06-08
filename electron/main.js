@@ -1,14 +1,13 @@
-const { app, BrowserWindow, ipcMain, shell, screen, Tray, Menu, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, screen, Tray, Menu, nativeImage, dialog } = require('electron');
 const path = require('path');
 const fs   = require('fs');
 const os   = require('os');
-const { execFile } = require('child_process'); // FIX C1: execFile en vez de exec
+const { execFile } = require('child_process');
 const crypto = require('crypto');
 const { autoUpdater } = require('electron-updater');
 const log = require('electron-log');
 
 // ── Single instance lock ─────────────────────────────────────
-// FIX: Evitar múltiples instancias de la app al mismo tiempo
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
@@ -21,11 +20,12 @@ autoUpdater.autoDownload = false;
 
 // ── URL de producción en Vercel ─────────────────────────────
 const PROD_URL = 'https://sistema-cartera.vercel.app';
-// ───────────────────────────────────────────────────────────
 
 // ── Rutas de activación ─────────────────────────────────────
 const ACTIVATION_FILE = path.join(app.getPath('userData'), 'activation.json');
-// ───────────────────────────────────────────────────────────
+
+// ── Ruta donde se guarda la última carpeta seleccionada ──────
+const CARPETA_FILE = path.join(app.getPath('userData'), 'ultima-carpeta.json');
 
 function loadActivation() {
   try {
@@ -48,10 +48,26 @@ function getOrCreateDeviceId() {
   return id;
 }
 
+// ── Guardar y cargar última carpeta usada ───────────────────
+function guardarUltimaCarpeta(rutaCarpeta) {
+  try {
+    fs.writeFileSync(CARPETA_FILE, JSON.stringify({ ruta: rutaCarpeta }), 'utf8');
+  } catch (_) {}
+}
+
+function cargarUltimaCarpeta() {
+  try {
+    if (fs.existsSync(CARPETA_FILE)) {
+      const data = JSON.parse(fs.readFileSync(CARPETA_FILE, 'utf8'));
+      return data.ruta || null;
+    }
+  } catch (_) {}
+  return null;
+}
+
 // ── Validar código contra la API ────────────────────────────
 async function validateCodeWithAPI(codigo, device_id) {
   const controller = new AbortController();
-  // FIX: Timeout de 12 segundos — si la API no responde, no queda bloqueado
   const timer = setTimeout(() => controller.abort(), 12000);
   try {
     const res = await fetch(`${PROD_URL}/api/activaciones`, {
@@ -79,14 +95,13 @@ let tray          = null;
 
 // ── System tray ───────────────────────────────────────────────
 function createTray() {
-  if (tray) return; // ya existe
+  if (tray) return;
   const iconPath = path.join(__dirname, 'assets', 'icon.png');
   const icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
   tray = new Tray(icon);
   tray.setToolTip('PayTrack');
   updateTrayMenu();
 
-  // Clic en el ícono → mostrar/restaurar ventana principal
   tray.on('click', () => {
     if (mainWin && !mainWin.isDestroyed()) {
       if (mainWin.isMinimized() || !mainWin.isVisible()) {
@@ -104,10 +119,7 @@ function createTray() {
 function updateTrayMenu() {
   if (!tray) return;
   const menu = Menu.buildFromTemplate([
-    {
-      label: 'PayTrack',
-      enabled: false,
-    },
+    { label: 'PayTrack', enabled: false },
     { type: 'separator' },
     {
       label: 'Mostrar ventana',
@@ -136,9 +148,7 @@ function updateTrayMenu() {
   tray.setContextMenu(menu);
 }
 
-// ── Listeners de autoUpdater (singleton — registrar una sola vez) ─
-// FIX: Si se registran dentro de createMainWindow() se duplican en
-// cada llamada (ej: tras re-activación). Se registran aquí al inicio.
+// ── Listeners de autoUpdater ─────────────────────────────────
 autoUpdater.on('error', (err) => {
   log.error('[autoUpdater] Error:', err.message);
   if (mainWin && !mainWin.isDestroyed()) {
@@ -203,14 +213,12 @@ function createActivationWindow() {
   activationWin.loadFile(path.join(__dirname, 'activation.html'));
   activationWin.setMenuBarVisibility(false);
 
-  // FIX H1: Limpiar referencia si el usuario cierra la ventana durante validación
   activationWin.on('closed', () => {
     activationWin = null;
   });
 }
 
-// ── Página de error offline (sin conexión) ───────────────────
-// FIX H3: Mostrar página útil cuando no hay internet en vez de pantalla en blanco
+// ── Página de error offline ───────────────────────────────────
 const OFFLINE_HTML = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -262,16 +270,13 @@ function createMainWindow() {
   });
   mainWin.setMenuBarVisibility(false);
 
-  // Limpiar cache antes de cargar para garantizar versión más reciente
   mainWin.webContents.session.clearCache().then(() => {
     mainWin.loadURL(PROD_URL).catch((err) => {
       log.warn('[mainWin] loadURL error:', err.message);
     });
   });
 
-  // FIX H3: Manejar fallos de carga (sin internet / error de red)
   mainWin.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
-    // -3 = ERR_ABORTED (navegación normal cancelada), ignorar
     if (errorCode === -3) return;
     log.warn('[mainWin] did-fail-load:', errorCode, errorDescription);
     closeSplash();
@@ -281,22 +286,17 @@ function createMainWindow() {
     if (!mainWin.isVisible()) mainWin.show();
   });
 
-  // Verificar actualizaciones después de que la app cargue
   setTimeout(() => {
     autoUpdater.checkForUpdates().catch((err) => {
       log.warn('[autoUpdater] checkForUpdates falló:', err.message);
     });
   }, 3000);
 
-  // Cuando la página cargó: cerrar splash y mostrar la app
   mainWin.webContents.once('did-finish-load', () => {
     closeSplash();
     mainWin.show();
   });
 
-  // Inyectar MutationObserver que detecta cuando el titlebar desaparece (logout)
-  // El div #electron-win-controls solo existe cuando el usuario está autenticado.
-  // Cuando no existe → mostrar botones flotantes de minimizar/cerrar.
   mainWin.webContents.on('did-finish-load', () => {
     mainWin.webContents.executeJavaScript(`
       (function() {
@@ -305,13 +305,11 @@ function createMainWindow() {
           let floatWrap = document.getElementById('__electron-win-btns');
 
           if (appControls) {
-            // App autenticada: ocultar/eliminar botones flotantes
             if (floatWrap) floatWrap.remove();
             return;
           }
 
-          // Sin titlebar (login / sesión cerrada): mostrar botones flotantes
-          if (floatWrap) return; // ya están
+          if (floatWrap) return;
 
           floatWrap = document.createElement('div');
           floatWrap.id = '__electron-win-btns';
@@ -338,7 +336,6 @@ function createMainWindow() {
           document.body.appendChild(floatWrap);
         }
 
-        // Ejecutar ahora y cada vez que React cambie el DOM
         syncControls();
         const obs = new MutationObserver(syncControls);
         obs.observe(document.body, { childList: true, subtree: true });
@@ -353,13 +350,12 @@ function createMainWindow() {
     return { action: 'deny' };
   });
 
-  // FIX: Limpiar referencia cuando la ventana se cierra
   mainWin.on('closed', () => {
     mainWin = null;
   });
 }
 
-// ── Segunda instancia: enfocar ventana existente ─────────────
+// ── Segunda instancia ────────────────────────────────────────
 app.on('second-instance', () => {
   if (mainWin && !mainWin.isDestroyed()) {
     if (mainWin.isMinimized()) mainWin.restore();
@@ -369,7 +365,7 @@ app.on('second-instance', () => {
   }
 });
 
-// ── Flujo principal al arrancar ─────────────────────────────
+// ── Flujo principal ──────────────────────────────────────────
 app.whenReady().then(async () => {
   createTray();
   createSplashWindow();
@@ -395,7 +391,6 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
-  // En Windows/Linux: destruir tray y salir
   if (process.platform !== 'darwin') {
     tray?.destroy();
     tray = null;
@@ -403,9 +398,8 @@ app.on('window-all-closed', () => {
   }
 });
 
-// ── IPC: validar código de activación ───────────────────────
+// ── IPC: validar código ──────────────────────────────────────
 ipcMain.handle('validate-activation', async (event, codigo) => {
-  // FIX C4/H2: Validar formato del código antes de procesar
   if (typeof codigo !== 'string' || !/^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(codigo)) {
     return { ok: false, error: 'Formato de código inválido' };
   }
@@ -416,7 +410,6 @@ ipcMain.handle('validate-activation', async (event, codigo) => {
   if (result.ok) {
     saveActivation({ code: codigo, deviceId });
 
-    // FIX H1: Verificar que activationWin todavía existe antes de usarla
     if (activationWin && !activationWin.isDestroyed()) {
       setTimeout(() => {
         if (activationWin && !activationWin.isDestroyed()) {
@@ -426,7 +419,6 @@ ipcMain.handle('validate-activation', async (event, codigo) => {
         createMainWindow();
       }, 1200);
     } else {
-      // Ventana ya cerrada — abrir main directamente
       createMainWindow();
     }
   }
@@ -472,7 +464,6 @@ ipcMain.handle('toggle-fullscreen', () => {
   win.setFullScreen(!win.isFullScreen());
 });
 
-// ── IPC: recargar la app (usado por página offline) ──────────
 ipcMain.on('window-reload', () => {
   if (mainWin && !mainWin.isDestroyed()) {
     mainWin.webContents.session.clearCache().then(() => {
@@ -483,7 +474,7 @@ ipcMain.on('window-reload', () => {
   }
 });
 
-// ── IPC: auto-update (descarga e instalación) ────────────────
+// ── IPC: auto-update ─────────────────────────────────────────
 ipcMain.on('start-download', () => {
   autoUpdater.downloadUpdate().catch((err) => {
     log.error('[autoUpdater] downloadUpdate falló:', err.message);
@@ -510,14 +501,10 @@ ipcMain.handle('toggle-mini', () => {
   }
 });
 
-// ── IPC: copiar PDF al portapapeles y abrir WhatsApp Desktop ─
-// FIX C1: execFile + EncodedCommand (sin inyección de shell)
-// FIX C2: eliminar archivo temporal siempre (finally)
-// FIX C4: validar todos los parámetros de entrada + límite de tamaño
-const MAX_PDF_BYTES = 25 * 1024 * 1024; // 25 MB
+// ── IPC: copiar PDF al portapapeles ──────────────────────────
+const MAX_PDF_BYTES = 25 * 1024 * 1024;
 
 ipcMain.handle('send-pdf-whatsapp', async (event, payload) => {
-  // FIX C4: Validar que el payload sea un objeto
   if (!payload || typeof payload !== 'object') {
     return { ok: false, error: 'Parámetros inválidos' };
   }
@@ -528,8 +515,6 @@ ipcMain.handle('send-pdf-whatsapp', async (event, payload) => {
     return { ok: false, error: 'PDF inválido' };
   }
 
-  // FIX C4: Limitar tamaño para evitar agotamiento de memoria
-  // base64 es ~37% más grande que el binario original
   if (base64.length > MAX_PDF_BYTES * 1.4) {
     return { ok: false, error: 'El archivo PDF es demasiado grande (máx. 25 MB)' };
   }
@@ -539,16 +524,14 @@ ipcMain.handle('send-pdf-whatsapp', async (event, payload) => {
   try {
     const cleanB64 = base64.includes(',') ? base64.split(',')[1] : base64;
 
-    // FIX C1: Sanitizar nombre de archivo — solo caracteres seguros
     const safeName = ((typeof filename === 'string' ? filename : '') || 'documento.pdf')
       .replace(/[^a-zA-Z0-9._\- ]/g, '_')
-      .replace(/\.{2,}/g, '_')   // evitar path traversal (..)
+      .replace(/\.{2,}/g, '_')
       .slice(0, 120);
 
     tmpPath = path.join(os.tmpdir(), `paytrack_${Date.now()}_${safeName}`);
     fs.writeFileSync(tmpPath, Buffer.from(cleanB64, 'base64'));
 
-    // FIX C1: Usar execFile con EncodedCommand para evitar inyección en PowerShell
     await new Promise((resolve, reject) => {
       const psScript = `Set-Clipboard -Path '${tmpPath.replace(/'/g, "''")}'`;
       const encoded  = Buffer.from(psScript, 'utf16le').toString('base64');
@@ -560,7 +543,6 @@ ipcMain.handle('send-pdf-whatsapp', async (event, payload) => {
       );
     });
 
-    // Abrir WhatsApp Desktop con el número y mensaje
     const num = (typeof phone === 'string' ? phone : '').replace(/\D/g, '');
     if (num) {
       const text = (typeof message === 'string' ? message : '').trim();
@@ -575,9 +557,102 @@ ipcMain.handle('send-pdf-whatsapp', async (event, payload) => {
     log.error('[send-pdf-whatsapp]', err.message);
     return { ok: false, error: err.message };
   } finally {
-    // FIX C2: Siempre eliminar el archivo temporal
     if (tmpPath) {
       try { fs.unlinkSync(tmpPath); } catch (_) {}
     }
   }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// ── IPC: SELECCIONAR CARPETA Y LEER PDFs AUTOMÁTICAMENTE ──────
+// ═══════════════════════════════════════════════════════════════
+ipcMain.handle('seleccionar-carpeta-pdfs', async () => {
+  // Cargar última carpeta usada para abrirla por defecto
+  const ultimaCarpeta = cargarUltimaCarpeta();
+
+  // Abrir diálogo para seleccionar carpeta
+  const result = await dialog.showOpenDialog(mainWin, {
+    title: 'Seleccionar carpeta de facturas del mes',
+    defaultPath: ultimaCarpeta || app.getPath('documents'),
+    properties: ['openDirectory'],
+    buttonLabel: 'Seleccionar carpeta',
+  });
+
+  if (result.canceled || !result.filePaths.length) {
+    return { ok: false, cancelado: true };
+  }
+
+  const carpeta = result.filePaths[0];
+
+  // Guardar como última carpeta usada
+  guardarUltimaCarpeta(carpeta);
+
+  // Leer todos los PDFs de la carpeta
+  let archivos;
+  try {
+    archivos = fs.readdirSync(carpeta).filter(f => f.toLowerCase().endsWith('.pdf'));
+  } catch (err) {
+    return { ok: false, error: 'No se pudo leer la carpeta: ' + err.message };
+  }
+
+  if (archivos.length === 0) {
+    return { ok: false, error: 'No se encontraron archivos PDF en la carpeta seleccionada.' };
+  }
+
+  // Convertir cada PDF a base64 y extraer el nombre del cliente del nombre del archivo
+  // Formato esperado: "Bancas Yamiley.SER.ABRIL.2026.pdf"
+  // El nombre del cliente es la parte antes del primer punto
+  const pdfs = [];
+
+  for (const archivo of archivos) {
+    const rutaCompleta = path.join(carpeta, archivo);
+
+    // Verificar tamaño (máx 3MB por PDF)
+    try {
+      const stats = fs.statSync(rutaCompleta);
+      if (stats.size > 3 * 1024 * 1024) {
+        pdfs.push({
+          nombre: archivo,
+          error: 'Archivo mayor a 3MB, omitido',
+          base64: null,
+        });
+        continue;
+      }
+    } catch (_) {
+      continue;
+    }
+
+    // Leer PDF como base64
+    try {
+      const buffer = fs.readFileSync(rutaCompleta);
+      const base64 = 'data:application/pdf;base64,' + buffer.toString('base64');
+
+      // Extraer nombre del cliente del nombre del archivo
+      // Formato: "Bancas Yamiley.SER.ABRIL.2026.pdf"
+      // Resultado: "Yamiley" (segunda palabra) o toda la parte antes del primer punto
+      const sinExtension = archivo.replace(/\.pdf$/i, '');
+      const partes = sinExtension.split('.');
+      const nombreCliente = partes[0].trim(); // "Bancas Yamiley"
+
+      pdfs.push({
+        nombre: archivo,
+        nombreCliente,
+        base64,
+        error: null,
+      });
+    } catch (err) {
+      pdfs.push({
+        nombre: archivo,
+        error: 'Error al leer el archivo: ' + err.message,
+        base64: null,
+      });
+    }
+  }
+
+  return {
+    ok: true,
+    carpeta,
+    totalArchivos: archivos.length,
+    pdfs,
+  };
 });
