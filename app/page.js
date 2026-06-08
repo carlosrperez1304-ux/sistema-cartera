@@ -3573,11 +3573,12 @@ export default function App() {
               ))}
             </div>
 
-            {/* ACCESOS RÁPIDOS */}
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:'0.6rem', marginBottom:'1.25rem' }}>
+           {/* ACCESOS RÁPIDOS */}
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:'0.6rem', marginBottom:'1.25rem' }}>
               {[
                 { label:'Nueva Cotización', icon:<ClipboardList size={22}/>, action:() => { setActiveTab('cartera'); abrirModal(); } },
                 { label:'Ver Agenda', icon:<Clock size={22}/>, action:() => setActiveTab('agenda') },
+                { label:'Enviar Facturas', icon:<MessageCircle size={22}/>, action:() => iniciarWaMasivoAuto() },
                 { label:'Carga Masiva PDF', icon:<FolderOpen size={22}/>, action:() => { abrirCargaMasiva(); } },
                 { label:'Exportar Excel', icon:<BarChart2 size={22}/>, action:exportarTodosExcel },
               ].map((a,i) => (
@@ -3589,6 +3590,7 @@ export default function App() {
                 </button>
               ))}
             </div>
+
 
             {/* PANEL INFERIOR: alertas + recientes */}
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem', marginBottom:'1.25rem' }}>
