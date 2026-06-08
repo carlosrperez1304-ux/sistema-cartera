@@ -210,17 +210,36 @@ export default function App() {
     if (typeof window === 'undefined') return;
     if (!window.electronAPI?.isElectron) return;
 
+    const archivosRecientes = new Set();
+
     const cleanupPdf = window.electronAPI.onPdfNuevoDetectado?.(async (data) => {
       if (!data?.base64 || !data?.nombre) return;
-      showToast(`📄 Procesando: ${data.nombre}`, 'info');
+      if (archivosRecientes.has(data.nombre)) return;
+      archivosRecientes.add(data.nombre);
+      setTimeout(() => archivosRecientes.delete(data.nombre), 5000);
+
+      const nombreCliente = data.nombreCliente?.toLowerCase().trim() || '';
+      const clienteEncontrado = clientes.find(c => {
+        const cn = (c.nombre || '').toLowerCase().trim();
+        return cn === nombreCliente ||
+          cn.includes(nombreCliente) ||
+          nombreCliente.includes(cn);
+      });
+
+      if (!clienteEncontrado) {
+        showToast(`⚠️ No se encontró cliente para: ${data.nombreCliente}`, 'error');
+        return;
+      }
+
       try {
         const byteStr = atob(data.base64.split(',')[1]);
         const bytes = new Uint8Array(byteStr.length);
         for (let i = 0; i < byteStr.length; i++) bytes[i] = byteStr.charCodeAt(i);
         const file = new File([bytes], data.nombre, { type: 'application/pdf' });
-        await procesarArchivosMasivos([file]);
+        await subirDocumento(clienteEncontrado.id, file);
+        showToast(`✅ PDF subido a ${clienteEncontrado.nombre}`, 'success');
       } catch (err) {
-        showToast('Error procesando PDF: ' + data.nombre, 'error');
+        showToast('Error subiendo PDF: ' + data.nombre, 'error');
       }
     });
 
@@ -236,7 +255,7 @@ export default function App() {
       cleanupPdf?.();
       cleanupActivo?.();
     };
-  }, []);
+  }, [clientes]);
 
   // — Auto-update listeners —
   useEffect(() => {
