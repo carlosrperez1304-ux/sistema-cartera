@@ -371,46 +371,60 @@ export default function App() {
       timerCreditos = setTimeout(() => cargarCreditos(), 600);
     };
 
-    const channel = supabase
-      .channel('cartera-realtime')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'clientes' },
-        debouncedClientes
-      )
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'creditos' },
-        debouncedCreditos
-      )
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'delegations' },
-        () => {
-          debouncedClientes();
-          debouncedCreditos();
-        }
-      )
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'config' },
-        (payload) => {
-          const { clave, valor } = payload.new || {};
-          if (clave === 'recordatorio_mes') {
-            const hoy = new Date();
-            const mesActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
-            setRecordatorioActivo(valor === mesActual);
+    let channel;
+
+    const conectarRealtime = () => {
+      if (channel) supabase.removeChannel(channel);
+
+      channel = supabase
+        .channel('cartera-realtime')
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'clientes' },
+          debouncedClientes
+        )
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'creditos' },
+          debouncedCreditos
+        )
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'delegations' },
+          () => {
+            debouncedClientes();
+            debouncedCreditos();
           }
-          if (clave === 'recordatorio_mes_enviado') {
-            setRecordatorioActivo(false);
+        )
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'config' },
+          (payload) => {
+            const { clave, valor } = payload.new || {};
+            if (clave === 'recordatorio_mes') {
+              const hoy = new Date();
+              const mesActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+              setRecordatorioActivo(valor === mesActual);
+            }
+            if (clave === 'recordatorio_mes_enviado') {
+              setRecordatorioActivo(false);
+            }
           }
-        }
-      )
-      .subscribe((status) => {
-        if (status === 'CHANNEL_ERROR') {
-          // Supabase Realtime no disponible — la app sigue funcionando con polling
-        }
-      });
+        )
+        .subscribe((status) => {
+          if (status === 'CHANNEL_ERROR' || status === 'CLOSED') {
+            setTimeout(conectarRealtime, 3000);
+          }
+        });
+    };
+
+    conectarRealtime();
+
+    const pollingInterval = setInterval(() => {
+      cargarClientes();
+      cargarCreditos();
+    }, 30000);
 
     return () => {
       clearTimeout(timerClientes);
       clearTimeout(timerCreditos);
+      clearInterval(pollingInterval);
       supabase.removeChannel(channel);
     };
   }, [session?.user?.username, cargarClientes, cargarCreditos]);
