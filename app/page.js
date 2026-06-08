@@ -7406,7 +7406,31 @@ export default function App() {
             ) : archivosEnProceso.length === 0 ? (
               /* ── Zona de carga ── */
               <div>
-                <label
+               {typeof window !== 'undefined' && window.electronAPI?.isElectron && (
+  <button
+    type="button"
+    onClick={async () => {
+      const result = await window.electronAPI.seleccionarCarpetaPDFs();
+      if (result.cancelado) return;
+      if (!result.ok) { showToast(result.error || 'Error al leer la carpeta', 'error'); return; }
+      showToast(`${result.totalArchivos} PDFs encontrados en la carpeta`, 'info');
+      await procesarArchivosMasivos(
+        result.pdfs
+          .filter(p => p.base64)
+          .map(p => {
+            const byteStr = atob(p.base64.split(',')[1]);
+            const bytes = new Uint8Array(byteStr.length);
+            for (let i = 0; i < byteStr.length; i++) bytes[i] = byteStr.charCodeAt(i);
+            return new File([bytes], p.nombre, { type: 'application/pdf' });
+          })
+      );
+    }}
+    style={{ width:'100%', padding:'0.85rem', background:'#1e2d4a', color:'white', border:'none', borderRadius:'12px', fontWeight:700, fontSize:'0.92rem', cursor:'pointer', marginBottom:'1rem', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem' }}
+  >
+    <FolderOpen size={18}/> Seleccionar carpeta del mes
+  </button>
+)}
+<label
                   style={{ display: 'block', border: '2px dashed var(--border2)', borderRadius: '14px', padding: '2.5rem', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s', background: 'var(--surface2)' }}
                   onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'var(--accent-glow)'; }}
                   onDragLeave={e => { e.currentTarget.style.borderColor = 'var(--border2)'; e.currentTarget.style.background = 'var(--surface2)'; }}
