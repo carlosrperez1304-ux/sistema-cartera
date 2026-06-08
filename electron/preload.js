@@ -11,6 +11,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('send-pdf-whatsapp', { base64, filename, phone, message }),
   getVersion: () => ipcRenderer.invoke('get-version'),
 
+  // ── NUEVA FUNCIÓN: Seleccionar carpeta y leer PDFs automáticamente ──
+  seleccionarCarpetaPDFs: () => ipcRenderer.invoke('seleccionar-carpeta-pdfs'),
+
   // FIX: Retornar función de limpieza para evitar fuga de listeners al re-renderizar
   onUpdateAvailable: (cb) => {
     const listener = (_, version) => cb(version);
@@ -23,7 +26,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('download-progress', listener);
   },
   onUpdateDownloaded: (cb) => {
-    // once: solo se dispara una vez, sin necesidad de cleanup manual
     ipcRenderer.once('update-downloaded', () => cb());
   },
   onUpdateError: (cb) => {
@@ -34,6 +36,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   startDownload: () => ipcRenderer.send('start-download'),
   installUpdate: () => ipcRenderer.send('install-update'),
-  // FIX: Recargar la URL real (usado por página offline — location.reload() no funciona en data:URI)
   reloadApp: () => ipcRenderer.send('window-reload'),
 });
