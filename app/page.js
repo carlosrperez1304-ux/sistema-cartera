@@ -2618,6 +2618,25 @@ export default function App() {
   const toggleSeleccion = (id) => setClientesSeleccionados(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   const toggleTodos = () => setClientesSeleccionados(prev => prev.length === clientesPaginados.length ? [] : clientesPaginados.map(c => c.id));
 
+  const iniciarWaMasivoAuto = () => {
+    const candidatos = clientes.filter(c => {
+      if (!c.contacto) return false;
+      if (['Pagado','Facturado','Notificado','No Generaron','Archivado'].includes(c.estado)) return false;
+      const docs = cotizaciones[c.id] || [];
+      return docs.length > 0;
+    });
+    if (candidatos.length === 0) {
+      showToast('No hay clientes con documento pendiente de notificar', 'error');
+      return;
+    }
+    setClientesSeleccionados(candidatos.map(c => c.id));
+    setWaMasivoMensaje('');
+    setWaMasivoIndex(0);
+    setWaMasivoActivo(false);
+    setShowWaMasivoModal(true);
+    showToast(`${candidatos.length} clientes listos para notificar`, 'info');
+  };
+
   const iniciarWaMasivo = () => {
     if (clientesSeleccionados.length === 0) { showToast('Selecciona al menos un cliente', 'error'); return; }
     setWaMasivoMensaje(''); setWaMasivoIndex(0); setWaMasivoActivo(false);
