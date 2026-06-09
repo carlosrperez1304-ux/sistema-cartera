@@ -2735,7 +2735,18 @@ export default function App() {
   };
 
   // ─── AVATAR helper ───────────────────────────────────────
-  const AVATAR_COLORS = ['#635bff','#f97316','#059669','#0284c7','#dc2626','#8b5cf6','#14b8a6','#f59e0b','#e11d48','#0891b2'];
+  const AVATAR_COLORS = [
+    'linear-gradient(135deg,#635bff,#818cf8)',
+    'linear-gradient(135deg,#f97316,#fb923c)',
+    'linear-gradient(135deg,#059669,#34d399)',
+    'linear-gradient(135deg,#0284c7,#38bdf8)',
+    'linear-gradient(135deg,#dc2626,#f87171)',
+    'linear-gradient(135deg,#8b5cf6,#a78bfa)',
+    'linear-gradient(135deg,#14b8a6,#2dd4bf)',
+    'linear-gradient(135deg,#f59e0b,#fbbf24)',
+    'linear-gradient(135deg,#e11d48,#fb7185)',
+    'linear-gradient(135deg,#0891b2,#22d3ee)',
+  ];
   const getAvatar = (nombre) => {
     const idx = (nombre || '?').charCodeAt(0) % AVATAR_COLORS.length;
     return { letra: (nombre || '?')[0].toUpperCase(), color: AVATAR_COLORS[idx] };
