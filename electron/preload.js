@@ -2,19 +2,42 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   isElectron: true,
-  minimizeWindow: () => ipcRenderer.send('window-minimize'),
-  maximizeWindow: () => ipcRenderer.send('window-maximize'),
-  closeWindow:    () => ipcRenderer.send('window-close'),
+
+  // ── Controles de ventana ──
+  minimizeWindow:   () => ipcRenderer.send('window-minimize'),
+  maximizeWindow:   () => ipcRenderer.send('window-maximize'),
+  closeWindow:      () => ipcRenderer.send('window-close'),
   toggleMini:       () => ipcRenderer.invoke('toggle-mini'),
   toggleFullscreen: () => ipcRenderer.invoke('toggle-fullscreen'),
+  reloadApp:        () => ipcRenderer.send('window-reload'),
+
+  // ── PDF a WhatsApp ──
   sendPDFWhatsApp: (base64, filename, phone, message) =>
     ipcRenderer.invoke('send-pdf-whatsapp', { base64, filename, phone, message }),
+
+  // ── Versión ──
   getVersion: () => ipcRenderer.invoke('get-version'),
 
-  // ── NUEVA FUNCIÓN: Seleccionar carpeta y leer PDFs automáticamente ──
+  // ── Watcher de carpeta ──
   seleccionarCarpetaPDFs: () => ipcRenderer.invoke('seleccionar-carpeta-pdfs'),
+  detenerWatcher:         () => ipcRenderer.invoke('detener-watcher'),
+  estadoWatcher:          () => ipcRenderer.invoke('estado-watcher'),
 
-  // FIX: Retornar función de limpieza para evitar fuga de listeners al re-renderizar
+  onPdfNuevoDetectado: (cb) => {
+    const listener = (_, data) => cb(data);
+    ipcRenderer.on('pdf-nuevo-detectado', listener);
+    return () => ipcRenderer.removeListener('pdf-nuevo-detectado', listener);
+  },
+  onWatcherIniciado: (cb) => {
+    const listener = (_, carpeta) => cb(carpeta);
+    ipcRenderer.on('watcher-iniciado', listener);
+    return () => ipcRenderer.removeListener('watcher-iniciado', listener);
+  },
+  onWatcherDetenido: (cb) => {
+    ipcRenderer.on('watcher-detenido', () => cb());
+  },
+
+  // ── Auto-update ──
   onUpdateAvailable: (cb) => {
     const listener = (_, version) => cb(version);
     ipcRenderer.on('update-available', listener);
@@ -33,8 +56,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('update-error', listener);
     return () => ipcRenderer.removeListener('update-error', listener);
   },
-
   startDownload: () => ipcRenderer.send('start-download'),
   installUpdate: () => ipcRenderer.send('install-update'),
-  reloadApp: () => ipcRenderer.send('window-reload'),
 });
