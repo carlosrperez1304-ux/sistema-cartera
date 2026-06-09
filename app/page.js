@@ -3373,9 +3373,9 @@ export default function App() {
       </div>
 
       {showMobileMenu && <div className="mobile-overlay" onClick={() => setShowMobileMenu(false)} />}
-      <div className="main-layout">
-        {/* SIDEBAR */}
-        <div className={`sidebar${showMobileMenu ? ' mobile-open' : ''}`}>
+      <div className="main-layout" style={{ display:'block' }}>
+        {/* SIDEBAR — oculto, nav movida al topbar */}
+        <div className={`sidebar${showMobileMenu ? ' mobile-open' : ''}`} style={{ display:'none' }}>
           {/* Logo — fuera del scroll, siempre visible */}
           <div style={{ padding: '1.1rem 1rem', borderBottom: '1px solid #e0dfd8', display: 'flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0 }}>
             <div style={{ width: '28px', height: '28px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(99,102,241,0.4)' }}>
@@ -3435,7 +3435,7 @@ export default function App() {
         </div>
 
         {/* CONTENT */}
-        <div className="content-area">
+        <div className="content-area" style={{ marginLeft:0, width:'100%', maxWidth:'1200px', margin:'0 auto' }}>
           <div className="page-header" style={{ flexDirection:'column', alignItems:'stretch', gap:'1rem', padding:'1.25rem 1.5rem', background:'var(--surface)', borderRadius:'14px', border:'1px solid var(--border)', marginBottom:'0.5rem' }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
               <div>
@@ -4196,6 +4196,19 @@ export default function App() {
 
           {/* TAB CARTERA */}
           <div className={`tab-content ${activeTab === 'cartera' ? 'active' : ''}`}>
+            {/* HEADER CARTERA */}
+            <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:"1.25rem" }}>
+              <div>
+                <div style={{ fontSize:"28px", fontWeight:700, color:"var(--text)", letterSpacing:"-0.03em", lineHeight:1.1 }}>Cartera</div>
+                <div style={{ fontSize:"13px", color:"var(--text-muted)", marginTop:"4px" }}>{clientes.length} clientes · {obtenerNombreMes(mesVisualizando)}</div>
+              </div>
+              <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
+                <button onClick={() => iniciarWaMasivoAuto()} className="btn" style={{ display:"flex", alignItems:"center", gap:"6px", fontSize:"13px", background:"#25D366", border:"none", color:"#fff", borderRadius:"9px", padding:"8px 16px", fontWeight:700, cursor:"pointer" }}>
+                  <MessageCircle size={14}/> Enviar
+                </button>
+                {tienePermiso("crear_clientes") && <button onClick={() => !esModoPasado && abrirModal()} disabled={esModoPasado} className="btn" style={{ display:"flex", alignItems:"center", gap:"6px", fontSize:"13px", background:"#1a1915", border:"none", color:"#fff", borderRadius:"9px", padding:"8px 16px", fontWeight:700, cursor:"pointer", opacity: esModoPasado ? 0.5 : 1 }}><Plus size={14}/> Nuevo</button>}
+              </div>
+            </div>
 
             {/* Banner de recordatorio mensual */}
             {recordatorioActivo && activeTab === 'cartera' && (() => {
