@@ -3435,7 +3435,7 @@ export default function App() {
         </div>
 
         {/* CONTENT */}
-        <div className="content-area" style={{ marginLeft:0, width:'100%', maxWidth:'1200px', margin:'0 auto' }}>
+        <div className="content-area" style={{ marginLeft:0, width:'100%' }}>
           <div className="page-header" style={{ flexDirection:'column', alignItems:'stretch', gap:'1rem', padding:'1.25rem 1.5rem', background:'var(--surface)', borderRadius:'14px', border:'1px solid var(--border)', marginBottom:'0.5rem' }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
               <div>
