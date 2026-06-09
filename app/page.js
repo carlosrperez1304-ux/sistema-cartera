@@ -275,48 +275,6 @@ export default function App() {
     });
   }, []);
 
-  // — Tickets —
-  const [tickets, setTickets] = useState([]);
-  const [showTicketModal, setShowTicketModal] = useState(false);
-  const [editingTicket, setEditingTicket] = useState(null);
-  const [ticketForm, setTicketForm] = useState({ titulo:'', descripcion:'', tipo:'tarea', prioridad:'normal', asignado_a:'', cliente_nombre:'' });
-  const [ticketFilter, setTicketFilter] = useState('todos');
-  const cargarTickets = async () => {
-    try {
-      const empresaId = session?.user?.empresa_id || empresaActual?.id;
-      const url = empresaId ? `/api/tickets?empresa_id=${empresaId}` : '/api/tickets';
-      const res = await fetch(url);
-      const data = await res.json();
-      if (Array.isArray(data)) setTickets(data);
-    } catch(e) {}
-  };
-
-  const crearTicket = async () => {
-    const empresaId = session?.user?.empresa_id || empresaActual?.id;
-    const payload = { ...ticketForm, creado_por: currentUser || session?.user?.username || 'Sistema', empresa_id: empresaId, estado: 'abierto', historial: [{ fecha: new Date().toISOString(), accion: 'Ticket creado', usuario: currentUser || 'Sistema' }] };
-    const res = await fetch('/api/tickets', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-    if (res.ok) { await cargarTickets(); setShowTicketModal(false); setTicketForm({ titulo:'', descripcion:'', tipo:'tarea', prioridad:'normal', asignado_a:'', cliente_nombre:'' }); showToast('Ticket creado', 'success'); }
-  };
-
-  const avanzarTicket = async (ticket) => {
-    const pasos = ['abierto','en_progreso','revision','aprobado','cerrado'];
-    const idx = pasos.indexOf(ticket.estado);
-    if (idx >= pasos.length - 1) return;
-    const nuevoEstado = pasos[idx + 1];
-    const historial = [...(ticket.historial||[]), { fecha: new Date().toISOString(), accion: `Estado: ${nuevoEstado}`, usuario: currentUser || 'Sistema' }];
-    const res = await fetch('/api/tickets', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: ticket.id, estado: nuevoEstado, historial }) });
-    if (res.ok) await cargarTickets();
-  };
-
-  const eliminarTicket = async (id) => {
-    if (!confirm('¿Eliminar este ticket?')) return;
-    await fetch(`/api/tickets?id=${id}`, { method:'DELETE' });
-    await cargarTickets();
-    showToast('Ticket eliminado', 'info');
-  };
-
-  useEffect(() => { if (activeTab === 'tickets') cargarTickets(); }, [activeTab]);
-
   // — Notas del dashboard —
   const cargarNotasDashboard = useCallback(async () => {
     try {
@@ -557,7 +515,6 @@ export default function App() {
   const [pdfCargando, setPdfCargando] = useState(false);
   const [pdfError,    setPdfError]    = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
-
   const [darkMode, setDarkMode] = useState(false);
   const [vistaCards, setVistaCards] = useState(false);
 
@@ -3441,7 +3398,6 @@ export default function App() {
             <div className={`sidebar-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}><span className="icon"><LayoutGrid size={14}/></span> Inicio</div>
             <div className={`sidebar-item ${activeTab === 'calendario' ? 'active' : ''}`} onClick={() => setActiveTab('calendario')}><span className="icon"><Calendar size={14}/></span> Calendario</div>
             {tienePermiso('ver_clientes') && <div className={`sidebar-item ${activeTab === 'cartera' ? 'active' : ''}`} onClick={() => setActiveTab('cartera')}><span className="icon"><BarChart2 size={14}/></span> Cartera</div>}
-            <div className={`sidebar-item ${activeTab === 'tickets' ? 'active' : ''}`} onClick={() => setActiveTab('tickets')}><span className="icon"><ClipboardList size={14}/></span> Tickets</div>
             {tienePermiso('ver_creditos') && <div className={`sidebar-item ${activeTab === 'credito' ? 'active' : ''}`} onClick={() => setActiveTab('credito')}><span className="icon"><CreditCard size={14}/></span> Crédito</div>}
             <div className={`sidebar-item ${activeTab === 'agenda' ? 'active' : ''}`} onClick={() => setActiveTab('agenda')}><span className="icon"><Calendar size={14}/></span> Agenda del Día</div>
             <div className={`sidebar-item ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => { setActiveTab('documentos'); cargarTodosDocumentos(); }}><span className="icon"><FileText size={14}/></span> Documentos</div>
@@ -4464,16 +4420,17 @@ export default function App() {
                   <div className="empty-state"><h3>No se encontraron clientes</h3><p>Intenta ajustar los filtros o agregar un nuevo cliente</p></div>
                 ) : (
                   <table className={modoCompacto ? 'compact-mode' : ''}>
-                    <thead><tr style={{ background:'#f0efe9', borderBottom:'1px solid #e0dfd8' }}>
-                      <th style={{ width:'32px', textAlign:'center', padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em' }}><input type="checkbox" onChange={toggleTodos} checked={clientesPaginados.length > 0 && clientesPaginados.every(c => clientesSeleccionados.includes(c.id))} style={{ cursor:'pointer' }} title="Seleccionar todos" /></th>
+                    <thead><tr>
+                      <th style={{ width:'32px', textAlign:'center' }}><input type="checkbox" onChange={toggleTodos} checked={clientesPaginados.length > 0 && clientesPaginados.every(c => clientesSeleccionados.includes(c.id))} style={{ cursor:'pointer' }} title="Seleccionar todos" /></th>
                       <th style={{ width:'60px', display:'none' }}>ID</th>
-                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'left' }}>CLIENTE</th>
-                      {puedeVerTodo && <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'center' }}>AGENTE</th>}
-                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'center' }}>ESTADO</th>
-                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'center' }}>TELÉFONO</th>
-                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'center' }}>MONTO</th>
-                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'center' }}>PROCESO</th>
-                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'center' }}>ACCIONES</th>
+                      <th style={{ width:'80px', textAlign:'center' }}>CÓDIGO</th>
+                      <th style={{ textAlign:'left' }}>CLIENTE</th>
+                      {puedeVerTodo && <th style={{ width:'90px', textAlign:'center' }}>AGENTE</th>}
+                      <th style={{ width:'130px', textAlign:'center' }}>ESTADO</th>
+                      <th style={{ width:'140px', textAlign:'center' }}>TELÉFONO</th>
+                      <th style={{ width:'90px', textAlign:'center' }}>MONTO</th>
+                      <th style={{ width:'160px', textAlign:'center' }}>PROCESO</th>
+                      <th style={{ width:'100px', textAlign:'center' }}>OPCIONES</th>
                     </tr></thead>
                     <tbody>
                       {clientesPaginados.map(cliente => {
@@ -4482,18 +4439,15 @@ export default function App() {
                           <tr key={cliente.id} className={`${estaSuspendido ? 'cliente-suspendido' : ''} ${clientesSeleccionados.includes(cliente.id) ? 'row-selected' : ''}`}>
                             <td style={{ width:'32px', textAlign:'center' }}><input type="checkbox" checked={clientesSeleccionados.includes(cliente.id)} onChange={() => toggleSeleccion(cliente.id)} style={{ cursor:'pointer' }} /></td>
                             <td style={{ display:'none' }}><div className="id-with-led"><span className={`status-led ${estaSuspendido ? 'suspended' : esClienteActivo(cliente) ? 'active' : 'inactive'}`}></span><strong>{cliente.id}</strong></div></td>
-                            <td style={{ display:'none' }}></td>
-                            <td style={{ padding:'14px 20px', width:'40%' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <td style={{ width:'80px', textAlign:'center' }}><strong style={{ fontFamily: 'var(--mono)', color: 'var(--accent)' }}>{cliente.codigoCliente || '—'}</strong></td>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 {(() => { const av = getAvatar(cliente.nombre); return <div className="avatar avatar-sm" style={{ background: av.color }}>{av.letra}</div>; })()}
                                 <div>
                                   <div style={{ display:'flex', alignItems:'center', gap:'0.25rem', flexWrap:'wrap' }}>
-                                  <span onClick={() => { setHistorialPagosCliente(cliente); setShowHistorialPagosModal(true); }} className="nombre-cliente" style={{ fontSize:'14px', fontWeight:700, color:'#1a1915' }} title="Ver historial de pagos">{cliente.nombre}</span>
+                                  <span onClick={() => { setHistorialPagosCliente(cliente); setShowHistorialPagosModal(true); }} className="nombre-cliente" title="Ver historial de pagos">{cliente.nombre}</span>
                                   {esClienteNuevo(cliente) && <span title="Cliente nuevo este mes" style={{ fontSize:'0.62rem', fontWeight:700, background:'#dcfce7', color:'#15803d', border:'1px solid #86efac', borderRadius:'20px', padding:'0.1rem 0.45rem', verticalAlign:'middle' }}>NUEVO</span>}
                                   {esMorosoRecurrente(cliente) && <span title="Ha sido notificado sin pagar en 2+ meses" style={{ fontSize:'0.62rem', fontWeight:700, background:'#fef2f2', color:'#dc2626', border:'1px solid #fca5a5', borderRadius:'20px', padding:'0.1rem 0.45rem', verticalAlign:'middle' }}>⚠ Moroso</span>}
-                                  </div>
-                                  <div style={{ display:'flex', alignItems:'center', gap:'6px', marginTop:'3px' }}>
-                                    <span style={{ fontSize:'12px', color:'#6366f1', fontWeight:600 }}>#{cliente.codigoCliente || cliente.id}</span>
                                   <button onClick={() => { setTagClienteId(cliente.id); setTagInput(''); setShowTagModal(true); }} style={{ background:'none', border:'none', cursor:'pointer', opacity:0.35, padding:'0 0.15rem', display:'flex', alignItems:'center' }} title="Agregar etiqueta"><Tag size={12}/></button>
                                   </div>
                                   {(tags[cliente.id] || []).length > 0 && (
@@ -4663,182 +4617,6 @@ export default function App() {
           </div>
 
           {/* TAB CRÉDITO */}
-          <div className={`tab-content ${activeTab === 'tickets' ? 'active' : ''}`}>
-            <div style={{ marginBottom:'1.25rem', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-              <div>
-                <div style={{ fontSize:'18px', fontWeight:700, color:'#1a1915', letterSpacing:'-0.03em' }}>Tickets de Trabajo</div>
-                <div style={{ fontSize:'12px', color:'#9a998f', marginTop:'2px' }}>
-                  {tickets.filter(t=>t.estado!=='cerrado').length} abiertos · {tickets.filter(t=>t.estado==='cerrado').length} cerrados
-                </div>
-              </div>
-              <button onClick={() => { setEditingTicket(null); setTicketForm({ titulo:'', descripcion:'', tipo:'tarea', prioridad:'normal', asignado_a:'', cliente_nombre:'' }); setShowTicketModal(true); }} style={{ padding:'8px 16px', borderRadius:'9px', fontSize:'13px', fontWeight:700, border:'none', background:'#6366f1', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', gap:'5px' }}>
-                + Nuevo Ticket
-              </button>
-            </div>
-
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'10px', marginBottom:'1.25rem' }}>
-              {[
-                { label:'Pendientes', val: tickets.filter(t=>t.estado==='abierto').length, color:'#4f46e5', bg:'#eff6ff', border:'#bfdbfe', bar:'#6366f1' },
-                { label:'En Progreso', val: tickets.filter(t=>t.estado==='en_progreso').length, color:'#ea580c', bg:'#fff7ed', border:'#fed7aa', bar:'#f97316' },
-                { label:'Urgentes', val: tickets.filter(t=>t.prioridad==='urgente').length, color:'#dc2626', bg:'#fff1f2', border:'#fecdd3', bar:'#f43f5e' },
-                { label:'Cerrados', val: tickets.filter(t=>t.estado==='cerrado').length, color:'#16a34a', bg:'#f0fdf4', border:'#bbf7d0', bar:'#22c55e' },
-              ].map(s => (
-                <div key={s.label} style={{ background:s.bg, border:`1.5px solid ${s.border}`, borderRadius:'12px', padding:'12px 16px', position:'relative', overflow:'hidden' }}>
-                  <div style={{ position:'absolute', top:0, left:0, right:0, height:'3px', background:s.bar, borderRadius:'12px 12px 0 0' }}></div>
-                  <div style={{ fontSize:'10px', fontWeight:800, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:'6px' }}>{s.label}</div>
-                  <div style={{ fontSize:'26px', fontWeight:900, color:s.color, fontFamily:'monospace' }}>{s.val}</div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ display:'flex', gap:'6px', marginBottom:'1rem' }}>
-              {['todos','tarea','cliente','urgentes','cerrados'].map(f => (
-                <span key={f} onClick={() => setTicketFilter(f)} style={{ padding:'6px 14px', borderRadius:'20px', fontSize:'11px', fontWeight:700, cursor:'pointer', background: ticketFilter===f ? '#1a1915' : '#faf9f5', color: ticketFilter===f ? '#fff' : '#6b6a62', border: ticketFilter===f ? 'none' : '1px solid #e0dfd8' }}>
-                  {f.charAt(0).toUpperCase()+f.slice(1)}
-                </span>
-              ))}
-            </div>
-
-            <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
-              {tickets.filter(t => {
-                if (ticketFilter === 'tarea') return t.tipo === 'tarea';
-                if (ticketFilter === 'cliente') return t.tipo === 'cliente';
-                if (ticketFilter === 'urgentes') return t.prioridad === 'urgente';
-                if (ticketFilter === 'cerrados') return t.estado === 'cerrado';
-                return true;
-              }).map(ticket => {
-                const pasos = ['abierto','en_progreso','revision','aprobado','cerrado'];
-                const pasoLabels = ['Abierto','En Progreso','Revisión','Aprobado','Cerrado'];
-                const idxActual = pasos.indexOf(ticket.estado);
-                const colores = { abierto:'#6366f1', en_progreso:'#f97316', revision:'#0891b2', aprobado:'#16a34a', cerrado:'#16a34a' };
-                const colorHeader = colores[ticket.estado] || '#6366f1';
-                const prioridadLabel = { urgente:'🔴 Urgente', alta:'🟠 Alta', media:'🟡 Media', normal:'⚪ Normal' };
-                const prioridadColor = { urgente:'#dc2626', alta:'#ea580c', media:'#854d0e', normal:'#475569' };
-                const prioridadBg = { urgente:'#fee2e2', alta:'#fff7ed', media:'#fef9c3', normal:'#f8fafc' };
-                const esMio = ticket.asignado_a === (currentUser || session?.user?.username) || ticket.creado_por === (currentUser || session?.user?.username);
-                return (
-                  <div key={ticket.id} style={{ background:'#fff', borderRadius:'14px', overflow:'hidden', border:'1px solid #e0dfd8', opacity: ticket.estado==='cerrado' ? 0.75 : 1 }}>
-                    <div style={{ background:colorHeader, padding:'10px 16px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-                        <span style={{ background:'rgba(255,255,255,0.25)', color:'#fff', fontSize:'11px', fontWeight:800, padding:'3px 10px', borderRadius:'5px' }}>TICKET #{ticket.numero || ticket.id?.slice(0,6).toUpperCase()}</span>
-                        <span style={{ color:'rgba(255,255,255,0.85)', fontSize:'12px' }}>{new Date(ticket.created_at).toLocaleDateString('es-DO', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}</span>
-                      </div>
-                      <span style={{ background:'rgba(255,255,255,0.25)', color:'#fff', fontSize:'11px', fontWeight:700, padding:'4px 12px', borderRadius:'20px', border:'1px solid rgba(255,255,255,0.4)' }}>{pasoLabels[idxActual]}</span>
-                    </div>
-                    <div style={{ padding:'16px 20px' }}>
-                      <div style={{ display:'flex', alignItems:'center', marginBottom:'6px' }}>
-                        {pasos.map((p,i) => (
-                          <span key={p} style={{ display:'contents' }}>
-                            <div style={{ width:'14px', height:'14px', borderRadius:'50%', background: i<=idxActual ? colorHeader : '#fff', border: i<=idxActual ? 'none' : '2px solid #e0dfd8', flexShrink:0, boxShadow: i===idxActual ? `0 0 0 3px ${colorHeader}33` : 'none' }}></div>
-                            {i < pasos.length-1 && <div style={{ height:'3px', flex:1, background: i<idxActual ? colorHeader : '#e0dfd8' }}></div>}
-                          </span>
-                        ))}
-                      </div>
-                      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'14px' }}>
-                        {pasoLabels.map((l,i) => <span key={l} style={{ fontSize:'10px', fontWeight: i<=idxActual ? 700 : 400, color: i<=idxActual ? colorHeader : '#9a998f' }}>{l}</span>)}
-                      </div>
-
-                      <div style={{ fontSize:'15px', fontWeight:800, color:'#1a1915', marginBottom:'12px', textTransform:'uppercase', textDecoration: ticket.estado==='cerrado' ? 'line-through' : 'none', opacity: ticket.estado==='cerrado' ? 0.6 : 1 }}>{ticket.titulo}</div>
-
-                      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', marginBottom:'10px' }}>
-                        <div style={{ background:'#f5f4ef', borderRadius:'8px', padding:'8px 12px' }}>
-                          <div style={{ fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'3px' }}>Tipo</div>
-                          <div style={{ fontSize:'13px', fontWeight:600, color:'#1a1915' }}>{ticket.tipo === 'tarea' ? '⚙️ Tarea Interna' : '👤 Cliente'}</div>
-                        </div>
-                        <div style={{ background:'#f5f4ef', borderRadius:'8px', padding:'8px 12px' }}>
-                          <div style={{ fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'3px' }}>Prioridad</div>
-                          <div style={{ fontSize:'13px', fontWeight:600, color: prioridadColor[ticket.prioridad] }}>{prioridadLabel[ticket.prioridad]}</div>
-                        </div>
-                        {ticket.asignado_a && <div style={{ background:'#f5f4ef', borderRadius:'8px', padding:'8px 12px' }}>
-                          <div style={{ fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'3px' }}>Asignado a</div>
-                          <div style={{ fontSize:'13px', fontWeight:600, color:'#1a1915' }}>{ticket.asignado_a}</div>
-                        </div>}
-                        {ticket.cliente_nombre && <div style={{ background:'#f5f4ef', borderRadius:'8px', padding:'8px 12px' }}>
-                          <div style={{ fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'3px' }}>Cliente</div>
-                          <div style={{ fontSize:'13px', fontWeight:600, color:'#1a1915' }}>{ticket.cliente_nombre}</div>
-                        </div>}
-                      </div>
-
-                      {ticket.descripcion && <div style={{ background:'#f5f4ef', borderRadius:'8px', padding:'10px 14px', marginBottom:'12px', fontSize:'13px', color:'#3d3c35', lineHeight:1.5 }}>{ticket.descripcion}</div>}
-
-                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                        <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-                          {(() => { const av = getAvatar(ticket.creado_por); return <div className="avatar avatar-sm" style={{ background:av.color }}>{av.letra}</div>; })()}
-                          <span style={{ fontSize:'13px', fontWeight:600, color:'#1a1915' }}>{ticket.creado_por}</span>
-                        </div>
-                        <div style={{ display:'flex', gap:'6px' }}>
-                          {ticket.estado !== 'cerrado' && esMio && (
-                            <button onClick={() => avanzarTicket(ticket)} style={{ padding:'7px 14px', borderRadius:'8px', fontSize:'12px', fontWeight:700, border:'none', background:colorHeader, color:'#fff', cursor:'pointer' }}>
-                              → {pasoLabels[idxActual+1] || 'Cerrar'}
-                            </button>
-                          )}
-                          <button onClick={() => eliminarTicket(ticket.id)} style={{ padding:'7px 10px', borderRadius:'8px', fontSize:'12px', border:'1px solid #fca5a5', background:'#fee2e2', color:'#dc2626', cursor:'pointer' }}>✕</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              {tickets.length === 0 && <div className="empty-state"><h3>No hay tickets</h3><p>Crea el primer ticket con el botón de arriba</p></div>}
-            </div>
-
-            {showTicketModal && (
-              <div className="modal show">
-                <div className="modal-content">
-                  <div className="modal-header">
-                    <h2>Nuevo Ticket</h2>
-                    <button className="close-btn" onClick={() => setShowTicketModal(false)}>×</button>
-                  </div>
-                  <div className="form-group">
-                    <label>Título</label>
-                    <input type="text" value={ticketForm.titulo} onChange={e => setTicketForm(f=>({...f, titulo:e.target.value}))} placeholder="Describe el problema o tarea..." />
-                  </div>
-                  <div className="form-group">
-                    <label>Descripción</label>
-                    <textarea value={ticketForm.descripcion} onChange={e => setTicketForm(f=>({...f, descripcion:e.target.value}))} placeholder="Detalles adicionales..." />
-                  </div>
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
-                    <div className="form-group">
-                      <label>Tipo</label>
-                      <select value={ticketForm.tipo} onChange={e => setTicketForm(f=>({...f, tipo:e.target.value}))}>
-                        <option value="tarea">⚙️ Tarea Interna</option>
-                        <option value="cliente">👤 Cliente</option>
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label>Prioridad</label>
-                      <select value={ticketForm.prioridad} onChange={e => setTicketForm(f=>({...f, prioridad:e.target.value}))}>
-                        <option value="urgente">🔴 Urgente</option>
-                        <option value="alta">🟠 Alta</option>
-                        <option value="media">🟡 Media</option>
-                        <option value="normal">⚪ Normal</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="form-group">
-                    <label>Asignar a</label>
-                    <select value={ticketForm.asignado_a} onChange={e => setTicketForm(f=>({...f, asignado_a:e.target.value}))}>
-                      <option value="">Sin asignar</option>
-                      {[...new Set([...(clientes.map(c=>c.creadoPor).filter(Boolean)), currentUser, session?.user?.username].filter(Boolean))].map(u => (
-                        <option key={u} value={u}>{u}</option>
-                      ))}
-                    </select>
-                  </div>
-                  {ticketForm.tipo === 'cliente' && (
-                    <div className="form-group">
-                      <label>Cliente relacionado</label>
-                      <input type="text" value={ticketForm.cliente_nombre} onChange={e => setTicketForm(f=>({...f, cliente_nombre:e.target.value}))} placeholder="Nombre del cliente..." />
-                    </div>
-                  )}
-                  <div className="form-actions">
-                    <button className="btn btn-secondary" onClick={() => setShowTicketModal(false)}>Cancelar</button>
-                    <button className="btn btn-primary" onClick={crearTicket} disabled={!ticketForm.titulo}>Crear Ticket</button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
           <div className={`tab-content ${activeTab === 'credito' ? 'active' : ''}`}>
             {creditosVencidos.length > 0 && <div className="alert-box danger"><h3><AlertTriangle size={14} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Créditos Vencidos ({creditosVencidos.length})</h3>{creditosVencidos.map(credito => <div key={credito.id} className="alert-item"><div><strong>{credito.cliente}</strong> - Orden: {credito.numeroOrden}<div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Vencido: {new Date(credito.fechaVencimiento).toLocaleDateString('es-DO')}</div></div><span className="dias-restantes critico">{Math.abs(getDiasRestantes(credito.fechaVencimiento))} días vencido</span></div>)}</div>}
             {creditosAlerta.length > 0 && <div className="alert-box"><h3><Clock size={14} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Créditos por Vencer ({creditosAlerta.length})</h3>{creditosAlerta.map(credito => { const dias = getDiasRestantes(credito.fechaVencimiento); return <div key={credito.id} className="alert-item"><div><strong>{credito.cliente}</strong> - Orden: {credito.numeroOrden}<div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Vence: {new Date(credito.fechaVencimiento).toLocaleDateString('es-DO')}</div></div><span className={`dias-restantes ${dias <= 3 ? 'critico' : 'advertencia'}`}>{dias} {dias === 1 ? 'día' : 'días'}</span></div>; })}</div>}
