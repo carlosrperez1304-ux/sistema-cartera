@@ -3166,7 +3166,7 @@ export default function App() {
             })()}
           </div>
           <div ref={clockRef} style={{ fontSize:'0.75rem', color:'var(--text-muted)', whiteSpace:'nowrap', letterSpacing:'0.02em' }} />
-
+        </div>
 
 
         <div className="topbar-right">
