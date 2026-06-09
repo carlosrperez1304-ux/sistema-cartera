@@ -276,6 +276,11 @@ export default function App() {
   }, []);
 
   // — Tickets —
+  const [tickets, setTickets] = useState([]);
+  const [showTicketModal, setShowTicketModal] = useState(false);
+  const [editingTicket, setEditingTicket] = useState(null);
+  const [ticketForm, setTicketForm] = useState({ titulo:'', descripcion:'', tipo:'tarea', prioridad:'normal', asignado_a:'', cliente_nombre:'' });
+  const [ticketFilter, setTicketFilter] = useState('todos');
   const cargarTickets = async () => {
     try {
       const empresaId = session?.user?.empresa_id || empresaActual?.id;
@@ -552,11 +557,7 @@ export default function App() {
   const [pdfCargando, setPdfCargando] = useState(false);
   const [pdfError,    setPdfError]    = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [tickets, setTickets] = useState([]);
-  const [showTicketModal, setShowTicketModal] = useState(false);
-  const [editingTicket, setEditingTicket] = useState(null);
-  const [ticketForm, setTicketForm] = useState({ titulo:'', descripcion:'', tipo:'tarea', prioridad:'normal', asignado_a:'', cliente_nombre:'' });
-  const [ticketFilter, setTicketFilter] = useState('todos');
+
   const [darkMode, setDarkMode] = useState(false);
   const [vistaCards, setVistaCards] = useState(false);
 
