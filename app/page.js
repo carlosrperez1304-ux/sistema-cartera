@@ -3112,71 +3112,62 @@ export default function App() {
       )}
 
       {/* TOPBAR — ESPN style */}
-      <div className="topbar">
-        <div className="topbar-left">
+      <div className="topbar" style={{ background:'var(--bg)', borderBottom:'1px solid var(--border)', height:'52px', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 1.25rem', position:'sticky', top:0, zIndex:300 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
           <button className="hamburger-btn" onClick={() => setShowMobileMenu(v => !v)} title="Menú">
             {showMobileMenu ? <X size={20}/> : <Menu size={20}/>}
           </button>
-          {!(typeof window !== 'undefined' && window.electronAPI?.isElectron) && (
-            <div className="topbar-logo">
-              <div className="dot">
-                <BarChart2 size={16} strokeWidth={2.5}/>
-              </div>
+          <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
+            <div style={{ width:'26px', height:'26px', background:'linear-gradient(135deg,#4f46e5,#7c3aed)', borderRadius:'7px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <CircleDollarSign size={14} color="#fff" strokeWidth={2}/>
             </div>
-          )}
+            <span style={{ fontWeight:300, fontSize:'0.92rem', color:'#6366f1', letterSpacing:'-0.02em' }}>Pay<span style={{ fontWeight:800, color:'var(--text)' }}>Track</span></span>
+          </div>
         </div>
 
-        {/* TOPBAR CENTER — búsqueda global + reloj */}
-        <div className="topbar-center">
-          <div style={{ position: 'relative' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--surface-2, rgba(255,255,255,0.06))', border: '1px solid var(--border)', borderRadius: '10px', padding: '0.3rem 0.75rem', minWidth: '260px' }}>
-              <Search size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }}/>
-              <input
-                type="text"
-                value={busquedaGlobal}
-                onChange={e => { setBusquedaGlobal(e.target.value); setShowBusquedaGlobal(true); }}
-                onBlur={() => setTimeout(() => setShowBusquedaGlobal(false), 180)}
-                placeholder="Buscar cliente..."
-                style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.82rem', color: 'var(--text)', width: '100%' }}
-              />
-              {busquedaGlobal && (
-                <button onClick={() => { setBusquedaGlobal(''); setShowBusquedaGlobal(false); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, lineHeight: 1 }}>×</button>
-              )}
+        {/* NAV CENTRAL TIPO PILL */}
+        <div style={{ display:'flex', alignItems:'center', gap:'2px', background:'var(--surface-2)', borderRadius:'20px', padding:'3px' }}>
+          {[
+            { tab:'dashboard', label:'Inicio' },
+            ...(tienePermiso('ver_clientes') ? [{ tab:'cartera', label:'Cartera' }] : []),
+            { tab:'tickets', label:'Tickets' },
+            ...(tienePermiso('ver_creditos') ? [{ tab:'credito', label:'Crédito' }] : []),
+            { tab:'agenda', label:'Agenda' },
+            { tab:'documentos', label:'Documentos' },
+          ].map(item => (
+            <button key={item.tab} onClick={() => setActiveTab(item.tab)} style={{ padding:'5px 14px', borderRadius:'16px', fontSize:'12px', fontWeight: activeTab === item.tab ? 600 : 400, background: activeTab === item.tab ? 'var(--text)' : 'transparent', color: activeTab === item.tab ? 'var(--bg)' : 'var(--text-muted)', border:'none', cursor:'pointer', transition:'all 0.15s', whiteSpace:'nowrap' }}>
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        {/* TOPBAR RIGHT — búsqueda + iconos */}
+        <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
+          <div style={{ position:'relative' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:'0.4rem', background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'10px', padding:'0.3rem 0.75rem', minWidth:'200px' }}>
+              <Search size={13} style={{ color:'var(--text-muted)', flexShrink:0 }}/>
+              <input type="text" value={busquedaGlobal} onChange={e => { setBusquedaGlobal(e.target.value); setShowBusquedaGlobal(true); }} onBlur={() => setTimeout(() => setShowBusquedaGlobal(false), 180)} placeholder="Buscar cliente..." style={{ border:'none', background:'transparent', outline:'none', fontSize:'0.82rem', color:'var(--text)', width:'100%' }}/>
+              {busquedaGlobal && <button onClick={() => { setBusquedaGlobal(''); setShowBusquedaGlobal(false); }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0, lineHeight:1 }}>×</button>}
             </div>
             {showBusquedaGlobal && busquedaGlobal.length > 1 && (() => {
               const term = busquedaGlobal.toLowerCase();
-              const resultados = clientes.filter(c =>
-                (c.nombre || '').toLowerCase().includes(term) ||
-                (c.codigo || '').toLowerCase().includes(term)
-              ).slice(0, 6);
+              const resultados = clientes.filter(c => (c.nombre || '').toLowerCase().includes(term) || (c.codigo || '').toLowerCase().includes(term)).slice(0, 6);
               return (
-                <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.25)', zIndex: 9999, overflow: 'hidden' }}>
-                  {resultados.length === 0 ? (
-                    <div style={{ padding: '0.75rem 1rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Sin resultados</div>
-                  ) : resultados.map(c => (
-                    <div key={c.id} onMouseDown={() => { setBusquedaGlobal(''); setShowBusquedaGlobal(false); setActiveTab('cartera'); setTimeout(() => { setSearchTerm(c.nombre || ''); setPaginaActual(1); }, 100); }}
-                      style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.9rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-2)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--brand)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.75rem', flexShrink: 0 }}>
-                        {(c.nombre || '?').charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: '0.82rem', color: 'var(--text)' }}>{c.nombre}</div>
-                        {c.codigo && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{c.codigo}</div>}
-                      </div>
-                      <div style={{ marginLeft: 'auto', fontSize: '0.7rem', fontWeight: 600, color: c.estado === 'Vencido' ? '#ef4444' : c.estado === 'Por vencer' ? '#f59e0b' : 'var(--text-muted)' }}>
-                        {c.estado}
-                      </div>
+                <div style={{ position:'absolute', top:'calc(100% + 6px)', left:0, right:0, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'10px', boxShadow:'0 8px 24px rgba(0,0,0,0.25)', zIndex:9999, overflow:'hidden' }}>
+                  {resultados.length === 0 ? <div style={{ padding:'0.75rem 1rem', fontSize:'0.8rem', color:'var(--text-muted)' }}>Sin resultados</div> : resultados.map(c => (
+                    <div key={c.id} onMouseDown={() => { setBusquedaGlobal(''); setShowBusquedaGlobal(false); setActiveTab('cartera'); setTimeout(() => { setSearchTerm(c.nombre || ''); setPaginaActual(1); }, 100); }} style={{ display:'flex', alignItems:'center', gap:'0.6rem', padding:'0.55rem 0.9rem', cursor:'pointer', borderBottom:'1px solid var(--border)' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-2)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      <div style={{ width:'28px', height:'28px', borderRadius:'50%', background:'var(--brand)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:'0.75rem', flexShrink:0 }}>{(c.nombre || '?').charAt(0).toUpperCase()}</div>
+                      <div><div style={{ fontWeight:600, fontSize:'0.82rem', color:'var(--text)' }}>{c.nombre}</div>{c.codigo && <div style={{ fontSize:'0.7rem', color:'var(--text-muted)' }}>{c.codigo}</div>}</div>
+                      <div style={{ marginLeft:'auto', fontSize:'0.7rem', fontWeight:600, color: c.estado === 'Vencido' ? '#ef4444' : 'var(--text-muted)' }}>{c.estado}</div>
                     </div>
                   ))}
                 </div>
               );
             })()}
           </div>
-          <div ref={clockRef} style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', letterSpacing: '0.02em', marginLeft: '1rem' }} />
-        </div>
+          <div ref={clockRef} style={{ fontSize:'0.75rem', color:'var(--text-muted)', whiteSpace:'nowrap', letterSpacing:'0.02em' }} />
+
+
 
         <div className="topbar-right">
           {soloLectura && <span style={{ background: 'rgba(254,249,195,0.15)', color: '#fbbf24', fontSize: '0.67rem', padding: '0.2rem 0.55rem', borderRadius: '5px', fontWeight: 700, marginRight: '0.25rem', border: '1px solid rgba(251,191,36,0.25)' }}>Solo lectura</span>}
