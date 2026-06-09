@@ -4424,12 +4424,12 @@ export default function App() {
                       <th style={{ width:'32px', textAlign:'center', padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em' }}><input type="checkbox" onChange={toggleTodos} checked={clientesPaginados.length > 0 && clientesPaginados.every(c => clientesSeleccionados.includes(c.id))} style={{ cursor:'pointer' }} title="Seleccionar todos" /></th>
                       <th style={{ width:'60px', display:'none' }}>ID</th>
                       <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'left' }}>CLIENTE</th>
-                      {puedeVerTodo && <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'left' }}>AGENTE</th>}
-                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'left' }}>TELÉFONO</th>
-                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'left' }}>ESTADO</th>
-                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'left' }}>MONTO</th>
-                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'left' }}>PROCESO</th>
-                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'right' }}>ACCIONES</th>
+                      {puedeVerTodo && <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'center' }}>AGENTE</th>}
+                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'center' }}>ESTADO</th>
+                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'center' }}>TELÉFONO</th>
+                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'center' }}>MONTO</th>
+                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'center' }}>PROCESO</th>
+                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'center' }}>ACCIONES</th>
                     </tr></thead>
                     <tbody>
                       {clientesPaginados.map(cliente => {
