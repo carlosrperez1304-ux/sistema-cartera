@@ -4727,10 +4727,10 @@ export default function App() {
                     <div style={{ padding:'16px 20px' }}>
                       <div style={{ display:'flex', alignItems:'center', marginBottom:'6px' }}>
                         {pasos.map((p,i) => (
-                          <React.Fragment key={p}>
+                          <span key={p} style={{ display:'contents' }}>
                             <div style={{ width:'14px', height:'14px', borderRadius:'50%', background: i<=idxActual ? colorHeader : '#fff', border: i<=idxActual ? 'none' : '2px solid #e0dfd8', flexShrink:0, boxShadow: i===idxActual ? `0 0 0 3px ${colorHeader}33` : 'none' }}></div>
                             {i < pasos.length-1 && <div style={{ height:'3px', flex:1, background: i<idxActual ? colorHeader : '#e0dfd8' }}></div>}
-                          </React.Fragment>
+                          </span>
                         ))}
                       </div>
                       <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'14px' }}>
