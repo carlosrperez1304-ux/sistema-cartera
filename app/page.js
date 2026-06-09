@@ -4422,17 +4422,16 @@ export default function App() {
                   <div className="empty-state"><h3>No se encontraron clientes</h3><p>Intenta ajustar los filtros o agregar un nuevo cliente</p></div>
                 ) : (
                   <table className={modoCompacto ? 'compact-mode' : ''}>
-                    <thead><tr>
-                      <th style={{ width:'32px', textAlign:'center' }}><input type="checkbox" onChange={toggleTodos} checked={clientesPaginados.length > 0 && clientesPaginados.every(c => clientesSeleccionados.includes(c.id))} style={{ cursor:'pointer' }} title="Seleccionar todos" /></th>
+                    <thead><tr style={{ background:'#f0efe9', borderBottom:'1px solid #e0dfd8' }}>
+                      <th style={{ width:'32px', textAlign:'center', padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em' }}><input type="checkbox" onChange={toggleTodos} checked={clientesPaginados.length > 0 && clientesPaginados.every(c => clientesSeleccionados.includes(c.id))} style={{ cursor:'pointer' }} title="Seleccionar todos" /></th>
                       <th style={{ width:'60px', display:'none' }}>ID</th>
-                      <th style={{ width:'80px', textAlign:'center' }}>CÓDIGO</th>
-                      <th style={{ textAlign:'left' }}>CLIENTE</th>
-                      {puedeVerTodo && <th style={{ width:'90px', textAlign:'center' }}>AGENTE</th>}
-                      <th style={{ width:'130px', textAlign:'center' }}>ESTADO</th>
-                      <th style={{ width:'140px', textAlign:'center' }}>TELÉFONO</th>
-                      <th style={{ width:'90px', textAlign:'center' }}>MONTO</th>
-                      <th style={{ width:'160px', textAlign:'center' }}>PROCESO</th>
-                      <th style={{ width:'100px', textAlign:'center' }}>OPCIONES</th>
+                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'left', width:'40%' }}>CLIENTE</th>
+                      {puedeVerTodo && <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'center' }}>AGENTE</th>}
+                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'center' }}>ESTADO</th>
+                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'center' }}>TELÉFONO</th>
+                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'center' }}>MONTO</th>
+                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'center' }}>PROCESO</th>
+                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'center' }}>ACCIONES</th>
                     </tr></thead>
                     <tbody>
                       {clientesPaginados.map(cliente => {
@@ -4441,15 +4440,18 @@ export default function App() {
                           <tr key={cliente.id} className={`${estaSuspendido ? 'cliente-suspendido' : ''} ${clientesSeleccionados.includes(cliente.id) ? 'row-selected' : ''}`}>
                             <td style={{ width:'32px', textAlign:'center' }}><input type="checkbox" checked={clientesSeleccionados.includes(cliente.id)} onChange={() => toggleSeleccion(cliente.id)} style={{ cursor:'pointer' }} /></td>
                             <td style={{ display:'none' }}><div className="id-with-led"><span className={`status-led ${estaSuspendido ? 'suspended' : esClienteActivo(cliente) ? 'active' : 'inactive'}`}></span><strong>{cliente.id}</strong></div></td>
-                            <td style={{ width:'80px', textAlign:'center' }}><strong style={{ fontFamily: 'var(--mono)', color: 'var(--accent)' }}>{cliente.codigoCliente || '—'}</strong></td>
-                            <td>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <td style={{ display:'none' }}></td>
+                            <td style={{ padding:'14px 20px', width:'40%' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                 {(() => { const av = getAvatar(cliente.nombre); return <div className="avatar avatar-sm" style={{ background: av.color }}>{av.letra}</div>; })()}
                                 <div>
                                   <div style={{ display:'flex', alignItems:'center', gap:'0.25rem', flexWrap:'wrap' }}>
-                                  <span onClick={() => { setHistorialPagosCliente(cliente); setShowHistorialPagosModal(true); }} className="nombre-cliente" title="Ver historial de pagos">{cliente.nombre}</span>
+                                  <span onClick={() => { setHistorialPagosCliente(cliente); setShowHistorialPagosModal(true); }} className="nombre-cliente" style={{ fontSize:'14px', fontWeight:700, color:'#1a1915' }} title="Ver historial de pagos">{cliente.nombre}</span>
                                   {esClienteNuevo(cliente) && <span title="Cliente nuevo este mes" style={{ fontSize:'0.62rem', fontWeight:700, background:'#dcfce7', color:'#15803d', border:'1px solid #86efac', borderRadius:'20px', padding:'0.1rem 0.45rem', verticalAlign:'middle' }}>NUEVO</span>}
                                   {esMorosoRecurrente(cliente) && <span title="Ha sido notificado sin pagar en 2+ meses" style={{ fontSize:'0.62rem', fontWeight:700, background:'#fef2f2', color:'#dc2626', border:'1px solid #fca5a5', borderRadius:'20px', padding:'0.1rem 0.45rem', verticalAlign:'middle' }}>⚠ Moroso</span>}
+                                  </div>
+                                  <div style={{ display:'flex', alignItems:'center', gap:'6px', marginTop:'3px' }}>
+                                    <span style={{ fontSize:'12px', color:'#6366f1', fontWeight:600 }}>#{cliente.codigoCliente || cliente.id}</span>
                                   <button onClick={() => { setTagClienteId(cliente.id); setTagInput(''); setShowTagModal(true); }} style={{ background:'none', border:'none', cursor:'pointer', opacity:0.35, padding:'0 0.15rem', display:'flex', alignItems:'center' }} title="Agregar etiqueta"><Tag size={12}/></button>
                                   </div>
                                   {(tags[cliente.id] || []).length > 0 && (
