@@ -55,7 +55,6 @@ export default function App() {
 
   // Mobile menu
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
 
   // Sesión expirada — detectar cuando pasa de authenticated → unauthenticated
   const [sessionExpired, setSessionExpired] = useState(false);
