@@ -5,19 +5,35 @@ import { Upload, Send, Settings, X, Trash2, DollarSign, Clock, FileText } from '
 function parsearReporte(texto) {
   const lineas = texto.trim().split('\n');
   const grupos = {};
+  let tauCant = 0, posCant = 0, tauPrecioDetectado = 535, posPrecioDetectado = 862;
+
   lineas.forEach(linea => {
     const cols = linea.split('\t');
     if (cols.length < 6) return;
     const concepto = cols[2] || '';
+    const cantidadRaw = cols[3] || '';
+    const precioRaw = cols[4] || '';
     const montoRaw = cols[5] || '';
     const match = concepto.match(/Junior_BlueLine\s+(.+)$/i);
     if (!match) return;
     let nombre = match[1].trim().replace(/^000/, '').trim();
     const monto = parseFloat(montoRaw.replace(/[$,]/g, '')) || 0;
+    const cantidad = parseInt(cantidadRaw) || 0;
+    const precio = parseFloat(precioRaw.replace(/[$,]/g, '')) || 0;
     if (!nombre || monto === 0) return;
     grupos[nombre] = (grupos[nombre] || 0) + monto;
+
+    // Detectar si es TAU o POS por el precio
+    if (precio > 0 && precio < 700) {
+      tauCant += cantidad;
+      tauPrecioDetectado = precio;
+    } else if (precio >= 700) {
+      posCant += cantidad;
+      posPrecioDetectado = precio;
+    }
   });
-  return grupos;
+
+  return { grupos, tauCant, posCant, tauPrecio: tauPrecioDetectado, posPrecio: posPrecioDetectado };
 }
 
 function getSaludo() {
@@ -185,7 +201,11 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
     if (!texto.trim()) return;
     setProcesando(true);
     setTimeout(() => {
-      const parsed = parsearReporte(texto);
+      const { grupos: parsed, tauCant, posCant, tauPrecio: tauP, posPrecio: posP } = parsearReporte(texto);
+      setTauCantidad(tauCant);
+      setPosCantidad(posCant);
+      setTauPrecio(tauP);
+      setPosPrecio(posP);
       const items = Object.entries(parsed).map(([nombre, monto]) => {
         const existe = grupos.find(g => g.nombre.toLowerCase().trim() === nombre.toLowerCase().trim());
         return { nombre, monto, existe: !!existe, grupoId: existe?.id };
