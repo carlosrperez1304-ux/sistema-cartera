@@ -44,6 +44,11 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
   const [grupoSeleccionado, setGrupoSeleccionado] = useState(null);
   const [editandoNota, setEditandoNota] = useState(null);
   const [notaTemp, setNotaTemp] = useState('');
+  const [factura, setFactura] = useState(null);
+  const [tauCantidad, setTauCantidad] = useState(0);
+  const [tauPrecio, setTauPrecio] = useState(535);
+  const [posCantidad, setPosCantidad] = useState(0);
+  const [posPrecio, setPosPrecio] = useState(862);
 
   const empresaId = session?.user?.empresa_id || empresaActual?.id;
 
@@ -58,10 +63,38 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
     setLoading(false);
   };
 
+  const cargarFactura = async () => {
+    const mes = getMesActual();
+    const url = '/api/factura-blueline?mes=' + encodeURIComponent(mes) + (empresaId ? '&empresa_id=' + empresaId : '');
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data) {
+      setFactura(data);
+      setTauCantidad(data.tau_cantidad || 0);
+      setTauPrecio(data.tau_precio || 535);
+      setPosCantidad(data.pos_cantidad || 0);
+      setPosPrecio(data.pos_precio || 862);
+    }
+  };
+
   useEffect(() => {
     cargar();
+    cargarFactura();
     setTelefonoJunior(localStorage.getItem('junior_telefono') || '');
   }, []);
+
+  const guardarFactura = async () => {
+    const mes = getMesActual();
+    const payload = { mes, empresa_id: empresaId, tau_cantidad: Number(tauCantidad), tau_precio: Number(tauPrecio), pos_cantidad: Number(posCantidad), pos_precio: Number(posPrecio) };
+    if (factura?.id) {
+      await fetch('/api/factura-blueline', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: factura.id, ...payload }) });
+    } else {
+      const res = await fetch('/api/factura-blueline', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      const data = await res.json();
+      setFactura(data);
+    }
+    if (showToast) showToast('Factura guardada', 'success');
+  };
 
   const marcarPagado = async (grupo) => {
     const esPagado = grupo.estado === 'PAGADO';
@@ -288,6 +321,74 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
           </div>
         ))}
       </div>
+
+      {/* RESUMEN FACTURA */}
+      {(() => {
+        const subtotalTau = Number(tauCantidad) * Number(tauPrecio);
+        const subtotalPos = Number(posCantidad) * Number(posPrecio);
+        const totalFactura = subtotalTau + subtotalPos;
+        const totalGrupos = grupos.reduce((s, g) => s + (g.monto_total || 0), 0);
+        const diferencia = totalFactura - totalGrupos;
+        return (
+          <div style={{ background:'#fff', border:'1px solid #e0dfd8', borderRadius:'12px', padding:'16px', marginBottom:'12px' }}>
+            <div style={{ fontSize:'11px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'12px' }}>Resumen de Factura — {getMesActual()}</div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'12px', marginBottom:'12px' }}>
+              <div style={{ background:'#faf9f5', border:'1px solid #e0dfd8', borderRadius:'10px', padding:'12px', borderTop:'3px solid #6366f1' }}>
+                <div style={{ fontSize:'10px', fontWeight:700, color:'#6366f1', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'8px' }}>TAU</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+                  <div>
+                    <div style={{ fontSize:'10px', color:'#9a998f', marginBottom:'3px' }}>Cantidad</div>
+                    <input type="number" value={tauCantidad} onChange={e => setTauCantidad(e.target.value)} style={{ width:'100%', padding:'6px 8px', border:'1px solid #e0dfd8', borderRadius:'6px', fontSize:'13px', fontWeight:600, outline:'none' }}/>
+                  </div>
+                  <div>
+                    <div style={{ fontSize:'10px', color:'#9a998f', marginBottom:'3px' }}>Precio (RD$)</div>
+                    <input type="number" value={tauPrecio} onChange={e => setTauPrecio(e.target.value)} style={{ width:'100%', padding:'6px 8px', border:'1px solid #e0dfd8', borderRadius:'6px', fontSize:'13px', fontWeight:600, outline:'none' }}/>
+                  </div>
+                  <div style={{ background:'#eff6ff', borderRadius:'7px', padding:'8px', marginTop:'4px' }}>
+                    <div style={{ fontSize:'10px', color:'#6366f1', marginBottom:'2px' }}>Subtotal</div>
+                    <div style={{ fontSize:'16px', fontWeight:800, color:'#6366f1', fontFamily:'monospace' }}>RD$ {subtotalTau.toLocaleString('en-US',{maximumFractionDigits:0})}</div>
+                  </div>
+                </div>
+              </div>
+              <div style={{ background:'#faf9f5', border:'1px solid #e0dfd8', borderRadius:'10px', padding:'12px', borderTop:'3px solid #0891b2' }}>
+                <div style={{ fontSize:'10px', fontWeight:700, color:'#0891b2', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'8px' }}>POS</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+                  <div>
+                    <div style={{ fontSize:'10px', color:'#9a998f', marginBottom:'3px' }}>Cantidad</div>
+                    <input type="number" value={posCantidad} onChange={e => setPosCantidad(e.target.value)} style={{ width:'100%', padding:'6px 8px', border:'1px solid #e0dfd8', borderRadius:'6px', fontSize:'13px', fontWeight:600, outline:'none' }}/>
+                  </div>
+                  <div>
+                    <div style={{ fontSize:'10px', color:'#9a998f', marginBottom:'3px' }}>Precio (RD$)</div>
+                    <input type="number" value={posPrecio} onChange={e => setPosPrecio(e.target.value)} style={{ width:'100%', padding:'6px 8px', border:'1px solid #e0dfd8', borderRadius:'6px', fontSize:'13px', fontWeight:600, outline:'none' }}/>
+                  </div>
+                  <div style={{ background:'#ecfeff', borderRadius:'7px', padding:'8px', marginTop:'4px' }}>
+                    <div style={{ fontSize:'10px', color:'#0891b2', marginBottom:'2px' }}>Subtotal</div>
+                    <div style={{ fontSize:'16px', fontWeight:800, color:'#0891b2', fontFamily:'monospace' }}>RD$ {subtotalPos.toLocaleString('en-US',{maximumFractionDigits:0})}</div>
+                  </div>
+                </div>
+              </div>
+              <div style={{ background:'#1a1915', borderRadius:'10px', padding:'12px', display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
+                <div style={{ fontSize:'10px', fontWeight:700, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'8px' }}>Total Factura</div>
+                <div>
+                  <div style={{ fontSize:'22px', fontWeight:900, color:'#fff', fontFamily:'monospace' }}>RD$ {totalFactura.toLocaleString('en-US',{maximumFractionDigits:0})}</div>
+                  <div style={{ height:'1px', background:'rgba(255,255,255,0.1)', margin:'10px 0' }}></div>
+                  <div style={{ fontSize:'10px', color:'rgba(255,255,255,0.5)', marginBottom:'3px' }}>Suma grupos</div>
+                  <div style={{ fontSize:'16px', fontWeight:700, color: Math.abs(diferencia) < 1 ? '#16a34a' : '#f97316', fontFamily:'monospace' }}>RD$ {totalGrupos.toLocaleString('en-US',{maximumFractionDigits:0})}</div>
+                  <div style={{ display:'flex', alignItems:'center', gap:'5px', marginTop:'6px' }}>
+                    <div style={{ width:'7px', height:'7px', borderRadius:'50%', background: Math.abs(diferencia) < 1 ? '#16a34a' : '#f97316' }}></div>
+                    <span style={{ fontSize:'11px', color: Math.abs(diferencia) < 1 ? '#16a34a' : '#f97316', fontWeight:600 }}>
+                      {Math.abs(diferencia) < 1 ? 'Cuadra ✓' : 'Diferencia: RD$' + Math.abs(diferencia).toLocaleString('en-US',{maximumFractionDigits:0})}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button onClick={guardarFactura} style={{ padding:'8px 18px', borderRadius:'8px', fontSize:'12px', fontWeight:700, border:'none', background:'#6366f1', color:'#fff', cursor:'pointer' }}>
+              Guardar factura
+            </button>
+          </div>
+        );
+      })()}
 
       {showImport && (
         <div style={{ background:'#fff', border:'1px solid #e0dfd8', borderRadius:'12px', padding:'16px', marginBottom:'12px' }}>
