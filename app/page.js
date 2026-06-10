@@ -1083,6 +1083,7 @@ export default function App() {
     else if (filter !== 'todos' && filter !== 'delegaciones') {
       if (filter === 'no-generaron') resultado = resultado.filter(c => c.estado === 'No Generaron');
       else if (filter === 'sin-documento') resultado = resultado.filter(c => estadoActivoCliente(c) === 'Cotizado' && (cotizaciones[c.id] || []).length === 0);
+      else if (filter === 'suspendido') resultado = resultado.filter(c => c.suspendido === true);
       else resultado = resultado.filter(c => estadoActivoCliente(c).toLowerCase() === filter);
     }
     resultado = [...resultado].sort((a, b) => {
@@ -4370,13 +4371,7 @@ export default function App() {
                 <span className="search-icon"><HelpCircle size={14}/></span>
                 <input type="text" placeholder="Buscar por nombre, ID o contacto... (F)" value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setPaginaActual(1); }} />
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>Desde:</span>
-                <input type="date" value={fechaDesde} onChange={e => { setFechaDesde(e.target.value); setPaginaActual(1); }} style={{ padding: '0.45rem 0.6rem', border: '1px solid var(--border2)', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--surface)', color: 'var(--text)' }} />
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>Hasta:</span>
-                <input type="date" value={fechaHasta} onChange={e => { setFechaHasta(e.target.value); setPaginaActual(1); }} style={{ padding: '0.45rem 0.6rem', border: '1px solid var(--border2)', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--surface)', color: 'var(--text)' }} />
-                {(fechaDesde || fechaHasta) && <button onClick={() => { setFechaDesde(''); setFechaHasta(''); }} style={{ padding: '0.4rem 0.7rem', borderRadius: '7px', border: '1px solid var(--danger)', background: '#fef2f2', color: 'var(--danger)', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}>✕ Limpiar</button>}
-              </div>
+
 
               <div style={{ display: 'flex', gap: '0.3rem' }}>
                 <button className="btn btn-secondary" onClick={() => setVistaCards(false)} style={{ background: !vistaCards ? 'var(--navy)' : '', color: !vistaCards ? 'white' : '' }} title="Tabla"><ClipboardList size={14}/></button>
