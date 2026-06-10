@@ -1677,7 +1677,7 @@ export default function App() {
   const abrirWhatsappModal = (cliente) => {
     setWhatsappCliente(cliente);
     setWhatsappMensaje(getMsgFactura(cliente));
-    setShowWhatsappStatusModal(true);
+    setShowWhatsappModal(true);
     // Cargar documento si aún no está en estado
     if (!cotizaciones[cliente.id]) {
       fetch(`/api/cotizaciones/${cliente.id}`)
@@ -1711,7 +1711,7 @@ export default function App() {
       } catch { doc = null; }
     }
 
-    setShowWhatsappStatusModal(false);
+    setShowWhatsappModal(false);
     if (window.electronAPI?.isElectron) {
       const waStatus = await window.electronAPI.whatsappStatus().catch(() => ({ conectado: false }));
       if (waStatus.conectado && doc?.base64) {
@@ -7862,7 +7862,7 @@ export default function App() {
           <div className="modal-content" style={{ maxWidth:'420px', textAlign:'center' }}>
             <div className="modal-header">
               <h2>WhatsApp — PayTrack</h2>
-              <button className="close-btn" onClick={() => setShowWhatsappModal(false)}>×</button>
+              <button className="close-btn" onClick={() => setShowWhatsappStatusModal(false)}>×</button>
             </div>
             <div style={{ padding:'1rem' }}>
               {whatsappConectado ? (
