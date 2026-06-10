@@ -632,7 +632,7 @@ export default function App() {
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [updateDownloaded, setUpdateDownloaded] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const [showWhatsappModal, setShowWhatsappModal] = useState(false);
+  const [showWhatsappStatusModal, setShowWhatsappStatusModal] = useState(false);
   const [whatsappCliente, setWhatsappCliente] = useState(null);
   const [whatsappMensaje, setWhatsappMensaje] = useState('');
   const [showCalendario, setShowCalendario] = useState(false);
@@ -1676,7 +1676,7 @@ export default function App() {
   const abrirWhatsappModal = (cliente) => {
     setWhatsappCliente(cliente);
     setWhatsappMensaje(getMsgFactura(cliente));
-    setShowWhatsappModal(true);
+    setShowWhatsappStatusModal(true);
     // Cargar documento si aún no está en estado
     if (!cotizaciones[cliente.id]) {
       fetch(`/api/cotizaciones/${cliente.id}`)
@@ -1710,7 +1710,7 @@ export default function App() {
       } catch { doc = null; }
     }
 
-    setShowWhatsappModal(false);
+    setShowWhatsappStatusModal(false);
     if (window.electronAPI?.isElectron) {
       const waStatus = await window.electronAPI.whatsappStatus().catch(() => ({ conectado: false }));
       if (waStatus.conectado && doc?.base64) {
@@ -3225,7 +3225,7 @@ export default function App() {
                 {esAdmin && <button onClick={() => { setShowTopbarMenu(false); setShowSettingsPanel(true); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'var(--text)', borderBottom:'1px solid var(--border)' }}>
                   <Settings size={14}/> Configuración
                 </button>}
-                <button onClick={() => { setShowTopbarMenu(false); setShowWhatsappModal(true); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'var(--text)', borderBottom:'1px solid var(--border)' }}>
+                <button onClick={() => { setShowTopbarMenu(false); setShowWhatsappStatusModal(true); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'var(--text)', borderBottom:'1px solid var(--border)' }}>
                   <MessageCircle size={14}/> WhatsApp
                 </button>
                 <button onClick={() => { setShowTopbarMenu(false); window._manualLogout = true; signOut({ callbackUrl: '/' }); setTimeout(() => { window.location.href = '/'; }, 500); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'#dc2626', fontWeight:600 }}>
@@ -7856,7 +7856,7 @@ export default function App() {
 
       {/* Modal de sesión expirada */}
       {/* MODAL WHATSAPP QR */}
-      {showWhatsappModal && (
+      {showWhatsappStatusModal && (
         <div className="modal show">
           <div className="modal-content" style={{ maxWidth:'420px', textAlign:'center' }}>
             <div className="modal-header">
