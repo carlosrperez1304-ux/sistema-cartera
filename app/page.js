@@ -61,6 +61,9 @@ export default function App() {
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showTopbarMenu, setShowTopbarMenu] = useState(false);
+  const [showWhatsappModal, setShowWhatsappModal] = useState(false);
+  const [whatsappQR, setWhatsappQR] = useState(null);
+  const [whatsappConectado, setWhatsappConectado] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [bancoMovimientos, setBancoMovimientos] = useState([]);
   const [bancoArchivoNombre, setBancoArchivoNombre] = useState('');
@@ -118,6 +121,27 @@ export default function App() {
 
   // Si hay sesión NextAuth: usar el rol del token JWT o el email de Google
   // Si no: fallback a la lista local (para compatibilidad)
+  // WhatsApp Baileys listeners
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.electronAPI) return;
+    window.electronAPI.onWhatsappQR((qr) => {
+      setWhatsappQR(qr);
+      setWhatsappConectado(false);
+    });
+    window.electronAPI.onWhatsappStatus((status) => {
+      if (status.conectado) {
+        setWhatsappConectado(true);
+        setWhatsappQR(null);
+      } else {
+        setWhatsappConectado(false);
+      }
+    });
+    // Verificar estado inicial
+    window.electronAPI.whatsappStatus().then(s => {
+      if (s?.conectado) setWhatsappConectado(true);
+    }).catch(() => {});
+  }, []);
+
   const esAdmin = session
     ? (session.user?.rol === 'admin')
     : (usuarios[currentUser]?.rol === 'admin');
@@ -3193,6 +3217,9 @@ export default function App() {
                 {esAdmin && <button onClick={() => { setShowTopbarMenu(false); setShowSettingsPanel(true); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'var(--text)', borderBottom:'1px solid var(--border)' }}>
                   <Settings size={14}/> Configuración
                 </button>}
+                <button onClick={() => { setShowTopbarMenu(false); setShowWhatsappModal(true); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'var(--text)', borderBottom:'1px solid var(--border)' }}>
+                  <MessageCircle size={14}/> WhatsApp
+                </button>
                 <button onClick={() => { setShowTopbarMenu(false); window._manualLogout = true; signOut({ callbackUrl: '/' }); setTimeout(() => { window.location.href = '/'; }, 500); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'#dc2626', fontWeight:600 }}>
                   <LogOut size={14}/> Cerrar sesión
                 </button>
@@ -7820,6 +7847,43 @@ export default function App() {
       )}
 
       {/* Modal de sesión expirada */}
+      {/* MODAL WHATSAPP QR */}
+      {showWhatsappModal && (
+        <div className="modal show">
+          <div className="modal-content" style={{ maxWidth:'420px', textAlign:'center' }}>
+            <div className="modal-header">
+              <h2>WhatsApp — PayTrack</h2>
+              <button className="close-btn" onClick={() => setShowWhatsappModal(false)}>×</button>
+            </div>
+            <div style={{ padding:'1rem' }}>
+              {whatsappConectado ? (
+                <div>
+                  <div style={{ width:'60px', height:'60px', borderRadius:'50%', background:'#dcfce7', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1rem' }}>
+                    <MessageCircle size={28} style={{ color:'#16a34a' }}/>
+                  </div>
+                  <div style={{ fontSize:'16px', fontWeight:700, color:'#16a34a', marginBottom:'8px' }}>WhatsApp Conectado</div>
+                  <div style={{ fontSize:'13px', color:'#9a998f', marginBottom:'1.5rem' }}>Los mensajes se enviarán automáticamente</div>
+                  <button onClick={async () => { if(window.electronAPI) { await window.electronAPI.whatsappCerrarSesion(); setWhatsappConectado(false); setWhatsappQR(null); } }} style={{ padding:'8px 20px', borderRadius:'8px', fontSize:'13px', fontWeight:600, border:'1px solid #fca5a5', background:'#fee2e2', color:'#dc2626', cursor:'pointer' }}>
+                    Cerrar sesión WhatsApp
+                  </button>
+                </div>
+              ) : whatsappQR ? (
+                <div>
+                  <div style={{ fontSize:'13px', color:'#9a998f', marginBottom:'1rem' }}>Escanea este QR con tu WhatsApp</div>
+                  <img src={whatsappQR} alt="QR WhatsApp" style={{ width:'240px', height:'240px', borderRadius:'12px', border:'1px solid #e0dfd8' }}/>
+                  <div style={{ fontSize:'12px', color:'#9a998f', marginTop:'1rem' }}>Abre WhatsApp → Dispositivos vinculados → Vincular dispositivo</div>
+                </div>
+              ) : (
+                <div>
+                  <div style={{ fontSize:'13px', color:'#9a998f', marginBottom:'1rem' }}>Iniciando WhatsApp...</div>
+                  <div style={{ width:'40px', height:'40px', border:'3px solid #6366f1', borderTop:'3px solid transparent', borderRadius:'50%', margin:'0 auto', animation:'spin 1s linear infinite' }}></div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {sessionExpired && (
         <div className="modal-overlay" style={{ zIndex: 9999, backdropFilter: 'blur(6px)' }}>
           <div className="modal-content" style={{ maxWidth: '380px', textAlign: 'center', padding: '2.5rem 2rem' }}>
