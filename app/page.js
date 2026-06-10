@@ -60,6 +60,7 @@ export default function App() {
   const [sessionExpired, setSessionExpired] = useState(false);
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showTopbarMenu, setShowTopbarMenu] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [bancoMovimientos, setBancoMovimientos] = useState([]);
   const [bancoArchivoNombre, setBancoArchivoNombre] = useState('');
@@ -3171,19 +3172,19 @@ export default function App() {
           <div ref={clockRef} style={{ fontSize:'0.75rem', color:'var(--text-muted)', whiteSpace:'nowrap', letterSpacing:'0.02em' }} />
           {/* AVATAR + CERRAR SESIÓN */}
           <div style={{ position:'relative' }}>
-            <div onClick={() => setShowUserMenu(v => !v)} style={{ width:'32px', height:'32px', borderRadius:'50%', background:'linear-gradient(135deg,#4f46e5,#6366f1)', color:'#fff', fontSize:'12px', fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
+            <div onClick={() => setShowTopbarMenu(v => !v)} style={{ width:'32px', height:'32px', borderRadius:'50%', background:'linear-gradient(135deg,#4f46e5,#6366f1)', color:'#fff', fontSize:'12px', fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
               {(session?.user?.name || currentUser || 'U').charAt(0).toUpperCase()}
             </div>
-            {showUserMenu && (
+            {showTopbarMenu && (
               <div style={{ position:'absolute', top:'calc(100% + 8px)', right:0, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'10px', boxShadow:'0 8px 24px rgba(0,0,0,0.12)', zIndex:9999, minWidth:'180px', overflow:'hidden' }}>
                 <div style={{ padding:'10px 14px', borderBottom:'1px solid var(--border)', fontSize:'12px', color:'var(--text-muted)' }}>
                   <div style={{ fontWeight:700, color:'var(--text)', fontSize:'13px' }}>{session?.user?.name || currentUser}</div>
                   <div style={{ fontSize:'11px', marginTop:'2px' }}>{session?.user?.rol || 'Usuario'}</div>
                 </div>
-                <button onClick={() => { setShowUserMenu(false); setDarkMode(!darkMode); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'var(--text)', borderBottom:'1px solid var(--border)' }}>
+                <button onClick={() => { setShowTopbarMenu(false); setDarkMode(!darkMode); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'var(--text)', borderBottom:'1px solid var(--border)' }}>
                   {darkMode ? <Sun size={14}/> : <Moon size={14}/>} {darkMode ? 'Modo claro' : 'Modo oscuro'}
                 </button>
-                <button onClick={() => { setShowUserMenu(false); window._manualLogout = true; signOut({ callbackUrl: '/' }); setTimeout(() => { window.location.href = '/'; }, 500); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'#dc2626', fontWeight:600 }}>
+                <button onClick={() => { setShowTopbarMenu(false); window._manualLogout = true; signOut({ callbackUrl: '/' }); setTimeout(() => { window.location.href = '/'; }, 500); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'#dc2626', fontWeight:600 }}>
                   <LogOut size={14}/> Cerrar sesión
                 </button>
               </div>
@@ -3439,7 +3440,7 @@ export default function App() {
                       )}
                     </button>
                   )}
-                  <button onClick={() => { setShowUserMenu(false); window._manualLogout = true; signOut({ callbackUrl: '/' }); setTimeout(() => { window.location.href = '/'; }, 500); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.75rem', background: 'none', border: 'none', cursor: 'pointer', borderRadius: '6px', fontSize: '0.83rem', color: '#ef4444', textAlign: 'left' }} onMouseEnter={e => e.currentTarget.style.background='#fff1f2'} onMouseLeave={e => e.currentTarget.style.background='none'}>
+                  <button onClick={() => { setShowTopbarMenu(false); window._manualLogout = true; signOut({ callbackUrl: '/' }); setTimeout(() => { window.location.href = '/'; }, 500); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.75rem', background: 'none', border: 'none', cursor: 'pointer', borderRadius: '6px', fontSize: '0.83rem', color: '#ef4444', textAlign: 'left' }} onMouseEnter={e => e.currentTarget.style.background='#fff1f2'} onMouseLeave={e => e.currentTarget.style.background='none'}>
                     <LogOut size={14}/> Cerrar sesión
                   </button>
                 </div>
