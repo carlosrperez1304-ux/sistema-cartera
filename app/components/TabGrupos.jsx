@@ -302,6 +302,7 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
                         </td>
                       </tr>
                     );
+              };
               return (<>
                 {activos.map((g, i) => renderFila(g, i))}
                 {soloDeuda.length > 0 && (
@@ -350,7 +351,7 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
             ) : (() => {
               const activos = grupos.filter(g => (g.monto_total||0) > 0);
               const soloDeuda = grupos.filter(g => (g.monto_total||0) === 0 && (g.deuda_pendiente||0) > 0);
-              const renderFila = (g, i) => (
+              const renderFila = (g, i) => {return (
               <tr key={g.id} onClick={() => setGrupoSeleccionado(g)} style={{ borderBottom:'1px solid #f5f4ef', background:g.estado==='PAGADO'?'#f0fdf4':i%2===0?'#fff':'#fdfcf8', cursor:'pointer', transition:'background 0.1s' }}
                 onMouseOver={e => e.currentTarget.style.background = g.estado==='PAGADO'?'#dcfce7':'#faf9f5'}
                 onMouseOut={e => e.currentTarget.style.background = g.estado==='PAGADO'?'#f0fdf4':i%2===0?'#fff':'#fdfcf8'}>
@@ -380,6 +381,7 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
                 </td>
               </tr>
             );
+              };
               return (<>
                 {activos.map((g, i) => renderFila(g, i))}
                 {soloDeuda.length > 0 && (
@@ -474,6 +476,7 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
                       )}
                     </div>
                   );
+              };
               return (<>
                 {activos.map((g, i) => renderFila(g, i))}
                 {soloDeuda.length > 0 && (
