@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { Upload, Send, Settings, Check, X, FileText, Trash2 } from 'lucide-react';
 
 function parsearReporte(texto) {
   const lineas = texto.trim().split('\n');
@@ -256,7 +257,7 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
               <div style={{ padding:'10px 14px', borderTop:'1px solid #e0dfd8', background:'#f0efe9', display:'flex', justifyContent:'flex-end', gap:'8px' }}>
                 <button onClick={() => { setResultado(null); setTexto(''); }} style={{ padding:'7px 14px', borderRadius:'8px', fontSize:'12px', fontWeight:600, border:'1px solid #e0dfd8', background:'#faf9f5', color:'#6b6a62', cursor:'pointer' }}>Limpiar</button>
                 <button onClick={aplicar} disabled={aplicando} style={{ padding:'7px 16px', borderRadius:'8px', fontSize:'12px', fontWeight:700, border:'none', background:'#16a34a', color:'#fff', cursor:'pointer' }}>
-                  {aplicando ? 'Aplicando...' : '✓ Aplicar todo'}
+                  {aplicando ? 'Aplicando...' : 'Aplicar todo'}
                 </button>
               </div>
             </div>
