@@ -301,18 +301,11 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
                             : <span style={{ fontSize:'10px', padding:'2px 8px', borderRadius:'20px', background:'#fff7ed', color:'#c2410c' }}>Nuevo</span>}
                         </td>
                       </tr>
-                    );
-              };
-              return (<>
-                {activos.map((g, i) => renderFila(g, i))}
-                {soloDeuda.length > 0 && (
-                  <tr><td colSpan={9} style={{ padding:'8px 14px', background:'#fff7ed', borderTop:'2px solid #fed7aa', borderBottom:'1px solid #fed7aa' }}>
-                    <span style={{ fontSize:'10px', fontWeight:700, color:'#ea580c', textTransform:'uppercase', letterSpacing:'0.08em' }}>⚠ Deuda de meses anteriores — {soloDeuda.length} grupos</span>
-                  </td></tr>
-                )}
-                {soloDeuda.map((g, i) => renderFila(g, activos.length + i))}
-              </>);
-            })()}
+                    </>);
+            })}
+                  </tbody>
+                </table>
+              </div>
                   </tbody>
                 </table>
               </div>
@@ -348,11 +341,12 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
               <tr><td colSpan={9} style={{ padding:'2rem', textAlign:'center', color:'#9a998f' }}>Cargando...</td></tr>
             ) : grupos.length === 0 ? (
               <tr><td colSpan={9} style={{ padding:'2rem', textAlign:'center', color:'#9a998f' }}>No hay grupos. Importa el primer reporte.</td></tr>
-            ) : (() => {
-              const activos = grupos.filter(g => (g.monto_total||0) > 0);
-              const soloDeuda = grupos.filter(g => (g.monto_total||0) === 0 && (g.deuda_pendiente||0) > 0);
-              const renderFila = (g, i) => {return (
-              <tr key={g.id} onClick={() => setGrupoSeleccionado(g)} style={{ borderBottom:'1px solid #f5f4ef', background:g.estado==='PAGADO'?'#f0fdf4':i%2===0?'#fff':'#fdfcf8', cursor:'pointer', transition:'background 0.1s' }}
+            ) : [...grupos.filter(g => (g.monto_total||0) > 0), ...grupos.filter(g => (g.monto_total||0) === 0 && (g.deuda_pendiente||0) > 0)].map((g, i, arr) => {
+              const esSeccionDeuda = (g.monto_total||0) === 0 && (g.deuda_pendiente||0) > 0;
+              const primerDeuda = arr.findIndex(x => (x.monto_total||0) === 0 && (x.deuda_pendiente||0) > 0) === i;
+              return (<>
+              {primerDeuda && <tr key={'sep-deuda'}><td colSpan={9} style={{ padding:'8px 14px', background:'#fff7ed', borderTop:'2px solid #fed7aa', borderBottom:'1px solid #fed7aa' }}><span style={{ fontSize:'10px', fontWeight:700, color:'#ea580c', textTransform:'uppercase', letterSpacing:'0.08em' }}>⚠ Deuda de meses anteriores</span></td></tr>}
+              <tr key={g.id} onClick={() => setGrupoSeleccionado(g)} style={{ borderBottom:'1px solid #f5f4ef', background:g.suspendido?'#fef2f2':g.estado==='PAGADO'?'#f0fdf4':esSeccionDeuda?'#fffbeb':i%2===0?'#fff':'#fdfcf8', cursor:'pointer', transition:'background 0.1s' }}
                 onMouseOver={e => e.currentTarget.style.background = g.estado==='PAGADO'?'#dcfce7':'#faf9f5'}
                 onMouseOut={e => e.currentTarget.style.background = g.estado==='PAGADO'?'#f0fdf4':i%2===0?'#fff':'#fdfcf8'}>
                 <td style={{ padding:'10px 14px', color:'#9a998f', fontFamily:'monospace', fontSize:'12px' }}>{g.numero||i+1}</td>
