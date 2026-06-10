@@ -131,6 +131,16 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
     if (showToast) showToast('✅ Mes cerrado. Deudas acumuladas.', 'success');
   };
 
+  const toggleSuspendido = async (grupo) => {
+    await fetch('/api/grupos-blueline', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: grupo.id, suspendido: !grupo.suspendido })
+    });
+    await cargar();
+    if (showToast) showToast(grupo.suspendido ? 'Grupo reactivado' : 'Grupo suspendido', 'info');
+  };
+
   const eliminar = async (id) => {
     if (!confirm('¿Eliminar este grupo?')) return;
     await fetch('/api/grupos-blueline?id=' + id, { method: 'DELETE' });
@@ -291,7 +301,17 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
                             : <span style={{ fontSize:'10px', padding:'2px 8px', borderRadius:'20px', background:'#fff7ed', color:'#c2410c' }}>Nuevo</span>}
                         </td>
                       </tr>
-                    ))}
+                    );
+              return (<>
+                {activos.map((g, i) => renderFila(g, i))}
+                {soloDeuda.length > 0 && (
+                  <tr><td colSpan={9} style={{ padding:'8px 14px', background:'#fff7ed', borderTop:'2px solid #fed7aa', borderBottom:'1px solid #fed7aa' }}>
+                    <span style={{ fontSize:'10px', fontWeight:700, color:'#ea580c', textTransform:'uppercase', letterSpacing:'0.08em' }}>⚠ Deuda de meses anteriores — {soloDeuda.length} grupos</span>
+                  </td></tr>
+                )}
+                {soloDeuda.map((g, i) => renderFila(g, activos.length + i))}
+              </>);
+            })()}
                   </tbody>
                 </table>
               </div>
@@ -318,15 +338,19 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
               <th style={{ padding:'10px 14px', textAlign:'right', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em' }}>Deuda</th>
               <th style={{ padding:'10px 14px', textAlign:'center', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em' }}>Estado</th>
               <th style={{ padding:'10px 14px', textAlign:'center', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em' }}>Fecha Pago</th>
+              <th style={{ padding:'10px 14px', textAlign:'center', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em' }}>Susp.</th>
               <th style={{ padding:'10px 14px' }}></th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={8} style={{ padding:'2rem', textAlign:'center', color:'#9a998f' }}>Cargando...</td></tr>
+              <tr><td colSpan={9} style={{ padding:'2rem', textAlign:'center', color:'#9a998f' }}>Cargando...</td></tr>
             ) : grupos.length === 0 ? (
-              <tr><td colSpan={8} style={{ padding:'2rem', textAlign:'center', color:'#9a998f' }}>No hay grupos. Importa el primer reporte.</td></tr>
-            ) : grupos.map((g, i) => (
+              <tr><td colSpan={9} style={{ padding:'2rem', textAlign:'center', color:'#9a998f' }}>No hay grupos. Importa el primer reporte.</td></tr>
+            ) : (() => {
+              const activos = grupos.filter(g => (g.monto_total||0) > 0);
+              const soloDeuda = grupos.filter(g => (g.monto_total||0) === 0 && (g.deuda_pendiente||0) > 0);
+              const renderFila = (g, i) => (
               <tr key={g.id} onClick={() => setGrupoSeleccionado(g)} style={{ borderBottom:'1px solid #f5f4ef', background:g.estado==='PAGADO'?'#f0fdf4':i%2===0?'#fff':'#fdfcf8', cursor:'pointer', transition:'background 0.1s' }}
                 onMouseOver={e => e.currentTarget.style.background = g.estado==='PAGADO'?'#dcfce7':'#faf9f5'}
                 onMouseOut={e => e.currentTarget.style.background = g.estado==='PAGADO'?'#f0fdf4':i%2===0?'#fff':'#fdfcf8'}>
@@ -345,12 +369,27 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
                 </td>
                 <td style={{ padding:'10px 14px', textAlign:'center', fontSize:'12px', color:'#9a998f' }}>{g.fecha_pago||'—'}</td>
                 <td style={{ padding:'10px 14px', textAlign:'center' }} onClick={e => e.stopPropagation()}>
+                  <button onClick={() => toggleSuspendido(g)} title={g.suspendido ? 'Reactivar' : 'Suspender'} style={{ padding:'3px 8px', borderRadius:'20px', fontSize:'10px', fontWeight:700, border:'none', cursor:'pointer', background:g.suspendido?'#fee2e2':'#f1f5f9', color:g.suspendido?'#dc2626':'#64748b' }}>
+                    {g.suspendido ? 'Susp.' : '—'}
+                  </button>
+                </td>
+                <td style={{ padding:'10px 14px', textAlign:'center' }} onClick={e => e.stopPropagation()}>
                   <button onClick={() => eliminar(g.id)} style={{ padding:'4px 8px', borderRadius:'6px', border:'1px solid #fca5a5', background:'#fee2e2', color:'#dc2626', fontSize:'11px', cursor:'pointer' }}>
                     <Trash2 size={12}/>
                   </button>
                 </td>
               </tr>
-            ))}
+            );
+              return (<>
+                {activos.map((g, i) => renderFila(g, i))}
+                {soloDeuda.length > 0 && (
+                  <tr><td colSpan={9} style={{ padding:'8px 14px', background:'#fff7ed', borderTop:'2px solid #fed7aa', borderBottom:'1px solid #fed7aa' }}>
+                    <span style={{ fontSize:'10px', fontWeight:700, color:'#ea580c', textTransform:'uppercase', letterSpacing:'0.08em' }}>⚠ Deuda de meses anteriores — {soloDeuda.length} grupos</span>
+                  </td></tr>
+                )}
+                {soloDeuda.map((g, i) => renderFila(g, activos.length + i))}
+              </>);
+            })()}
           </tbody>
         </table>
         {grupos.length > 0 && (
@@ -434,7 +473,17 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
                         <div style={{ fontSize:'12px', color:'#6b6a62' }}>Monto: RD${(h.monto||0).toLocaleString('en-US',{maximumFractionDigits:0})}</div>
                       )}
                     </div>
-                  ))}
+                  );
+              return (<>
+                {activos.map((g, i) => renderFila(g, i))}
+                {soloDeuda.length > 0 && (
+                  <tr><td colSpan={9} style={{ padding:'8px 14px', background:'#fff7ed', borderTop:'2px solid #fed7aa', borderBottom:'1px solid #fed7aa' }}>
+                    <span style={{ fontSize:'10px', fontWeight:700, color:'#ea580c', textTransform:'uppercase', letterSpacing:'0.08em' }}>⚠ Deuda de meses anteriores — {soloDeuda.length} grupos</span>
+                  </td></tr>
+                )}
+                {soloDeuda.map((g, i) => renderFila(g, activos.length + i))}
+              </>);
+            })()}
                 </div>
               )}
             </div>
