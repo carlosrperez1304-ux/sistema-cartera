@@ -633,6 +633,7 @@ export default function App() {
   const [updateDownloaded, setUpdateDownloaded] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [showWhatsappStatusModal, setShowWhatsappStatusModal] = useState(false);
+  const [showWhatsappModal, setShowWhatsappModal] = useState(false);
   const [whatsappCliente, setWhatsappCliente] = useState(null);
   const [whatsappMensaje, setWhatsappMensaje] = useState('');
   const [showCalendario, setShowCalendario] = useState(false);
