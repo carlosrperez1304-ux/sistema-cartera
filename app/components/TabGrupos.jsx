@@ -100,13 +100,15 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
     const mes = getMesActual();
     for (const g of grupos) {
       const deudaAnterior = g.deuda_pendiente || 0;
+      const deudaMesActual = g.estado === 'PENDIENTE' ? (g.monto_total || 0) : 0;
+      const nuevaDeuda = deudaAnterior + deudaMesActual;
       const historial = [...(g.historial || []), {
         fecha: new Date().toISOString(),
         mes,
         accion: 'Cierre de mes',
         monto_total: g.monto_total,
         monto_pagado: g.monto_pagado,
-        deuda: deudaAnterior,
+        deuda: nuevaDeuda,
         estado: g.estado
       }];
       await fetch('/api/grupos-blueline', {
@@ -116,7 +118,7 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
           id: g.id,
           monto_total: 0,
           monto_pagado: 0,
-          deuda_pendiente: g.estado === 'PENDIENTE' ? deudaAnterior : 0,
+          deuda_pendiente: nuevaDeuda,
           estado: 'PENDIENTE',
           fecha_pago: '',
           historial
