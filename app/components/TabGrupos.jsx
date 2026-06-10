@@ -65,6 +65,8 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
 
   const marcarPagado = async (grupo) => {
     const esPagado = grupo.estado === 'PAGADO';
+    // Deuda acumulada = total - mes actual
+    const deudaAnterior = (grupo.deuda_pendiente || 0) - (grupo.monto_total || 0);
     const historial = [...(grupo.historial || []), {
       fecha: new Date().toISOString(),
       mes: getMesActual(),
@@ -78,7 +80,7 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
         id: grupo.id,
         estado: esPagado ? 'PENDIENTE' : 'PAGADO',
         monto_pagado: esPagado ? 0 : grupo.monto_total,
-        deuda_pendiente: esPagado ? grupo.monto_total : 0,
+        deuda_pendiente: esPagado ? grupo.monto_total : Math.max(0, deudaAnterior),
         fecha_pago: esPagado ? '' : new Date().toLocaleDateString('es-DO'),
         historial
       })
