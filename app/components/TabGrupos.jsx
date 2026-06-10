@@ -96,8 +96,10 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
   };
 
   const cierreDeMes = async () => {
-    if (!confirm('¿Cerrar el mes? Los grupos pendientes acumularán su deuda al próximo mes.')) return;
     const mes = getMesActual();
+    const yaHizoCierre = grupos.some(g => (g.historial||[]).some(h => h.mes === mes && h.accion === 'Cierre de mes'));
+    if (yaHizoCierre) { if (showToast) showToast('Ya se realizó el cierre de ' + mes, 'error'); return; }
+    if (!confirm('¿Cerrar el mes? Los grupos pendientes acumularán su deuda al próximo mes.')) return;
     for (const g of grupos) {
       const nuevaDeuda = g.estado === 'PENDIENTE' ? (g.deuda_pendiente || 0) : 0;
       const historial = [...(g.historial || []), {
