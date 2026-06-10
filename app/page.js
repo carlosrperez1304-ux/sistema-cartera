@@ -61,7 +61,6 @@ export default function App() {
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showTopbarMenu, setShowTopbarMenu] = useState(false);
-  const [showWhatsappModal, setShowWhatsappModal] = useState(false);
   const [whatsappQR, setWhatsappQR] = useState(null);
   const [whatsappConectado, setWhatsappConectado] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
