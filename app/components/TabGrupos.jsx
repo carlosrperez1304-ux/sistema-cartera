@@ -167,10 +167,14 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
     for (const item of resultado) {
       try {
         if (item.existe && item.grupoId) {
+          // Buscar la deuda acumulada del grupo existente
+          const grupoExistente = grupos.find(g => g.id === item.grupoId);
+          const deudaAcumulada = grupoExistente?.deuda_pendiente || 0;
+          const nuevaDeuda = deudaAcumulada + item.monto;
           const r = await fetch('/api/grupos-blueline', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: item.grupoId, monto_total: item.monto, deuda_pendiente: item.monto, estado: 'PENDIENTE' })
+            body: JSON.stringify({ id: item.grupoId, monto_total: item.monto, deuda_pendiente: nuevaDeuda, estado: 'PENDIENTE' })
           });
           if (r.ok) actualizados++;
           else { const e = await r.json(); console.error('PUT error:', e); }
