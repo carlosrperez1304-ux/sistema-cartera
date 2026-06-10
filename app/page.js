@@ -1711,20 +1711,29 @@ export default function App() {
     }
 
     setShowWhatsappModal(false);
-
-    if (window.electronAPI?.isElectron && doc?.base64) {
-      // Modo escritorio: PDF al portapapeles + WhatsApp Desktop con mensaje
-      const result = await window.electronAPI.sendPDFWhatsApp(doc.base64, doc.nombre, num, whatsappMensaje);
-      if (!result.ok) {
-        if (doc) descargarDocumento(doc);
-        window.open(`https://wa.me/1${num}?text=${encodeURIComponent(whatsappMensaje)}`, '_blank');
-      } else {
-        showToast('PDF copiado al portapapeles — Ctrl+V en WhatsApp para pegarlo', 'success');
+    if (window.electronAPI?.isElectron) {
+      const waStatus = await window.electronAPI.whatsappStatus().catch(() => ({ conectado: false }));
+      if (waStatus.conectado && doc?.base64) {
+        showToast("Enviando por WhatsApp...", "info");
+        const result = await window.electronAPI.whatsappEnviarPDF(num, doc.base64, doc.nombre, whatsappMensaje);
+        if (result.ok) {
+          showToast("✅ Enviado por WhatsApp automáticamente", "success");
+        } else {
+          showToast("Error: " + result.error, "error");
+        }
+      } else if (doc?.base64) {
+        const result = await window.electronAPI.sendPDFWhatsApp(doc.base64, doc.nombre, num, whatsappMensaje);
+        if (!result.ok) {
+          if (doc) descargarDocumento(doc);
+          window.open(`https://wa.me/1${num}?text=${encodeURIComponent(whatsappMensaje)}`, "_blank");
+        } else {
+          showToast("PDF copiado al portapapeles — Ctrl+V en WhatsApp para pegarlo", "success");
+        }
       }
     } else {
-      // Modo web: descargar PDF (si hay) + abrir wa.me
       if (doc?.base64) descargarDocumento(doc);
-      window.open(`https://wa.me/1${num}?text=${encodeURIComponent(whatsappMensaje)}`, '_blank');
+      window.open(`https://wa.me/1${num}?text=${encodeURIComponent(whatsappMensaje)}`, "_blank");
+    }
     }
 
     // Marcar como Notificado automáticamente
