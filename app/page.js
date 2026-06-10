@@ -4479,7 +4479,6 @@ export default function App() {
                                   )}
                                 </div>
                               </div>
-                            </div>
                             {/* CONTACTO */}
                             <div style={{ textAlign:'center' }}>
                               {editingContactoId === cliente.id ? (
