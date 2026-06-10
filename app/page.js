@@ -1,6 +1,5 @@
 'use client';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import TabTickets from './components/TabTickets';
 import { getSupabaseBrowser } from '../lib/supabase-browser.js';
 import * as XLSX from 'xlsx';
 import { signIn, signOut, useSession } from 'next-auth/react';
@@ -3112,62 +3111,71 @@ export default function App() {
       )}
 
       {/* TOPBAR — ESPN style */}
-      <div className="topbar" style={{ background:'var(--bg)', borderBottom:'1px solid var(--border)', height:'52px', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 1.25rem', position:'sticky', top:0, zIndex:300 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
+      <div className="topbar">
+        <div className="topbar-left">
           <button className="hamburger-btn" onClick={() => setShowMobileMenu(v => !v)} title="Menú">
             {showMobileMenu ? <X size={20}/> : <Menu size={20}/>}
           </button>
-          <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
-            <div style={{ width:'26px', height:'26px', background:'linear-gradient(135deg,#4f46e5,#7c3aed)', borderRadius:'7px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <CircleDollarSign size={14} color="#fff" strokeWidth={2}/>
+          {!(typeof window !== 'undefined' && window.electronAPI?.isElectron) && (
+            <div className="topbar-logo">
+              <div className="dot">
+                <BarChart2 size={16} strokeWidth={2.5}/>
+              </div>
             </div>
-            <span style={{ fontWeight:300, fontSize:'0.92rem', color:'#6366f1', letterSpacing:'-0.02em' }}>Pay<span style={{ fontWeight:800, color:'var(--text)' }}>Track</span></span>
-          </div>
+          )}
         </div>
 
-        {/* NAV CENTRAL TIPO PILL */}
-        <div style={{ display:'flex', alignItems:'center', gap:'2px', background:'var(--surface-2)', borderRadius:'20px', padding:'3px' }}>
-          {[
-            { tab:'dashboard', label:'Inicio' },
-            ...(tienePermiso('ver_clientes') ? [{ tab:'cartera', label:'Cartera' }] : []),
-            { tab:'tickets', label:'Tickets' },
-            ...(tienePermiso('ver_creditos') ? [{ tab:'credito', label:'Crédito' }] : []),
-            { tab:'agenda', label:'Agenda' },
-            { tab:'documentos', label:'Documentos' },
-          ].map(item => (
-            <button key={item.tab} onClick={() => setActiveTab(item.tab)} style={{ padding:'5px 14px', borderRadius:'16px', fontSize:'12px', fontWeight: activeTab === item.tab ? 600 : 400, background: activeTab === item.tab ? 'var(--text)' : 'transparent', color: activeTab === item.tab ? 'var(--bg)' : 'var(--text-muted)', border:'none', cursor:'pointer', transition:'all 0.15s', whiteSpace:'nowrap' }}>
-              {item.label}
-            </button>
-          ))}
-        </div>
-
-        {/* TOPBAR RIGHT — búsqueda + iconos */}
-        <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
-          <div style={{ position:'relative' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:'0.4rem', background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'10px', padding:'0.3rem 0.75rem', minWidth:'200px' }}>
-              <Search size={13} style={{ color:'var(--text-muted)', flexShrink:0 }}/>
-              <input type="text" value={busquedaGlobal} onChange={e => { setBusquedaGlobal(e.target.value); setShowBusquedaGlobal(true); }} onBlur={() => setTimeout(() => setShowBusquedaGlobal(false), 180)} placeholder="Buscar cliente..." style={{ border:'none', background:'transparent', outline:'none', fontSize:'0.82rem', color:'var(--text)', width:'100%' }}/>
-              {busquedaGlobal && <button onClick={() => { setBusquedaGlobal(''); setShowBusquedaGlobal(false); }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0, lineHeight:1 }}>×</button>}
+        {/* TOPBAR CENTER — búsqueda global + reloj */}
+        <div className="topbar-center">
+          <div style={{ position: 'relative' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--surface-2, rgba(255,255,255,0.06))', border: '1px solid var(--border)', borderRadius: '10px', padding: '0.3rem 0.75rem', minWidth: '260px' }}>
+              <Search size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }}/>
+              <input
+                type="text"
+                value={busquedaGlobal}
+                onChange={e => { setBusquedaGlobal(e.target.value); setShowBusquedaGlobal(true); }}
+                onBlur={() => setTimeout(() => setShowBusquedaGlobal(false), 180)}
+                placeholder="Buscar cliente..."
+                style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.82rem', color: 'var(--text)', width: '100%' }}
+              />
+              {busquedaGlobal && (
+                <button onClick={() => { setBusquedaGlobal(''); setShowBusquedaGlobal(false); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, lineHeight: 1 }}>×</button>
+              )}
             </div>
             {showBusquedaGlobal && busquedaGlobal.length > 1 && (() => {
               const term = busquedaGlobal.toLowerCase();
-              const resultados = clientes.filter(c => (c.nombre || '').toLowerCase().includes(term) || (c.codigo || '').toLowerCase().includes(term)).slice(0, 6);
+              const resultados = clientes.filter(c =>
+                (c.nombre || '').toLowerCase().includes(term) ||
+                (c.codigo || '').toLowerCase().includes(term)
+              ).slice(0, 6);
               return (
-                <div style={{ position:'absolute', top:'calc(100% + 6px)', left:0, right:0, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'10px', boxShadow:'0 8px 24px rgba(0,0,0,0.25)', zIndex:9999, overflow:'hidden' }}>
-                  {resultados.length === 0 ? <div style={{ padding:'0.75rem 1rem', fontSize:'0.8rem', color:'var(--text-muted)' }}>Sin resultados</div> : resultados.map(c => (
-                    <div key={c.id} onMouseDown={() => { setBusquedaGlobal(''); setShowBusquedaGlobal(false); setActiveTab('cartera'); setTimeout(() => { setSearchTerm(c.nombre || ''); setPaginaActual(1); }, 100); }} style={{ display:'flex', alignItems:'center', gap:'0.6rem', padding:'0.55rem 0.9rem', cursor:'pointer', borderBottom:'1px solid var(--border)' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-2)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                      <div style={{ width:'28px', height:'28px', borderRadius:'50%', background:'var(--brand)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:'0.75rem', flexShrink:0 }}>{(c.nombre || '?').charAt(0).toUpperCase()}</div>
-                      <div><div style={{ fontWeight:600, fontSize:'0.82rem', color:'var(--text)' }}>{c.nombre}</div>{c.codigo && <div style={{ fontSize:'0.7rem', color:'var(--text-muted)' }}>{c.codigo}</div>}</div>
-                      <div style={{ marginLeft:'auto', fontSize:'0.7rem', fontWeight:600, color: c.estado === 'Vencido' ? '#ef4444' : 'var(--text-muted)' }}>{c.estado}</div>
+                <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.25)', zIndex: 9999, overflow: 'hidden' }}>
+                  {resultados.length === 0 ? (
+                    <div style={{ padding: '0.75rem 1rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Sin resultados</div>
+                  ) : resultados.map(c => (
+                    <div key={c.id} onMouseDown={() => { setBusquedaGlobal(''); setShowBusquedaGlobal(false); setActiveTab('cartera'); setTimeout(() => { setSearchTerm(c.nombre || ''); setPaginaActual(1); }, 100); }}
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.9rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-2)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'var(--brand)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.75rem', flexShrink: 0 }}>
+                        {(c.nombre || '?').charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: '0.82rem', color: 'var(--text)' }}>{c.nombre}</div>
+                        {c.codigo && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{c.codigo}</div>}
+                      </div>
+                      <div style={{ marginLeft: 'auto', fontSize: '0.7rem', fontWeight: 600, color: c.estado === 'Vencido' ? '#ef4444' : c.estado === 'Por vencer' ? '#f59e0b' : 'var(--text-muted)' }}>
+                        {c.estado}
+                      </div>
                     </div>
                   ))}
                 </div>
               );
             })()}
           </div>
-          <div ref={clockRef} style={{ fontSize:'0.75rem', color:'var(--text-muted)', whiteSpace:'nowrap', letterSpacing:'0.02em' }} />
+          <div ref={clockRef} style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', letterSpacing: '0.02em', marginLeft: '1rem' }} />
         </div>
-
 
         <div className="topbar-right">
           {soloLectura && <span style={{ background: 'rgba(254,249,195,0.15)', color: '#fbbf24', fontSize: '0.67rem', padding: '0.2rem 0.55rem', borderRadius: '5px', fontWeight: 700, marginRight: '0.25rem', border: '1px solid rgba(251,191,36,0.25)' }}>Solo lectura</span>}
@@ -3373,9 +3381,9 @@ export default function App() {
       </div>
 
       {showMobileMenu && <div className="mobile-overlay" onClick={() => setShowMobileMenu(false)} />}
-      <div className="main-layout" style={{ display:'block' }}>
-        {/* SIDEBAR — oculto, nav movida al topbar */}
-        <div className={`sidebar${showMobileMenu ? ' mobile-open' : ''}`} style={{ display:'none' }}>
+      <div className="main-layout">
+        {/* SIDEBAR */}
+        <div className={`sidebar${showMobileMenu ? ' mobile-open' : ''}`}>
           {/* Logo — fuera del scroll, siempre visible */}
           <div style={{ padding: '1.1rem 1rem', borderBottom: '1px solid #e0dfd8', display: 'flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0 }}>
             <div style={{ width: '28px', height: '28px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(99,102,241,0.4)' }}>
@@ -3390,7 +3398,6 @@ export default function App() {
             <div className={`sidebar-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}><span className="icon"><LayoutGrid size={14}/></span> Inicio</div>
             <div className={`sidebar-item ${activeTab === 'calendario' ? 'active' : ''}`} onClick={() => setActiveTab('calendario')}><span className="icon"><Calendar size={14}/></span> Calendario</div>
             {tienePermiso('ver_clientes') && <div className={`sidebar-item ${activeTab === 'cartera' ? 'active' : ''}`} onClick={() => setActiveTab('cartera')}><span className="icon"><BarChart2 size={14}/></span> Cartera</div>}
-            <div className={`sidebar-item ${activeTab === 'tickets' ? 'active' : ''}`} onClick={() => setActiveTab('tickets')}><span className="icon"><ClipboardList size={14}/></span> Tickets</div>
             {tienePermiso('ver_creditos') && <div className={`sidebar-item ${activeTab === 'credito' ? 'active' : ''}`} onClick={() => setActiveTab('credito')}><span className="icon"><CreditCard size={14}/></span> Crédito</div>}
             <div className={`sidebar-item ${activeTab === 'agenda' ? 'active' : ''}`} onClick={() => setActiveTab('agenda')}><span className="icon"><Calendar size={14}/></span> Agenda del Día</div>
             <div className={`sidebar-item ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => { setActiveTab('documentos'); cargarTodosDocumentos(); }}><span className="icon"><FileText size={14}/></span> Documentos</div>
@@ -3435,7 +3442,7 @@ export default function App() {
         </div>
 
         {/* CONTENT */}
-        <div className="content-area" style={{ marginLeft:0, width:'100%' }}>
+        <div className="content-area">
           <div className="page-header" style={{ flexDirection:'column', alignItems:'stretch', gap:'1rem', padding:'1.25rem 1.5rem', background:'var(--surface)', borderRadius:'14px', border:'1px solid var(--border)', marginBottom:'0.5rem' }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
               <div>
@@ -4196,19 +4203,6 @@ export default function App() {
 
           {/* TAB CARTERA */}
           <div className={`tab-content ${activeTab === 'cartera' ? 'active' : ''}`}>
-            {/* HEADER CARTERA */}
-            <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:"1.25rem" }}>
-              <div>
-                <div style={{ fontSize:"28px", fontWeight:700, color:"var(--text)", letterSpacing:"-0.03em", lineHeight:1.1 }}>Cartera</div>
-                <div style={{ fontSize:"13px", color:"var(--text-muted)", marginTop:"4px" }}>{clientes.length} clientes · {obtenerNombreMes(mesVisualizando)}</div>
-              </div>
-              <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
-                <button onClick={() => iniciarWaMasivoAuto()} className="btn" style={{ display:"flex", alignItems:"center", gap:"6px", fontSize:"13px", background:"#25D366", border:"none", color:"#fff", borderRadius:"9px", padding:"8px 16px", fontWeight:700, cursor:"pointer" }}>
-                  <MessageCircle size={14}/> Enviar
-                </button>
-                {tienePermiso("crear_clientes") && <button onClick={() => !esModoPasado && abrirModal()} disabled={esModoPasado} className="btn" style={{ display:"flex", alignItems:"center", gap:"6px", fontSize:"13px", background:"#1a1915", border:"none", color:"#fff", borderRadius:"9px", padding:"8px 16px", fontWeight:700, cursor:"pointer", opacity: esModoPasado ? 0.5 : 1 }}><Plus size={14}/> Nuevo</button>}
-              </div>
-            </div>
 
             {/* Banner de recordatorio mensual */}
             {recordatorioActivo && activeTab === 'cartera' && (() => {
@@ -4251,25 +4245,22 @@ export default function App() {
               );
             })()}
 
-            <div style={{ display:'flex', gap:'8px', marginBottom:'1.25rem', flexWrap:'wrap' }}>
+            <div className="dashboard">
               {[
-                { key: 'cotizado',      label: 'Cotizado',      val: estadisticas.cotizado,    pct: estadisticas.cotizadoPct,    color: '#ea580c', bg: '#fff7ed', border: '#fed7aa' },
-                { key: 'notificado',    label: 'Notificado',    val: estadisticas.notificado,  pct: estadisticas.notificadoPct,  color: '#6366f1', bg: '#eff6ff', border: '#bfdbfe' },
-                { key: 'pagado',        label: 'Pagado',        val: estadisticas.pagado,      pct: estadisticas.pagadoPct,      color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
-                { key: 'facturado',     label: 'Facturado',     val: estadisticas.facturado,   pct: estadisticas.facturadoPct,   color: '#0d9488', bg: '#f0fdfa', border: '#99f6e4' },
-                { key: 'vencido',       label: 'Vencido',       val: estadisticas.vencido,     pct: estadisticas.vencidoPct,     color: '#dc2626', bg: '#fff1f2', border: '#fecdd3' },
-                { key: 'no-generaron',  label: 'No Generaron',  val: estadisticas.noGeneraron, pct: estadisticas.noGeneraronPct, color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' },
-                { key: 'suspendido',    label: 'Suspendidos',   val: estadisticas.suspendido,  pct: estadisticas.suspendidoPct,  color: '#e11d48', bg: '#fff1f2', border: '#fecdd3' },
-                ...(estadisticas.sinDocumento > 0 ? [{ key: 'sin-documento', label: 'Sin Doc.', val: estadisticas.sinDocumento, pct: estadisticas.total > 0 ? ((estadisticas.sinDocumento / estadisticas.total) * 100).toFixed(0) : 0, color: '#b45309', bg: '#fffbeb', border: '#fde68a' }] : []),
+                { key: 'cotizado', label: 'Cotizado', val: estadisticas.cotizado, pct: estadisticas.cotizadoPct, monto: estadisticas.montoCotizado, color: '#ea580c' },
+                { key: 'notificado', label: 'Notificado', val: estadisticas.notificado, pct: estadisticas.notificadoPct, monto: estadisticas.montoNotificado, color: '#0284c7' },
+                { key: 'pagado', label: 'Pagado', val: estadisticas.pagado, pct: estadisticas.pagadoPct, monto: estadisticas.montoPagado, color: '#059669' },
+                { key: 'facturado', label: 'Facturado', val: estadisticas.facturado, pct: estadisticas.facturadoPct, monto: estadisticas.montoFacturado, color: '#16a34a' },
+                { key: 'vencido', label: 'Vencido', val: estadisticas.vencido, pct: estadisticas.vencidoPct, monto: estadisticas.montoVencido, color: '#dc2626' },
+                { key: 'no-generaron', label: 'No Generaron', val: estadisticas.noGeneraron, pct: estadisticas.noGeneraronPct, monto: null, color: '#64748b' },
+                { key: 'suspendido', label: 'Suspendidos', val: estadisticas.suspendido, pct: estadisticas.suspendidoPct, monto: estadisticas.montoSuspendido, color: '#dc2626' },
+                ...(estadisticas.sinDocumento > 0 ? [{ key: 'sin-documento', label: 'Sin Documento', val: estadisticas.sinDocumento, pct: estadisticas.total > 0 ? ((estadisticas.sinDocumento / estadisticas.total) * 100).toFixed(0) : 0, monto: null, color: '#b45309' }] : []),
               ].map(s => (
-                <div key={s.key} onClick={() => { setFilter(filter === s.key ? 'todos' : s.key); setPaginaActual(1); }}
-                  title={filter === s.key ? 'Clic para quitar filtro' : `Filtrar por ${s.label}`}
-                  style={{ display:'flex', alignItems:'center', gap:'8px', background: s.bg, border: `1px solid ${filter === s.key ? s.color : s.border}`, borderRadius:'10px', padding:'7px 13px', cursor:'pointer', transition:'all 0.15s', outline: filter === s.key ? `2px solid ${s.color}` : 'none', outlineOffset:'2px' }}>
-                  <div style={{ width:'8px', height:'8px', borderRadius:'50%', background: s.color, flexShrink:0 }}></div>
-                  <span style={{ fontSize:'12px', color:'#9a998f' }}>{s.label}</span>
-                  <span style={{ fontSize:'16px', fontWeight:700, color: s.color, fontFamily:'monospace', lineHeight:1 }}>{s.val}</span>
-                  <span style={{ fontSize:'10px', color: s.color }}>{s.pct}%</span>
-                  {filter === s.key && <span style={{ fontSize:'10px', fontWeight:700, color: s.color }}>✓</span>}
+                <div key={s.key} className={`stat-card ${s.key}`} onClick={() => { setFilter(filter === s.key ? 'todos' : s.key); setPaginaActual(1); }} style={{ cursor: 'pointer', outline: filter === s.key ? `2px solid ${s.color}` : 'none', outlineOffset: '2px', transition: 'all 0.15s' }} title={filter === s.key ? 'Clic para quitar filtro' : `Filtrar por ${s.label}`}>
+                  <div className="stat-label">{s.label}</div>
+                  <div className="stat-value">{s.val}</div>
+                  <div className="stat-percentage">{s.pct}%{s.monto != null && fmtMonto(s.monto, s.val) && <span style={{ display: 'block', color: s.color, fontWeight: 800, fontSize: '0.85rem' }}>{fmtMonto(s.monto, s.val)}</span>}</div>
+                  {filter === s.key && <div style={{ fontSize: '0.65rem', fontWeight: 700, color: s.color, marginTop: '0.2rem' }}>✓ Filtrando</div>}
                 </div>
               ))}
             </div>
@@ -4423,47 +4414,42 @@ export default function App() {
             )}
 
 
-            <div className="table-container" style={{ display: vistaCards ? 'none' : 'block', background:'transparent', border:'none', boxShadow:'none' }}>
-              <div className="table-wrapper" style={{ overflowX:'visible' }}>
+            <div className="table-container" style={{ display: vistaCards ? 'none' : 'block' }}>
+              <div className="table-wrapper">
                 {clientesFiltrados.length === 0 ? (
                   <div className="empty-state"><h3>No se encontraron clientes</h3><p>Intenta ajustar los filtros o agregar un nuevo cliente</p></div>
                 ) : (
-                  <div>
-                    {/* HEADER COLUMNAS */}
-                    <div style={{ display:'grid', gridTemplateColumns:'40px 70px 1fr 1.3fr 140px 100px 180px', alignItems:'center', padding:'6px 14px', gap:'12px', marginBottom:'4px' }}>
-                      <div><input type="checkbox" onChange={toggleTodos} checked={clientesPaginados.length > 0 && clientesPaginados.every(c => clientesSeleccionados.includes(c.id))} style={{ cursor:'pointer', accentColor:'#6366f1' }} title="Seleccionar todos"/></div>
-                      <div style={{ fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em' }}># Cód</div>
-                      <div style={{ fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em' }}>Cliente</div>
-                      <div style={{ fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em' }}>Contacto</div>
-                      <div style={{ fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center' }}>Estado</div>
-                      <div style={{ fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'right' }}>Monto</div>
-                      <div style={{ fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center' }}>Proceso</div>
-                    </div>
-                    {/* FILAS TARJETA */}
-                    <div>
+                  <table className={modoCompacto ? 'compact-mode' : ''}>
+                    <thead><tr>
+                      <th style={{ width:'32px', textAlign:'center' }}><input type="checkbox" onChange={toggleTodos} checked={clientesPaginados.length > 0 && clientesPaginados.every(c => clientesSeleccionados.includes(c.id))} style={{ cursor:'pointer' }} title="Seleccionar todos" /></th>
+                      <th style={{ width:'60px', display:'none' }}>ID</th>
+                      <th style={{ width:'80px', textAlign:'center' }}>CÓDIGO</th>
+                      <th style={{ textAlign:'left' }}>CLIENTE</th>
+                      {puedeVerTodo && <th style={{ width:'90px', textAlign:'center' }}>AGENTE</th>}
+                      <th style={{ width:'130px', textAlign:'center' }}>ESTADO</th>
+                      <th style={{ width:'140px', textAlign:'center' }}>TELÉFONO</th>
+                      <th style={{ width:'90px', textAlign:'center' }}>MONTO</th>
+                      <th style={{ width:'160px', textAlign:'center' }}>PROCESO</th>
+                      <th style={{ width:'100px', textAlign:'center' }}>OPCIONES</th>
+                    </tr></thead>
+                    <tbody>
                       {clientesPaginados.map(cliente => {
                         const estaSuspendido = cliente.suspendido === true;
-                        const av = getAvatar(cliente.nombre);
                         return (
-                          <div key={cliente.id} style={{ display:'grid', gridTemplateColumns:'40px 70px 1fr 1.3fr 140px 100px 180px', alignItems:'center', background: clientesSeleccionados.includes(cliente.id) ? '#fefce8' : estaSuspendido ? '#fff1f2' : '#fff', border: clientesSeleccionados.includes(cliente.id) ? '1px solid #fde68a' : estaSuspendido ? '1px solid #fecdd3' : '1px solid #f0efe9', borderRadius:'10px', padding:'10px 14px', gap:'12px', cursor:'pointer', marginBottom:'6px', transition:'all 0.15s' }}
-                            onMouseOver={e => { if(!clientesSeleccionados.includes(cliente.id)) e.currentTarget.style.borderColor='#e0dfd8'; e.currentTarget.style.boxShadow='0 2px 8px rgba(0,0,0,0.06)'; }}
-                            onMouseOut={e => { if(!clientesSeleccionados.includes(cliente.id)) e.currentTarget.style.borderColor='#f0efe9'; e.currentTarget.style.boxShadow='none'; }}>
-                            {/* CHECKBOX */}
-                            <div style={{ textAlign:'center' }}><input type="checkbox" checked={clientesSeleccionados.includes(cliente.id)} onChange={() => toggleSeleccion(cliente.id)} style={{ cursor:'pointer', accentColor:'#6366f1' }} /></div>
-                            {/* CÓDIGO */}
-                            <div style={{ fontSize:'12px', color:'#6366f1', fontFamily:'monospace', fontWeight:700, textAlign:'center' }}>#{cliente.codigoCliente || cliente.id}</div>
-                            {/* CLIENTE */}
-                            <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-                              <div className="avatar avatar-sm" style={{ background: av.color, flexShrink:0 }}>{av.letra}</div>
-                              <div>
-                                <div style={{ display:'flex', alignItems:'center', gap:'5px', flexWrap:'wrap' }}>
-                                  <span onClick={() => { setHistorialPagosCliente(cliente); setShowHistorialPagosModal(true); }} className="nombre-cliente" style={{ fontSize:'13px', fontWeight:500, color:'#1a1915' }} title="Ver historial de pagos">{cliente.nombre}</span>
-                                  {esClienteNuevo(cliente) && <span style={{ fontSize:'10px', fontWeight:700, background:'#dcfce7', color:'#15803d', border:'1px solid #86efac', borderRadius:'20px', padding:'1px 6px' }}>NUEVO</span>}
-                                  {esMorosoRecurrente(cliente) && <span style={{ fontSize:'10px', fontWeight:700, background:'#fef2f2', color:'#dc2626', border:'1px solid #fca5a5', borderRadius:'20px', padding:'1px 6px' }}>⚠ Moroso</span>}
-                                </div>
-                                <div style={{ display:'flex', alignItems:'center', gap:'4px', marginTop:'2px' }}>
-                                  <button onClick={() => { setTagClienteId(cliente.id); setTagInput(''); setShowTagModal(true); }} style={{ background:'none', border:'none', cursor:'pointer', opacity:0.35, padding:'0', display:'flex', alignItems:'center' }} title="Agregar etiqueta"><Tag size={11}/></button>
-                                </div>
+                          <tr key={cliente.id} className={`${estaSuspendido ? 'cliente-suspendido' : ''} ${clientesSeleccionados.includes(cliente.id) ? 'row-selected' : ''}`}>
+                            <td style={{ width:'32px', textAlign:'center' }}><input type="checkbox" checked={clientesSeleccionados.includes(cliente.id)} onChange={() => toggleSeleccion(cliente.id)} style={{ cursor:'pointer' }} /></td>
+                            <td style={{ display:'none' }}><div className="id-with-led"><span className={`status-led ${estaSuspendido ? 'suspended' : esClienteActivo(cliente) ? 'active' : 'inactive'}`}></span><strong>{cliente.id}</strong></div></td>
+                            <td style={{ width:'80px', textAlign:'center' }}><strong style={{ fontFamily: 'var(--mono)', color: 'var(--accent)' }}>{cliente.codigoCliente || '—'}</strong></td>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                {(() => { const av = getAvatar(cliente.nombre); return <div className="avatar avatar-sm" style={{ background: av.color }}>{av.letra}</div>; })()}
+                                <div>
+                                  <div style={{ display:'flex', alignItems:'center', gap:'0.25rem', flexWrap:'wrap' }}>
+                                  <span onClick={() => { setHistorialPagosCliente(cliente); setShowHistorialPagosModal(true); }} className="nombre-cliente" title="Ver historial de pagos">{cliente.nombre}</span>
+                                  {esClienteNuevo(cliente) && <span title="Cliente nuevo este mes" style={{ fontSize:'0.62rem', fontWeight:700, background:'#dcfce7', color:'#15803d', border:'1px solid #86efac', borderRadius:'20px', padding:'0.1rem 0.45rem', verticalAlign:'middle' }}>NUEVO</span>}
+                                  {esMorosoRecurrente(cliente) && <span title="Ha sido notificado sin pagar en 2+ meses" style={{ fontSize:'0.62rem', fontWeight:700, background:'#fef2f2', color:'#dc2626', border:'1px solid #fca5a5', borderRadius:'20px', padding:'0.1rem 0.45rem', verticalAlign:'middle' }}>⚠ Moroso</span>}
+                                  <button onClick={() => { setTagClienteId(cliente.id); setTagInput(''); setShowTagModal(true); }} style={{ background:'none', border:'none', cursor:'pointer', opacity:0.35, padding:'0 0.15rem', display:'flex', alignItems:'center' }} title="Agregar etiqueta"><Tag size={12}/></button>
+                                  </div>
                                   {(tags[cliente.id] || []).length > 0 && (
                                     <div className="tags-wrap">
                                       {(tags[cliente.id] || []).map(tag => (
@@ -4472,52 +4458,56 @@ export default function App() {
                                     </div>
                                   )}
                                   {cliente.nota && (
-                                    <div onClick={() => abrirNotaModal(cliente)} title={cliente.nota} style={{ display:'inline-flex', alignItems:'center', gap:'3px', marginTop:'2px', cursor:'pointer', background:'#fef9c3', border:'1px solid #fde047', borderRadius:'5px', padding:'1px 6px', maxWidth:'200px' }}>
-                                      <StickyNote size={10} style={{ color:'#a16207', flexShrink:0 }}/>
-                                      <span style={{ fontSize:'10px', fontWeight:600, color:'#92400e', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{cliente.nota.length > 30 ? cliente.nota.slice(0, 30) + '…' : cliente.nota}</span>
+                                    <div onClick={() => abrirNotaModal(cliente)} title={cliente.nota} className="instancia-badge" style={{ display:'inline-flex', alignItems:'center', gap:'0.3rem', marginTop:'0.2rem', cursor:'pointer', background:'#fef9c3', border:'1px solid #fde047', borderRadius:'5px', padding:'0.1rem 0.45rem', maxWidth:'220px', opacity:0, transition:'opacity 0.2s ease' }}>
+                                      <StickyNote size={11} style={{ color:'#a16207', flexShrink:0 }}/>
+                                      <span style={{ fontSize:'0.68rem', fontWeight:600, color:'#92400e', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{cliente.nota.length > 35 ? cliente.nota.slice(0, 35) + '…' : cliente.nota}</span>
                                     </div>
                                   )}
                                 </div>
                               </div>
-                            {/* CONTACTO */}
-                            <div style={{ textAlign:'center' }}>
+                            </td>
+                            {puedeVerTodo && <td>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, background: 'var(--surface2)', padding: '0.15rem 0.5rem', borderRadius: '20px', color: 'var(--text-muted)' }}>{cliente.creadoPor || '—'}</span>
+                              {cliente.assignedTo && cliente.assignedTo !== cliente.creadoPor && (
+                                <div style={{ fontSize: '0.67rem', marginTop: '0.2rem', color: '#f97316', fontWeight: 700 }}>→ {cliente.assignedTo}</div>
+                              )}
+                            </td>}
+
+                            <td style={{ width:'130px', textAlign:'center' }}><span className={`badge badge-${estadoActivoCliente(cliente).toLowerCase().replace(/ /g, '-')}`}>{estadoActivoCliente(cliente)}</span></td>
+
+                            <td style={{ width:'140px', textAlign:'center', fontSize:'0.78rem', letterSpacing:'-0.3px', whiteSpace:'nowrap' }}>
                               {editingContactoId === cliente.id ? (
                                 <input type="tel" value={tempContacto} onChange={e => setTempContacto(e.target.value)} onBlur={() => guardarContactoInline(cliente.id)} onKeyDown={e => { if (e.key === 'Enter') guardarContactoInline(cliente.id); else if (e.key === 'Escape') cancelarEdicionContacto(); }} autoFocus style={{ width: '110px', padding: '0.25rem 0.4rem', border: '2px solid var(--brand)', borderRadius: '6px', fontSize: '0.74rem', fontFamily: 'var(--mono)', fontWeight: 700 }} />
                               ) : (
-                                <span onDoubleClick={() => !esModoPasado && (setEditingContactoId(cliente.id), setTempContacto(cliente.contacto || ''))} title={esModoPasado ? '' : 'Doble clic para editar'} style={{ cursor: esModoPasado ? 'default' : 'text', fontFamily: 'var(--mono)', fontWeight: 600, fontSize:'12px', color: cliente.contacto ? '#6366f1' : 'var(--text-muted)' }}>
+                                <span onDoubleClick={() => !esModoPasado && (setEditingContactoId(cliente.id), setTempContacto(cliente.contacto || ''))} title={esModoPasado ? '' : 'Doble clic para editar'} style={{ cursor: esModoPasado ? 'default' : 'text', fontFamily: 'var(--mono)', fontWeight: 700, color: cliente.contacto ? '#3b7dd8' : 'var(--text-muted)' }}>
                                   {formatTelefono(cliente.contacto)}
                                 </span>
                               )}
-                              {esMorosoRecurrente(cliente) && <div style={{ fontSize:'11px', color:'#dc2626', marginTop:'1px' }}>⚠ Moroso</div>}
-                            </div>
-                            {/* ESTADO */}
-                            <div style={{ textAlign:'center' }}>
-                              <span className={`badge badge-${estadoActivoCliente(cliente).toLowerCase().replace(/ /g, '-')}`}>{estadoActivoCliente(cliente)}</span>
-                            </div>
-                            {/* MONTO */}
-                            <div style={{ textAlign:'right' }}>
+                            </td>
+
+                            <td style={{ width:'90px', textAlign:'center' }}>
                               {!tienePermiso('ver_montos') ? (
                                 <span style={{ color: 'var(--text-muted)', letterSpacing: '0.1em', fontWeight: 700 }}>***</span>
                               ) : editingMontoId === cliente.id ? (
-                                <input type="number" value={tempMonto} onChange={(e) => setTempMonto(e.target.value)} onBlur={() => guardarMontoInline(cliente.id)} onKeyDown={(e) => { if (e.key === 'Enter') guardarMontoInline(cliente.id); else if (e.key === 'Escape') cancelarEdicionMonto(); }} autoFocus step="0.01" style={{ width: '80px', padding: '0.25rem 0.4rem', border: '2px solid #0ea5e9', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 700 }} />
+                                <input type="number" value={tempMonto} onChange={(e) => setTempMonto(e.target.value)} onBlur={() => guardarMontoInline(cliente.id)} onKeyDown={(e) => { if (e.key === 'Enter') guardarMontoInline(cliente.id); else if (e.key === 'Escape') cancelarEdicionMonto(); }} autoFocus step="0.01" style={{ width: '90px', padding: '0.35rem 0.5rem', border: '2px solid #0ea5e9', borderRadius: '6px', fontSize: '0.9rem', fontWeight: 700 }} />
                               ) : (
                                 <div>
-                                  <span onDoubleClick={() => !esModoPasado && iniciarEdicionMonto(cliente)} style={{ cursor: esModoPasado ? 'default' : 'text', fontWeight: 700, fontSize: '13px', color: '#1a1915', fontFamily: 'var(--mono)' }} title={esModoPasado ? '' : 'Doble clic para editar'}>
+                                  <span onDoubleClick={() => !esModoPasado && iniciarEdicionMonto(cliente)} style={{ cursor: esModoPasado ? 'default' : 'text', fontWeight: 800, fontSize: '0.92rem', color: 'var(--text)', fontFamily: 'var(--mono)' }} title={esModoPasado ? '' : 'Doble clic para editar'}>
                                     {'$' + (parseFloat(cliente.monto) || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}
                                   </span>
-                                  {cliente.pagosRealizados && cliente.pagosRealizados.length > 0 && (() => { const s = calcularSaldoCliente(cliente); return <div style={{ fontSize: '10px', marginTop: '1px' }}><span style={{ color: '#059669', fontWeight: 700 }}>+${s.pagado.toLocaleString('en-US', { maximumFractionDigits: 0 })}</span></div>; })()}
+                                  {cliente.pagosRealizados && cliente.pagosRealizados.length > 0 && (() => { const s = calcularSaldoCliente(cliente); return <div style={{ fontSize: '0.68rem', marginTop: '0.15rem' }}><span style={{ color: '#059669', fontWeight: 700 }}>+${s.pagado.toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>{s.pendiente > 0 && <span style={{ color: '#ea580c', fontWeight: 700 }}> ${s.pendiente.toLocaleString('en-US', { maximumFractionDigits: 0 })} pend.</span>}</div>; })()}
                                 </div>
                               )}
-                            </div>
-                            {/* PROCESO */}
-                            <div style={{ textAlign:'center' }}>
-                              <div className="proceso-icons" style={{ justifyContent:'center' }}>
+                            </td>
+
+                            <td style={{ width:'160px', textAlign:'center' }}>
+                              <div className="proceso-icons">
                                 <button className={`proceso-icon cotizado ${cliente.fechaCotizacion ? 'done' : ''}`} disabled={esModoPasado} title={cliente.fechaCotizacion ? 'Cotizado' : 'Marcar Cotizado'} onClick={() => { if (esModoPasado) return; const a = { ...cliente }; if (!a.fechaCotizacion) { a.fechaCotizacion = new Date().toISOString().split('T')[0]; a.estado = 'Cotizado'; } else { a.fechaCotizacion = ''; a.fechaNotificacion = ''; a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'No Generaron'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaCotizacion ? 'Marco Cotizado' : 'Desmarco Cotizado', usuario: currentUser || session?.user?.username || 'Sistema' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}><ClipboardList size={13}/></button>
                                 <button className={`proceso-icon notificado ${cliente.fechaNotificacion ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaCotizacion} style={{ opacity: !cliente.fechaCotizacion ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaCotizacion) return; if (!cliente.fechaNotificacion) { abrirWhatsappModal(cliente); } else { const a = { ...cliente, fechaNotificacion: '', fechaPago: '', fechaFacturacion: '', pagosRealizados: [], estado: 'Cotizado' }; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: 'Desmarco Notificado', usuario: currentUser || session?.user?.username || 'Sistema' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, 'Cotizado'); } }}><Mail size={13}/></button>
                                 {tienePermiso('registrar_pagos') && <button className={`proceso-icon pagado ${cliente.fechaPago ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaNotificacion} style={{ opacity: !cliente.fechaNotificacion ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaNotificacion) return; const a = { ...cliente }; if (!a.fechaPago) { a.fechaPago = new Date().toISOString().split('T')[0]; a.estado = 'Pagado'; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: 'Marco Pagado', usuario: currentUser || session?.user?.username || 'Sistema' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, 'Pagado'); return; } a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'Notificado'; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: 'Desmarco Pagado', usuario: currentUser || session?.user?.username || 'Sistema' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}><DollarSign size={13}/></button>}
                                 <button className={`proceso-icon facturado ${cliente.fechaFacturacion ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaPago} style={{ opacity: !cliente.fechaPago ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaPago) return; const a = { ...cliente }; if (!a.fechaFacturacion) { a.fechaFacturacion = new Date().toISOString().split('T')[0]; a.estado = 'Facturado'; } else { a.fechaFacturacion = ''; a.estado = 'Pagado'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaFacturacion ? 'Marco Facturado' : 'Desmarco Facturado', usuario: currentUser || session?.user?.username || 'Sistema' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}><FileText size={13}/></button>
                               </div>
-                            </div>
+                            </td>
 
                             <td style={{ width:'100px', textAlign:'center', position: 'relative' }}>
                               <div style={{ position: 'relative', display: 'inline-block' }}>
@@ -4590,12 +4580,12 @@ export default function App() {
                                   </div>
                                 )}
                               </div>
-                            </div>
-                          </div>
+                            </td>
+                          </tr>
                         );
                       })}
-                    </div>
-                  </div>
+                    </tbody>
+                  </table>
                 )}
               </div>
               {totalPaginas > 1 && (
@@ -4627,10 +4617,6 @@ export default function App() {
           </div>
 
           {/* TAB CRÉDITO */}
-          <div className={`tab-content ${activeTab === 'tickets' ? 'active' : ''}`}>
-            <TabTickets currentUser={currentUser} session={session} empresaActual={empresaActual} clientes={clientes} showToast={showToast} />
-          </div>
-
           <div className={`tab-content ${activeTab === 'credito' ? 'active' : ''}`}>
             {creditosVencidos.length > 0 && <div className="alert-box danger"><h3><AlertTriangle size={14} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Créditos Vencidos ({creditosVencidos.length})</h3>{creditosVencidos.map(credito => <div key={credito.id} className="alert-item"><div><strong>{credito.cliente}</strong> - Orden: {credito.numeroOrden}<div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Vencido: {new Date(credito.fechaVencimiento).toLocaleDateString('es-DO')}</div></div><span className="dias-restantes critico">{Math.abs(getDiasRestantes(credito.fechaVencimiento))} días vencido</span></div>)}</div>}
             {creditosAlerta.length > 0 && <div className="alert-box"><h3><Clock size={14} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Créditos por Vencer ({creditosAlerta.length})</h3>{creditosAlerta.map(credito => { const dias = getDiasRestantes(credito.fechaVencimiento); return <div key={credito.id} className="alert-item"><div><strong>{credito.cliente}</strong> - Orden: {credito.numeroOrden}<div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Vence: {new Date(credito.fechaVencimiento).toLocaleDateString('es-DO')}</div></div><span className={`dias-restantes ${dias <= 3 ? 'critico' : 'advertencia'}`}>{dias} {dias === 1 ? 'día' : 'días'}</span></div>; })}</div>}
@@ -5513,6 +5499,7 @@ export default function App() {
                                 {h.usuario && <span style={{ fontSize:'0.65rem', fontWeight:700, color:'var(--brand)', background:'var(--brand-bg)', padding:'0.05rem 0.4rem', borderRadius:'9px' }}>{h.usuario}</span>}
                                 <span style={{ fontSize:'0.65rem', color:'var(--text-muted)' }}>{new Date(h.fecha).toLocaleString('es-DO', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}</span>
                               </div>
+                            </div>
                           </div>
                         );
                       })}
