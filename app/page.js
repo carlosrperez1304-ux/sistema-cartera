@@ -4414,33 +4414,33 @@ export default function App() {
             )}
 
 
-            <div className="table-container" style={{ display: vistaCards ? 'none' : 'block' }}>
+            <div className="table-container" style={{ display: vistaCards ? 'none' : 'block', background:'transparent', border:'none', boxShadow:'none' }}>
               <div className="table-wrapper">
                 {clientesFiltrados.length === 0 ? (
                   <div className="empty-state"><h3>No se encontraron clientes</h3><p>Intenta ajustar los filtros o agregar un nuevo cliente</p></div>
                 ) : (
                   <table className={modoCompacto ? 'compact-mode' : ''}>
-                    <thead><tr>
-                      <th style={{ width:'32px', textAlign:'center' }}><input type="checkbox" onChange={toggleTodos} checked={clientesPaginados.length > 0 && clientesPaginados.every(c => clientesSeleccionados.includes(c.id))} style={{ cursor:'pointer' }} title="Seleccionar todos" /></th>
+                    <thead><tr style={{ background:'transparent' }}>
+                      <th style={{ width:'32px', textAlign:'center', padding:'6px 14px', fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', border:'none' }}><input type="checkbox" onChange={toggleTodos} checked={clientesPaginados.length > 0 && clientesPaginados.every(c => clientesSeleccionados.includes(c.id))} style={{ cursor:'pointer' }} title="Seleccionar todos" /></th>
                       <th style={{ width:'60px', display:'none' }}>ID</th>
-                      <th style={{ width:'80px', textAlign:'center' }}>CÓDIGO</th>
-                      <th style={{ textAlign:'left' }}>CLIENTE</th>
-                      {puedeVerTodo && <th style={{ width:'90px', textAlign:'center' }}>AGENTE</th>}
-                      <th style={{ width:'130px', textAlign:'center' }}>ESTADO</th>
-                      <th style={{ width:'140px', textAlign:'center' }}>TELÉFONO</th>
-                      <th style={{ width:'90px', textAlign:'center' }}>MONTO</th>
-                      <th style={{ width:'160px', textAlign:'center' }}>PROCESO</th>
-                      <th style={{ width:'100px', textAlign:'center' }}>OPCIONES</th>
+                      <th style={{ padding:'6px 8px', fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center', border:'none' }}># CÓD</th>
+                      <th style={{ padding:'6px 14px', fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'left', border:'none' }}>CLIENTE</th>
+                      {puedeVerTodo && <th style={{ padding:'6px 14px', fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center', border:'none' }}>AGENTE</th>}
+                      <th style={{ padding:'6px 14px', fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center', border:'none' }}>ESTADO</th>
+                      <th style={{ padding:'6px 14px', fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center', border:'none' }}>TELÉFONO</th>
+                      <th style={{ padding:'6px 14px', fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'right', border:'none' }}>MONTO</th>
+                      <th style={{ padding:'6px 14px', fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center', border:'none' }}>PROCESO</th>
+                      <th style={{ padding:'6px 14px', fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center', border:'none' }}>ACCIONES</th>
                     </tr></thead>
                     <tbody>
                       {clientesPaginados.map(cliente => {
                         const estaSuspendido = cliente.suspendido === true;
                         return (
-                          <tr key={cliente.id} className={`${estaSuspendido ? 'cliente-suspendido' : ''} ${clientesSeleccionados.includes(cliente.id) ? 'row-selected' : ''}`}>
+                          <tr key={cliente.id} className={`${estaSuspendido ? 'cliente-suspendido' : ''} ${clientesSeleccionados.includes(cliente.id) ? 'row-selected' : ''}`} style={{ background: clientesSeleccionados.includes(cliente.id) ? '#fefce8' : estaSuspendido ? '#fff1f2' : '#fff', border:'1px solid #f0efe9', borderRadius:'10px', marginBottom:'6px', boxShadow:'0 1px 3px rgba(0,0,0,0.04)', transition:'all 0.15s' }}>
                             <td style={{ width:'32px', textAlign:'center' }}><input type="checkbox" checked={clientesSeleccionados.includes(cliente.id)} onChange={() => toggleSeleccion(cliente.id)} style={{ cursor:'pointer' }} /></td>
                             <td style={{ display:'none' }}><div className="id-with-led"><span className={`status-led ${estaSuspendido ? 'suspended' : esClienteActivo(cliente) ? 'active' : 'inactive'}`}></span><strong>{cliente.id}</strong></div></td>
-                            <td style={{ width:'80px', textAlign:'center' }}><strong style={{ fontFamily: 'var(--mono)', color: 'var(--accent)' }}>{cliente.codigoCliente || '—'}</strong></td>
-                            <td>
+                            <td style={{ padding:'10px 8px', fontSize:'12px', color:'#6366f1', fontFamily:'monospace', fontWeight:700, textAlign:'center', borderBottom:'1px solid #f5f4ef' }}>{cliente.codigoCliente || cliente.id}</td>
+                            <td style={{ padding:'10px 14px', borderBottom:'1px solid #f5f4ef' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 {(() => { const av = getAvatar(cliente.nombre); return <div className="avatar avatar-sm" style={{ background: av.color }}>{av.letra}</div>; })()}
                                 <div>
