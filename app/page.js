@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import TabTickets from './components/TabTickets';
+import TabGrupos from './components/TabGrupos';
 import { getSupabaseBrowser } from '../lib/supabase-browser.js';
 import * as XLSX from 'xlsx';
 import { signIn, signOut, useSession } from 'next-auth/react';
@@ -1084,7 +1085,7 @@ export default function App() {
     else if (filter !== 'todos' && filter !== 'delegaciones') {
       if (filter === 'no-generaron') resultado = resultado.filter(c => c.estado === 'No Generaron');
       else if (filter === 'sin-documento') resultado = resultado.filter(c => estadoActivoCliente(c) === 'Cotizado' && (cotizaciones[c.id] || []).length === 0);
-      else if (filter === 'suspendido') resultado = resultado.filter(c => c.suspendido === true);
+      else if (filter === 'suspendido') resultado = datosActuales.clientes.filter(c => c.suspendido === true);
       else resultado = resultado.filter(c => estadoActivoCliente(c).toLowerCase() === filter);
     }
     resultado = [...resultado].sort((a, b) => {
@@ -3135,6 +3136,7 @@ export default function App() {
             ...(tienePermiso('ver_creditos') ? [{ tab:'credito', label:'Crédito' }] : []),
             { tab:'agenda', label:'Agenda' },
             { tab:'documentos', label:'Documentos' },
+            { tab:'grupos', label:'Grupos' },
           ].map(item => (
             <button key={item.tab} onClick={() => setActiveTab(item.tab)} style={{ padding:'5px 14px', borderRadius:'16px', fontSize:'12px', fontWeight: activeTab === item.tab ? 600 : 400, background: activeTab === item.tab ? 'var(--text)' : 'transparent', color: activeTab === item.tab ? 'var(--bg)' : 'var(--text-muted)', border:'none', cursor:'pointer', transition:'all 0.15s', whiteSpace:'nowrap' }}>
               {item.label}
@@ -4664,6 +4666,10 @@ export default function App() {
           {/* TAB CRÉDITO */}
           <div className={`tab-content ${activeTab === 'tickets' ? 'active' : ''}`}>
             <TabTickets currentUser={currentUser} session={session} empresaActual={empresaActual} clientes={clientes} showToast={showToast} />
+          </div>
+
+          <div className={`tab-content ${activeTab === 'grupos' ? 'active' : ''}`}>
+            <TabGrupos clientes={clientes} session={session} currentUser={currentUser} empresaActual={empresaActual} showToast={showToast} />
           </div>
 
           <div className={`tab-content ${activeTab === 'credito' ? 'active' : ''}`}>
