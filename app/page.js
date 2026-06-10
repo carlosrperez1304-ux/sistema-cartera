@@ -1734,7 +1734,7 @@ export default function App() {
       if (doc?.base64) descargarDocumento(doc);
       window.open(`https://wa.me/1${num}?text=${encodeURIComponent(whatsappMensaje)}`, "_blank");
     }
-    }
+
 
     // Marcar como Notificado automáticamente
     marcarNotificado(whatsappCliente);
