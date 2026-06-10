@@ -99,9 +99,7 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
     if (!confirm('¿Cerrar el mes? Los grupos pendientes acumularán su deuda al próximo mes.')) return;
     const mes = getMesActual();
     for (const g of grupos) {
-      const deudaAnterior = g.deuda_pendiente || 0;
-      const deudaMesActual = g.estado === 'PENDIENTE' ? (g.monto_total || 0) : 0;
-      const nuevaDeuda = deudaAnterior + deudaMesActual;
+      const nuevaDeuda = g.estado === 'PENDIENTE' ? (g.deuda_pendiente || 0) : 0;
       const historial = [...(g.historial || []), {
         fecha: new Date().toISOString(),
         mes,
