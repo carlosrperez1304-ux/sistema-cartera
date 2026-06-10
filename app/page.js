@@ -3169,8 +3169,9 @@ export default function App() {
 
         <div className="topbar-left" style={{ display:'none' }}>
 
+        </div>
         {/* TOPBAR CENTER — búsqueda global + reloj */}
-        <div className="topbar-center">
+        <div className="topbar-center" style={{ display:"none" }}>
           <div style={{ position: 'relative' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--surface-2, rgba(255,255,255,0.06))', border: '1px solid var(--border)', borderRadius: '10px', padding: '0.3rem 0.75rem', minWidth: '260px' }}>
               <Search size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }}/>
@@ -3221,7 +3222,7 @@ export default function App() {
           <div ref={clockRef} style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', letterSpacing: '0.02em', marginLeft: '1rem' }} />
         </div>
 
-        <div className="topbar-right">
+        <div className="topbar-right" style={{ display:"none" }}>
           {soloLectura && <span style={{ background: 'rgba(254,249,195,0.15)', color: '#fbbf24', fontSize: '0.67rem', padding: '0.2rem 0.55rem', borderRadius: '5px', fontWeight: 700, marginRight: '0.25rem', border: '1px solid rgba(251,191,36,0.25)' }}>Solo lectura</span>}
           <button className="topbar-icon-btn" onClick={() => setDarkMode(!darkMode)} title="Modo oscuro">
             {darkMode ? <Sun size={16}/> : <Moon size={16}/>}
