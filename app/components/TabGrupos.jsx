@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Upload, Send, Settings, X, Trash2, ChevronDown, ChevronUp, DollarSign, Clock, FileText, AlertCircle } from 'lucide-react';
+import { Upload, Send, Settings, X, Trash2, DollarSign, Clock, FileText } from 'lucide-react';
 
 function parsearReporte(texto) {
   const lineas = texto.trim().split('\n');
@@ -65,70 +65,33 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
 
   const marcarPagado = async (grupo) => {
     const esPagado = grupo.estado === 'PAGADO';
-    // Deuda acumulada = total - mes actual
-    const deudaAnterior = (grupo.deuda_pendiente || 0) - (grupo.monto_total || 0);
+    const deudaAnterior = Math.max(0, (grupo.deuda_pendiente || 0) - (grupo.monto_total || 0));
     const historial = [...(grupo.historial || []), {
       fecha: new Date().toISOString(),
       mes: getMesActual(),
       accion: esPagado ? 'Marcado PENDIENTE' : 'Marcado PAGADO',
       monto: grupo.monto_total
     }];
-    const res = await fetch('/api/grupos-blueline', {
+    await fetch('/api/grupos-blueline', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         id: grupo.id,
         estado: esPagado ? 'PENDIENTE' : 'PAGADO',
         monto_pagado: esPagado ? 0 : grupo.monto_total,
-        deuda_pendiente: esPagado ? grupo.monto_total : Math.max(0, deudaAnterior),
+        deuda_pendiente: esPagado ? grupo.monto_total : deudaAnterior,
         fecha_pago: esPagado ? '' : new Date().toLocaleDateString('es-DO'),
         historial
       })
     });
-    if (res.ok) {
-      await cargar();
-      if (grupoSeleccionado?.id === grupo.id) {
-        const updated = await fetch('/api/grupos-blueline?empresa_id=' + empresaId);
-        const data = await updated.json();
-        const g = data.find(x => x.id === grupo.id);
-        if (g) setGrupoSeleccionado(g);
-      }
-      if (showToast) showToast(esPagado ? 'Marcado como pendiente' : '✅ Marcado como pagado', 'success');
-    }
-  };
-
-  const cierreDeMes = async () => {
-    const mes = getMesActual();
-    const yaHizoCierre = grupos.some(g => (g.historial||[]).some(h => h.mes === mes && h.accion === 'Cierre de mes'));
-    if (yaHizoCierre) { if (showToast) showToast('Ya se realizó el cierre de ' + mes, 'error'); return; }
-    if (!confirm('¿Cerrar el mes? Los grupos pendientes acumularán su deuda al próximo mes.')) return;
-    for (const g of grupos) {
-      const nuevaDeuda = g.estado === 'PENDIENTE' ? (g.deuda_pendiente || 0) : 0;
-      const historial = [...(g.historial || []), {
-        fecha: new Date().toISOString(),
-        mes,
-        accion: 'Cierre de mes',
-        monto_total: g.monto_total,
-        monto_pagado: g.monto_pagado,
-        deuda: nuevaDeuda,
-        estado: g.estado
-      }];
-      await fetch('/api/grupos-blueline', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: g.id,
-          monto_total: 0,
-          monto_pagado: 0,
-          deuda_pendiente: nuevaDeuda,
-          estado: 'PENDIENTE',
-          fecha_pago: '',
-          historial
-        })
-      });
-    }
     await cargar();
-    if (showToast) showToast('✅ Mes cerrado. Deudas acumuladas.', 'success');
+    if (grupoSeleccionado?.id === grupo.id) {
+      const res = await fetch(empresaId ? '/api/grupos-blueline?empresa_id=' + empresaId : '/api/grupos-blueline');
+      const data = await res.json();
+      const g = data.find(x => x.id === grupo.id);
+      if (g) setGrupoSeleccionado(g);
+    }
+    if (showToast) showToast(esPagado ? 'Marcado como pendiente' : 'Marcado como pagado', 'success');
   };
 
   const toggleSuspendido = async (grupo) => {
@@ -156,6 +119,33 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
     });
     setEditandoNota(null);
     await cargar();
+    if (grupoSeleccionado?.id === grupo.id) setGrupoSeleccionado(prev => ({ ...prev, notas: notaTemp }));
+  };
+
+  const cierreDeMes = async () => {
+    const mes = getMesActual();
+    const yaHizoCierre = grupos.some(g => (g.historial || []).some(h => h.mes === mes && h.accion === 'Cierre de mes'));
+    if (yaHizoCierre) { if (showToast) showToast('Ya se realizó el cierre de ' + mes, 'error'); return; }
+    if (!confirm('¿Cerrar el mes? Los grupos pendientes acumularán su deuda.')) return;
+    for (const g of grupos) {
+      const nuevaDeuda = g.estado === 'PENDIENTE' ? (g.deuda_pendiente || 0) : 0;
+      const historial = [...(g.historial || []), {
+        fecha: new Date().toISOString(),
+        mes,
+        accion: 'Cierre de mes',
+        monto_total: g.monto_total,
+        monto_pagado: g.monto_pagado,
+        deuda: nuevaDeuda,
+        estado: g.estado
+      }];
+      await fetch('/api/grupos-blueline', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: g.id, monto_total: 0, monto_pagado: 0, deuda_pendiente: nuevaDeuda, estado: 'PENDIENTE', fecha_pago: '', historial })
+      });
+    }
+    await cargar();
+    if (showToast) showToast('Mes cerrado. Deudas acumuladas.', 'success');
   };
 
   const procesar = () => {
@@ -179,7 +169,6 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
     for (const item of resultado) {
       try {
         if (item.existe && item.grupoId) {
-          // Buscar la deuda acumulada del grupo existente
           const grupoExistente = grupos.find(g => g.id === item.grupoId);
           const deudaAcumulada = grupoExistente?.deuda_pendiente || 0;
           const nuevaDeuda = deudaAcumulada + item.monto;
@@ -189,7 +178,6 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
             body: JSON.stringify({ id: item.grupoId, monto_total: item.monto, deuda_pendiente: nuevaDeuda, estado: 'PENDIENTE' })
           });
           if (r.ok) actualizados++;
-          else { const e = await r.json(); console.error('PUT error:', e); }
         } else {
           const r = await fetch('/api/grupos-blueline', {
             method: 'POST',
@@ -197,7 +185,6 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
             body: JSON.stringify({ nombre: item.nombre, monto_total: item.monto, monto_pagado: 0, deuda_pendiente: item.monto, estado: 'PENDIENTE', empresa_id: empresaId, numero: grupos.length + creados + 1, historial: [] })
           });
           if (r.ok) creados++;
-          else { const e = await r.json(); console.error('POST error:', e, 'item:', item); }
         }
       } catch(e) {}
     }
@@ -206,11 +193,11 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
     setTexto('');
     setShowImport(false);
     await cargar();
-    if (showToast) showToast('✅ ' + actualizados + ' actualizados · ' + creados + ' nuevos', 'success');
+    if (showToast) showToast(actualizados + ' actualizados · ' + creados + ' nuevos', 'success');
   };
 
   const enviarWhatsApp = () => {
-    const pendientes = grupos.filter(g => g.estado === 'PENDIENTE' && g.monto_total > 0);
+    const pendientes = grupos.filter(g => g.estado === 'PENDIENTE' && g.monto_total > 0 && !g.suspendido);
     if (pendientes.length === 0) { if (showToast) showToast('No hay grupos pendientes', 'info'); return; }
     if (!telefonoJunior) { setShowConfigTel(true); return; }
     const saludo = getSaludo();
@@ -229,9 +216,44 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
   const totalPagado = grupos.filter(g => g.estado === 'PAGADO').reduce((s, g) => s + (g.monto_total || 0), 0);
   const totalDeuda = grupos.reduce((s, g) => s + (g.deuda_pendiente || 0), 0);
 
+  const gruposActivos = grupos.filter(g => (g.monto_total || 0) > 0);
+  const gruposSoloDeuda = grupos.filter(g => (g.monto_total || 0) === 0 && (g.deuda_pendiente || 0) > 0);
+
+  const FilaGrupo = ({ g, i }) => (
+    <tr key={g.id} onClick={() => setGrupoSeleccionado(g)}
+      style={{ borderBottom:'1px solid #f5f4ef', background: g.suspendido ? '#fff1f2' : g.estado === 'PAGADO' ? '#f0fdf4' : (g.monto_total||0) === 0 ? '#fffbeb' : i%2===0 ? '#fff' : '#fdfcf8', cursor:'pointer' }}
+      onMouseOver={e => e.currentTarget.style.opacity = '0.85'}
+      onMouseOut={e => e.currentTarget.style.opacity = '1'}>
+      <td style={{ padding:'10px 14px', color:'#9a998f', fontFamily:'monospace', fontSize:'12px' }}>{g.numero || i+1}</td>
+      <td style={{ padding:'10px 14px' }}>
+        <div style={{ fontWeight:600, color: g.suspendido ? '#dc2626' : g.estado === 'PAGADO' ? '#16a34a' : '#1a1915' }}>{g.nombre}</div>
+        {g.notas && <div style={{ fontSize:'11px', color:'#9a998f', marginTop:'2px' }}>{g.notas}</div>}
+      </td>
+      <td style={{ padding:'10px 14px', textAlign:'right', fontFamily:'monospace', fontWeight:600, color:'#1a1915' }}>RD$ {(g.monto_total||0).toLocaleString('en-US',{maximumFractionDigits:0})}</td>
+      <td style={{ padding:'10px 14px', textAlign:'right', fontFamily:'monospace', color:'#16a34a', fontWeight:600 }}>RD$ {(g.monto_pagado||0).toLocaleString('en-US',{maximumFractionDigits:0})}</td>
+      <td style={{ padding:'10px 14px', textAlign:'right', fontFamily:'monospace', color: g.deuda_pendiente > 0 ? '#dc2626' : '#9a998f', fontWeight:600 }}>RD$ {(g.deuda_pendiente||0).toLocaleString('en-US',{maximumFractionDigits:0})}</td>
+      <td style={{ padding:'10px 14px', textAlign:'center' }} onClick={e => { e.stopPropagation(); marcarPagado(g); }}>
+        <button style={{ padding:'4px 12px', borderRadius:'20px', fontSize:'11px', fontWeight:700, border:'none', cursor:'pointer', background: g.estado === 'PAGADO' ? '#dcfce7' : '#fff7ed', color: g.estado === 'PAGADO' ? '#14532d' : '#c2410c' }}>
+          {g.estado === 'PAGADO' ? '✓ Pagado' : '● Pendiente'}
+        </button>
+      </td>
+      <td style={{ padding:'10px 14px', textAlign:'center', fontSize:'12px', color:'#9a998f' }}>{g.fecha_pago || '—'}</td>
+      <td style={{ padding:'10px 14px', textAlign:'center' }} onClick={e => e.stopPropagation()}>
+        <button onClick={() => toggleSuspendido(g)} title={g.suspendido ? 'Reactivar' : 'Suspender'}
+          style={{ padding:'3px 8px', borderRadius:'20px', fontSize:'10px', fontWeight:700, border:'none', cursor:'pointer', background: g.suspendido ? '#fee2e2' : '#f1f5f9', color: g.suspendido ? '#dc2626' : '#64748b' }}>
+          {g.suspendido ? 'Susp.' : '—'}
+        </button>
+      </td>
+      <td style={{ padding:'10px 14px', textAlign:'center' }} onClick={e => e.stopPropagation()}>
+        <button onClick={() => eliminar(g.id)} style={{ padding:'4px 8px', borderRadius:'6px', border:'1px solid #fca5a5', background:'#fee2e2', color:'#dc2626', fontSize:'11px', cursor:'pointer' }}>
+          <Trash2 size={12}/>
+        </button>
+      </td>
+    </tr>
+  );
+
   return (
     <div>
-      {/* Header */}
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:'1.25rem' }}>
         <div>
           <div style={{ fontSize:'22px', fontWeight:700, color:'#1a1915', letterSpacing:'-0.03em' }}>Grupos BlueLine</div>
@@ -253,12 +275,11 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
         </div>
       </div>
 
-      {/* KPIs */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'10px', marginBottom:'1.25rem' }}>
         {[
           { label:'Total grupos', val: grupos.length, color:'#1a1915', bg:'#faf9f5', border:'#e0dfd8' },
-          { label:'Pendientes', val: grupos.filter(g=>g.estado==='PENDIENTE').length, color:'#ea580c', bg:'#fff7ed', border:'#fed7aa' },
-          { label:'Pagados', val: grupos.filter(g=>g.estado==='PAGADO').length, color:'#16a34a', bg:'#f0fdf4', border:'#bbf7d0' },
+          { label:'Pendientes', val: grupos.filter(g => g.estado === 'PENDIENTE').length, color:'#ea580c', bg:'#fff7ed', border:'#fed7aa' },
+          { label:'Pagados', val: grupos.filter(g => g.estado === 'PAGADO').length, color:'#16a34a', bg:'#f0fdf4', border:'#bbf7d0' },
           { label:'Total pendiente', val: 'RD$' + totalPendiente.toLocaleString('en-US',{maximumFractionDigits:0}), color:'#dc2626', bg:'#fff1f2', border:'#fecdd3' },
         ].map(s => (
           <div key={s.label} style={{ background:s.bg, border:'1.5px solid '+s.border, borderRadius:'12px', padding:'12px 16px' }}>
@@ -268,7 +289,6 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
         ))}
       </div>
 
-      {/* Importador */}
       {showImport && (
         <div style={{ background:'#fff', border:'1px solid #e0dfd8', borderRadius:'12px', padding:'16px', marginBottom:'12px' }}>
           <div style={{ fontSize:'11px', fontWeight:700, color:'#6366f1', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'8px' }}>Importar reporte BlueLine</div>
@@ -301,11 +321,7 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
                             : <span style={{ fontSize:'10px', padding:'2px 8px', borderRadius:'20px', background:'#fff7ed', color:'#c2410c' }}>Nuevo</span>}
                         </td>
                       </tr>
-                    </>);
-            })}
-                  </tbody>
-                </table>
-              </div>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -320,7 +336,6 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
         </div>
       )}
 
-      {/* Tabla */}
       <div style={{ background:'#fff', border:'1px solid #e0dfd8', borderRadius:'12px', overflow:'hidden' }}>
         <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'13px' }}>
           <thead>
@@ -341,51 +356,19 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
               <tr><td colSpan={9} style={{ padding:'2rem', textAlign:'center', color:'#9a998f' }}>Cargando...</td></tr>
             ) : grupos.length === 0 ? (
               <tr><td colSpan={9} style={{ padding:'2rem', textAlign:'center', color:'#9a998f' }}>No hay grupos. Importa el primer reporte.</td></tr>
-            ) : [...grupos.filter(g => (g.monto_total||0) > 0), ...grupos.filter(g => (g.monto_total||0) === 0 && (g.deuda_pendiente||0) > 0)].map((g, i, arr) => {
-              const esSeccionDeuda = (g.monto_total||0) === 0 && (g.deuda_pendiente||0) > 0;
-              const primerDeuda = arr.findIndex(x => (x.monto_total||0) === 0 && (x.deuda_pendiente||0) > 0) === i;
-              return (<>
-              {primerDeuda && <tr key={'sep-deuda'}><td colSpan={9} style={{ padding:'8px 14px', background:'#fff7ed', borderTop:'2px solid #fed7aa', borderBottom:'1px solid #fed7aa' }}><span style={{ fontSize:'10px', fontWeight:700, color:'#ea580c', textTransform:'uppercase', letterSpacing:'0.08em' }}>⚠ Deuda de meses anteriores</span></td></tr>}
-              <tr key={g.id} onClick={() => setGrupoSeleccionado(g)} style={{ borderBottom:'1px solid #f5f4ef', background:g.suspendido?'#fef2f2':g.estado==='PAGADO'?'#f0fdf4':esSeccionDeuda?'#fffbeb':i%2===0?'#fff':'#fdfcf8', cursor:'pointer', transition:'background 0.1s' }}
-                onMouseOver={e => e.currentTarget.style.background = g.estado==='PAGADO'?'#dcfce7':'#faf9f5'}
-                onMouseOut={e => e.currentTarget.style.background = g.estado==='PAGADO'?'#f0fdf4':i%2===0?'#fff':'#fdfcf8'}>
-                <td style={{ padding:'10px 14px', color:'#9a998f', fontFamily:'monospace', fontSize:'12px' }}>{g.numero||i+1}</td>
-                <td style={{ padding:'10px 14px' }}>
-                  <div style={{ fontWeight:600, color:g.estado==='PAGADO'?'#16a34a':'#1a1915' }}>{g.nombre}</div>
-                  {g.notas && <div style={{ fontSize:'11px', color:'#9a998f', marginTop:'2px' }}>{g.notas}</div>}
-                </td>
-                <td style={{ padding:'10px 14px', textAlign:'right', fontFamily:'monospace', fontWeight:600, color:'#1a1915' }}>RD$ {(g.monto_total||0).toLocaleString('en-US',{maximumFractionDigits:0})}</td>
-                <td style={{ padding:'10px 14px', textAlign:'right', fontFamily:'monospace', color:'#16a34a', fontWeight:600 }}>RD$ {(g.monto_pagado||0).toLocaleString('en-US',{maximumFractionDigits:0})}</td>
-                <td style={{ padding:'10px 14px', textAlign:'right', fontFamily:'monospace', color:g.deuda_pendiente>0?'#dc2626':'#9a998f', fontWeight:600 }}>RD$ {(g.deuda_pendiente||0).toLocaleString('en-US',{maximumFractionDigits:0})}</td>
-                <td style={{ padding:'10px 14px', textAlign:'center' }} onClick={e => { e.stopPropagation(); marcarPagado(g); }}>
-                  <button style={{ padding:'4px 12px', borderRadius:'20px', fontSize:'11px', fontWeight:700, border:'none', cursor:'pointer', background:g.estado==='PAGADO'?'#dcfce7':'#fff7ed', color:g.estado==='PAGADO'?'#14532d':'#c2410c' }}>
-                    {g.estado==='PAGADO'?'✓ Pagado':'● Pendiente'}
-                  </button>
-                </td>
-                <td style={{ padding:'10px 14px', textAlign:'center', fontSize:'12px', color:'#9a998f' }}>{g.fecha_pago||'—'}</td>
-                <td style={{ padding:'10px 14px', textAlign:'center' }} onClick={e => e.stopPropagation()}>
-                  <button onClick={() => toggleSuspendido(g)} title={g.suspendido ? 'Reactivar' : 'Suspender'} style={{ padding:'3px 8px', borderRadius:'20px', fontSize:'10px', fontWeight:700, border:'none', cursor:'pointer', background:g.suspendido?'#fee2e2':'#f1f5f9', color:g.suspendido?'#dc2626':'#64748b' }}>
-                    {g.suspendido ? 'Susp.' : '—'}
-                  </button>
-                </td>
-                <td style={{ padding:'10px 14px', textAlign:'center' }} onClick={e => e.stopPropagation()}>
-                  <button onClick={() => eliminar(g.id)} style={{ padding:'4px 8px', borderRadius:'6px', border:'1px solid #fca5a5', background:'#fee2e2', color:'#dc2626', fontSize:'11px', cursor:'pointer' }}>
-                    <Trash2 size={12}/>
-                  </button>
-                </td>
-              </tr>
-            );
-              };
-              return (<>
-                {activos.map((g, i) => renderFila(g, i))}
-                {soloDeuda.length > 0 && (
-                  <tr><td colSpan={9} style={{ padding:'8px 14px', background:'#fff7ed', borderTop:'2px solid #fed7aa', borderBottom:'1px solid #fed7aa' }}>
-                    <span style={{ fontSize:'10px', fontWeight:700, color:'#ea580c', textTransform:'uppercase', letterSpacing:'0.08em' }}>⚠ Deuda de meses anteriores — {soloDeuda.length} grupos</span>
-                  </td></tr>
+            ) : (
+              <>
+                {gruposActivos.map((g, i) => <FilaGrupo key={g.id} g={g} i={i}/>)}
+                {gruposSoloDeuda.length > 0 && (
+                  <tr>
+                    <td colSpan={9} style={{ padding:'8px 14px', background:'#fff7ed', borderTop:'2px solid #fed7aa', borderBottom:'1px solid #fed7aa' }}>
+                      <span style={{ fontSize:'10px', fontWeight:700, color:'#ea580c', textTransform:'uppercase', letterSpacing:'0.08em' }}>Deuda de meses anteriores — {gruposSoloDeuda.length} grupos</span>
+                    </td>
+                  </tr>
                 )}
-                {soloDeuda.map((g, i) => renderFila(g, activos.length + i))}
-              </>);
-            })()}
+                {gruposSoloDeuda.map((g, i) => <FilaGrupo key={g.id} g={g} i={i}/>)}
+              </>
+            )}
           </tbody>
         </table>
         {grupos.length > 0 && (
@@ -397,10 +380,9 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
         )}
       </div>
 
-      {/* PANEL DETALLE GRUPO */}
       {grupoSeleccionado && (
         <div style={{ position:'fixed', top:0, right:0, bottom:0, width:'420px', background:'#fff', boxShadow:'-8px 0 32px rgba(0,0,0,0.12)', zIndex:9998, display:'flex', flexDirection:'column' }}>
-          <div style={{ padding:'16px 20px', borderBottom:'1px solid #e0dfd8', display:'flex', alignItems:'center', justifyContent:'space-between', background:grupoSeleccionado.estado==='PAGADO'?'#f0fdf4':'#faf9f5' }}>
+          <div style={{ padding:'16px 20px', borderBottom:'1px solid #e0dfd8', display:'flex', alignItems:'center', justifyContent:'space-between', background: grupoSeleccionado.estado === 'PAGADO' ? '#f0fdf4' : '#faf9f5' }}>
             <div>
               <div style={{ fontSize:'16px', fontWeight:700, color:'#1a1915' }}>{grupoSeleccionado.nombre}</div>
               <div style={{ fontSize:'12px', color:'#9a998f', marginTop:'2px' }}>Grupo #{grupoSeleccionado.numero}</div>
@@ -409,26 +391,20 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
               <X size={20}/>
             </button>
           </div>
-
           <div style={{ flex:1, overflowY:'auto', padding:'16px 20px' }}>
-            {/* Estado actual */}
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'16px' }}>
               <div style={{ background:'#f5f4ef', borderRadius:'10px', padding:'12px' }}>
                 <div style={{ fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', marginBottom:'4px' }}>Monto este mes</div>
                 <div style={{ fontSize:'18px', fontWeight:800, color:'#1a1915', fontFamily:'monospace' }}>RD$ {(grupoSeleccionado.monto_total||0).toLocaleString('en-US',{maximumFractionDigits:0})}</div>
               </div>
-              <div style={{ background:grupoSeleccionado.deuda_pendiente>0?'#fff1f2':'#f0fdf4', borderRadius:'10px', padding:'12px' }}>
+              <div style={{ background: grupoSeleccionado.deuda_pendiente > 0 ? '#fff1f2' : '#f0fdf4', borderRadius:'10px', padding:'12px' }}>
                 <div style={{ fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', marginBottom:'4px' }}>Deuda pendiente</div>
-                <div style={{ fontSize:'18px', fontWeight:800, color:grupoSeleccionado.deuda_pendiente>0?'#dc2626':'#16a34a', fontFamily:'monospace' }}>RD$ {(grupoSeleccionado.deuda_pendiente||0).toLocaleString('en-US',{maximumFractionDigits:0})}</div>
+                <div style={{ fontSize:'18px', fontWeight:800, color: grupoSeleccionado.deuda_pendiente > 0 ? '#dc2626' : '#16a34a', fontFamily:'monospace' }}>RD$ {(grupoSeleccionado.deuda_pendiente||0).toLocaleString('en-US',{maximumFractionDigits:0})}</div>
               </div>
             </div>
-
-            {/* Botón pagado */}
-            <button onClick={() => marcarPagado(grupoSeleccionado)} style={{ width:'100%', padding:'10px', borderRadius:'10px', fontSize:'13px', fontWeight:700, border:'none', cursor:'pointer', background:grupoSeleccionado.estado==='PAGADO'?'#dcfce7':'#6366f1', color:grupoSeleccionado.estado==='PAGADO'?'#14532d':'#fff', marginBottom:'16px', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px' }}>
-              <DollarSign size={14}/> {grupoSeleccionado.estado==='PAGADO'?'Marcar como Pendiente':'Marcar como Pagado'}
+            <button onClick={() => marcarPagado(grupoSeleccionado)} style={{ width:'100%', padding:'10px', borderRadius:'10px', fontSize:'13px', fontWeight:700, border:'none', cursor:'pointer', background: grupoSeleccionado.estado === 'PAGADO' ? '#dcfce7' : '#6366f1', color: grupoSeleccionado.estado === 'PAGADO' ? '#14532d' : '#fff', marginBottom:'16px', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px' }}>
+              <DollarSign size={14}/> {grupoSeleccionado.estado === 'PAGADO' ? 'Marcar como Pendiente' : 'Marcar como Pagado'}
             </button>
-
-            {/* Notas */}
             <div style={{ marginBottom:'16px' }}>
               <div style={{ fontSize:'11px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'6px' }}>Notas</div>
               {editandoNota === grupoSeleccionado.id ? (
@@ -437,13 +413,11 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
                   <button onClick={() => guardarNota(grupoSeleccionado)} style={{ padding:'8px 12px', borderRadius:'8px', border:'none', background:'#6366f1', color:'#fff', fontSize:'12px', cursor:'pointer' }}>Guardar</button>
                 </div>
               ) : (
-                <div onClick={() => { setEditandoNota(grupoSeleccionado.id); setNotaTemp(grupoSeleccionado.notas||''); }} style={{ padding:'10px', background:'#f5f4ef', borderRadius:'8px', fontSize:'13px', color:grupoSeleccionado.notas?'#3d3c35':'#b5b4ab', cursor:'pointer', minHeight:'40px' }}>
+                <div onClick={() => { setEditandoNota(grupoSeleccionado.id); setNotaTemp(grupoSeleccionado.notas||''); }} style={{ padding:'10px', background:'#f5f4ef', borderRadius:'8px', fontSize:'13px', color: grupoSeleccionado.notas ? '#3d3c35' : '#b5b4ab', cursor:'pointer', minHeight:'40px' }}>
                   {grupoSeleccionado.notas || 'Clic para agregar nota...'}
                 </div>
               )}
             </div>
-
-            {/* Historial */}
             <div>
               <div style={{ fontSize:'11px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'10px', display:'flex', alignItems:'center', gap:'6px' }}>
                 <Clock size={12}/> Historial
@@ -458,29 +432,15 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
                         <span style={{ fontSize:'12px', fontWeight:600, color:'#1a1915' }}>{h.mes || h.accion}</span>
                         <span style={{ fontSize:'11px', color:'#9a998f' }}>{new Date(h.fecha).toLocaleDateString('es-DO')}</span>
                       </div>
-                      {h.monto_total !== undefined && (
+                      {h.monto_total !== undefined ? (
                         <div style={{ fontSize:'12px', color:'#6b6a62' }}>
-                          Total: RD${(h.monto_total||0).toLocaleString('en-US',{maximumFractionDigits:0})} ·
-                          Pagado: RD${(h.monto_pagado||0).toLocaleString('en-US',{maximumFractionDigits:0})} ·
-                          Estado: <span style={{ fontWeight:700, color:h.estado==='PAGADO'?'#16a34a':'#ea580c' }}>{h.estado}</span>
+                          Total: RD${(h.monto_total||0).toLocaleString('en-US',{maximumFractionDigits:0})} · Pagado: RD${(h.monto_pagado||0).toLocaleString('en-US',{maximumFractionDigits:0})} · <span style={{ fontWeight:700, color:h.estado==='PAGADO'?'#16a34a':'#ea580c' }}>{h.estado}</span>
                         </div>
-                      )}
-                      {h.monto !== undefined && h.monto_total === undefined && (
+                      ) : (
                         <div style={{ fontSize:'12px', color:'#6b6a62' }}>Monto: RD${(h.monto||0).toLocaleString('en-US',{maximumFractionDigits:0})}</div>
                       )}
                     </div>
-                  );
-              };
-              return (<>
-                {activos.map((g, i) => renderFila(g, i))}
-                {soloDeuda.length > 0 && (
-                  <tr><td colSpan={9} style={{ padding:'8px 14px', background:'#fff7ed', borderTop:'2px solid #fed7aa', borderBottom:'1px solid #fed7aa' }}>
-                    <span style={{ fontSize:'10px', fontWeight:700, color:'#ea580c', textTransform:'uppercase', letterSpacing:'0.08em' }}>⚠ Deuda de meses anteriores — {soloDeuda.length} grupos</span>
-                  </td></tr>
-                )}
-                {soloDeuda.map((g, i) => renderFila(g, activos.length + i))}
-              </>);
-            })()}
+                  ))}
                 </div>
               )}
             </div>
@@ -488,7 +448,6 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
         </div>
       )}
 
-      {/* Modal teléfono */}
       {showConfigTel && (
         <div className="modal show">
           <div className="modal-content" style={{ maxWidth:'400px' }}>
