@@ -4590,7 +4590,6 @@ export default function App() {
                                   </div>
                                 )}
                               </div>
-                            </div>
                           </div>
                         );
                       })}
@@ -5513,7 +5512,6 @@ export default function App() {
                                 {h.usuario && <span style={{ fontSize:'0.65rem', fontWeight:700, color:'var(--brand)', background:'var(--brand-bg)', padding:'0.05rem 0.4rem', borderRadius:'9px' }}>{h.usuario}</span>}
                                 <span style={{ fontSize:'0.65rem', color:'var(--text-muted)' }}>{new Date(h.fecha).toLocaleString('es-DO', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}</span>
                               </div>
-                            </div>
                           </div>
                         );
                       })}
