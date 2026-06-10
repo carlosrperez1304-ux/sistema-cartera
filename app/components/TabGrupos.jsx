@@ -165,19 +165,21 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
     for (const item of resultado) {
       try {
         if (item.existe && item.grupoId) {
-          await fetch('/api/grupos-blueline', {
+          const r = await fetch('/api/grupos-blueline', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id: item.grupoId, monto_total: item.monto, deuda_pendiente: item.monto, estado: 'PENDIENTE' })
           });
-          actualizados++;
+          if (r.ok) actualizados++;
+          else { const e = await r.json(); console.error('PUT error:', e); }
         } else {
-          await fetch('/api/grupos-blueline', {
+          const r = await fetch('/api/grupos-blueline', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ nombre: item.nombre, monto_total: item.monto, monto_pagado: 0, deuda_pendiente: item.monto, estado: 'PENDIENTE', empresa_id: empresaId, numero: grupos.length + creados + 1, historial: [] })
           });
-          creados++;
+          if (r.ok) creados++;
+          else { const e = await r.json(); console.error('POST error:', e, 'item:', item); }
         }
       } catch(e) {}
     }
