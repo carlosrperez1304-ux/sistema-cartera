@@ -4423,44 +4423,47 @@ export default function App() {
             )}
 
 
-            <div className="table-container" style={{ display: vistaCards ? 'none' : 'block' }}>
-              <div className="table-wrapper">
+            <div className="table-container" style={{ display: vistaCards ? 'none' : 'block', background:'transparent', border:'none', boxShadow:'none' }}>
+              <div className="table-wrapper" style={{ overflowX:'visible' }}>
                 {clientesFiltrados.length === 0 ? (
                   <div className="empty-state"><h3>No se encontraron clientes</h3><p>Intenta ajustar los filtros o agregar un nuevo cliente</p></div>
                 ) : (
-                  <table className={modoCompacto ? 'compact-mode' : ''}>
-                    <thead><tr style={{ background:'#f0efe9', borderBottom:'1px solid #e0dfd8' }}>
-                      <th style={{ width:'32px', textAlign:'center', padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em' }}><input type="checkbox" onChange={toggleTodos} checked={clientesPaginados.length > 0 && clientesPaginados.every(c => clientesSeleccionados.includes(c.id))} style={{ cursor:'pointer' }} title="Seleccionar todos" /></th>
-                      <th style={{ width:'60px', display:'none' }}>ID</th>
-                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'left', width:'40%' }}>CLIENTE</th>
-                      {puedeVerTodo && <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'center' }}>AGENTE</th>}
-                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'center' }}>ESTADO</th>
-                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'center' }}>TELÉFONO</th>
-                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'center' }}>MONTO</th>
-                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'center' }}>PROCESO</th>
-                      <th style={{ padding:'10px 14px', fontSize:'10px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.08em', textAlign:'center' }}>ACCIONES</th>
-                    </tr></thead>
-                    <tbody>
+                  <div>
+                    {/* HEADER COLUMNAS */}
+                    <div style={{ display:'grid', gridTemplateColumns:'40px 70px 1fr 1.3fr 140px 100px 180px', alignItems:'center', padding:'6px 14px', gap:'12px', marginBottom:'4px' }}>
+                      <div><input type="checkbox" onChange={toggleTodos} checked={clientesPaginados.length > 0 && clientesPaginados.every(c => clientesSeleccionados.includes(c.id))} style={{ cursor:'pointer', accentColor:'#6366f1' }} title="Seleccionar todos"/></div>
+                      <div style={{ fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em' }}># Cód</div>
+                      <div style={{ fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em' }}>Cliente</div>
+                      <div style={{ fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em' }}>Contacto</div>
+                      <div style={{ fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center' }}>Estado</div>
+                      <div style={{ fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'right' }}>Monto</div>
+                      <div style={{ fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center' }}>Proceso</div>
+                    </div>
+                    {/* FILAS TARJETA */}
+                    <div>
                       {clientesPaginados.map(cliente => {
                         const estaSuspendido = cliente.suspendido === true;
+                        const av = getAvatar(cliente.nombre);
                         return (
-                          <tr key={cliente.id} className={`${estaSuspendido ? 'cliente-suspendido' : ''} ${clientesSeleccionados.includes(cliente.id) ? 'row-selected' : ''}`}>
-                            <td style={{ width:'32px', textAlign:'center' }}><input type="checkbox" checked={clientesSeleccionados.includes(cliente.id)} onChange={() => toggleSeleccion(cliente.id)} style={{ cursor:'pointer' }} /></td>
-                            <td style={{ display:'none' }}><div className="id-with-led"><span className={`status-led ${estaSuspendido ? 'suspended' : esClienteActivo(cliente) ? 'active' : 'inactive'}`}></span><strong>{cliente.id}</strong></div></td>
-                            <td style={{ display:'none' }}></td>
-                            <td style={{ padding:'14px 20px', width:'40%' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                {(() => { const av = getAvatar(cliente.nombre); return <div className="avatar avatar-sm" style={{ background: av.color }}>{av.letra}</div>; })()}
-                                <div>
-                                  <div style={{ display:'flex', alignItems:'center', gap:'0.25rem', flexWrap:'wrap' }}>
-                                  <span onClick={() => { setHistorialPagosCliente(cliente); setShowHistorialPagosModal(true); }} className="nombre-cliente" style={{ fontSize:'14px', fontWeight:700, color:'#1a1915' }} title="Ver historial de pagos">{cliente.nombre}</span>
-                                  {esClienteNuevo(cliente) && <span title="Cliente nuevo este mes" style={{ fontSize:'0.62rem', fontWeight:700, background:'#dcfce7', color:'#15803d', border:'1px solid #86efac', borderRadius:'20px', padding:'0.1rem 0.45rem', verticalAlign:'middle' }}>NUEVO</span>}
-                                  {esMorosoRecurrente(cliente) && <span title="Ha sido notificado sin pagar en 2+ meses" style={{ fontSize:'0.62rem', fontWeight:700, background:'#fef2f2', color:'#dc2626', border:'1px solid #fca5a5', borderRadius:'20px', padding:'0.1rem 0.45rem', verticalAlign:'middle' }}>⚠ Moroso</span>}
-                                  </div>
-                                  <div style={{ display:'flex', alignItems:'center', gap:'6px', marginTop:'3px' }}>
-                                    <span style={{ fontSize:'12px', color:'#6366f1', fontWeight:600 }}>#{cliente.codigoCliente || cliente.id}</span>
-                                  <button onClick={() => { setTagClienteId(cliente.id); setTagInput(''); setShowTagModal(true); }} style={{ background:'none', border:'none', cursor:'pointer', opacity:0.35, padding:'0 0.15rem', display:'flex', alignItems:'center' }} title="Agregar etiqueta"><Tag size={12}/></button>
-                                  </div>
+                          <div key={cliente.id} style={{ display:'grid', gridTemplateColumns:'40px 70px 1fr 1.3fr 140px 100px 180px', alignItems:'center', background: clientesSeleccionados.includes(cliente.id) ? '#fefce8' : estaSuspendido ? '#fff1f2' : '#fff', border: clientesSeleccionados.includes(cliente.id) ? '1px solid #fde68a' : estaSuspendido ? '1px solid #fecdd3' : '1px solid #f0efe9', borderRadius:'10px', padding:'10px 14px', gap:'12px', cursor:'pointer', marginBottom:'6px', transition:'all 0.15s' }}
+                            onMouseOver={e => { if(!clientesSeleccionados.includes(cliente.id)) e.currentTarget.style.borderColor='#e0dfd8'; e.currentTarget.style.boxShadow='0 2px 8px rgba(0,0,0,0.06)'; }}
+                            onMouseOut={e => { if(!clientesSeleccionados.includes(cliente.id)) e.currentTarget.style.borderColor='#f0efe9'; e.currentTarget.style.boxShadow='none'; }}>
+                            {/* CHECKBOX */}
+                            <div style={{ textAlign:'center' }}><input type="checkbox" checked={clientesSeleccionados.includes(cliente.id)} onChange={() => toggleSeleccion(cliente.id)} style={{ cursor:'pointer', accentColor:'#6366f1' }} /></div>
+                            {/* CÓDIGO */}
+                            <div style={{ fontSize:'12px', color:'#6366f1', fontFamily:'monospace', fontWeight:700, textAlign:'center' }}>#{cliente.codigoCliente || cliente.id}</div>
+                            {/* CLIENTE */}
+                            <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+                              <div className="avatar avatar-sm" style={{ background: av.color, flexShrink:0 }}>{av.letra}</div>
+                              <div>
+                                <div style={{ display:'flex', alignItems:'center', gap:'5px', flexWrap:'wrap' }}>
+                                  <span onClick={() => { setHistorialPagosCliente(cliente); setShowHistorialPagosModal(true); }} className="nombre-cliente" style={{ fontSize:'13px', fontWeight:500, color:'#1a1915' }} title="Ver historial de pagos">{cliente.nombre}</span>
+                                  {esClienteNuevo(cliente) && <span style={{ fontSize:'10px', fontWeight:700, background:'#dcfce7', color:'#15803d', border:'1px solid #86efac', borderRadius:'20px', padding:'1px 6px' }}>NUEVO</span>}
+                                  {esMorosoRecurrente(cliente) && <span style={{ fontSize:'10px', fontWeight:700, background:'#fef2f2', color:'#dc2626', border:'1px solid #fca5a5', borderRadius:'20px', padding:'1px 6px' }}>⚠ Moroso</span>}
+                                </div>
+                                <div style={{ display:'flex', alignItems:'center', gap:'4px', marginTop:'2px' }}>
+                                  <button onClick={() => { setTagClienteId(cliente.id); setTagInput(''); setShowTagModal(true); }} style={{ background:'none', border:'none', cursor:'pointer', opacity:0.35, padding:'0', display:'flex', alignItems:'center' }} title="Agregar etiqueta"><Tag size={11}/></button>
+                                </div>
                                   {(tags[cliente.id] || []).length > 0 && (
                                     <div className="tags-wrap">
                                       {(tags[cliente.id] || []).map(tag => (
@@ -4469,56 +4472,53 @@ export default function App() {
                                     </div>
                                   )}
                                   {cliente.nota && (
-                                    <div onClick={() => abrirNotaModal(cliente)} title={cliente.nota} className="instancia-badge" style={{ display:'inline-flex', alignItems:'center', gap:'0.3rem', marginTop:'0.2rem', cursor:'pointer', background:'#fef9c3', border:'1px solid #fde047', borderRadius:'5px', padding:'0.1rem 0.45rem', maxWidth:'220px', opacity:0, transition:'opacity 0.2s ease' }}>
-                                      <StickyNote size={11} style={{ color:'#a16207', flexShrink:0 }}/>
-                                      <span style={{ fontSize:'0.68rem', fontWeight:600, color:'#92400e', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{cliente.nota.length > 35 ? cliente.nota.slice(0, 35) + '…' : cliente.nota}</span>
+                                    <div onClick={() => abrirNotaModal(cliente)} title={cliente.nota} style={{ display:'inline-flex', alignItems:'center', gap:'3px', marginTop:'2px', cursor:'pointer', background:'#fef9c3', border:'1px solid #fde047', borderRadius:'5px', padding:'1px 6px', maxWidth:'200px' }}>
+                                      <StickyNote size={10} style={{ color:'#a16207', flexShrink:0 }}/>
+                                      <span style={{ fontSize:'10px', fontWeight:600, color:'#92400e', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{cliente.nota.length > 30 ? cliente.nota.slice(0, 30) + '…' : cliente.nota}</span>
                                     </div>
                                   )}
                                 </div>
                               </div>
-                            </td>
-                            {puedeVerTodo && <td>
-                              <span style={{ fontSize: '0.75rem', fontWeight: 700, background: 'var(--surface2)', padding: '0.15rem 0.5rem', borderRadius: '20px', color: 'var(--text-muted)' }}>{cliente.creadoPor || '—'}</span>
-                              {cliente.assignedTo && cliente.assignedTo !== cliente.creadoPor && (
-                                <div style={{ fontSize: '0.67rem', marginTop: '0.2rem', color: '#f97316', fontWeight: 700 }}>→ {cliente.assignedTo}</div>
-                              )}
-                            </td>}
-
-                            <td style={{ width:'130px', textAlign:'center' }}><span className={`badge badge-${estadoActivoCliente(cliente).toLowerCase().replace(/ /g, '-')}`}>{estadoActivoCliente(cliente)}</span></td>
-
-                            <td style={{ width:'140px', textAlign:'center', fontSize:'0.78rem', letterSpacing:'-0.3px', whiteSpace:'nowrap' }}>
+                            </div>
+                            {/* CONTACTO */}
+                            <div style={{ textAlign:'center' }}>
                               {editingContactoId === cliente.id ? (
                                 <input type="tel" value={tempContacto} onChange={e => setTempContacto(e.target.value)} onBlur={() => guardarContactoInline(cliente.id)} onKeyDown={e => { if (e.key === 'Enter') guardarContactoInline(cliente.id); else if (e.key === 'Escape') cancelarEdicionContacto(); }} autoFocus style={{ width: '110px', padding: '0.25rem 0.4rem', border: '2px solid var(--brand)', borderRadius: '6px', fontSize: '0.74rem', fontFamily: 'var(--mono)', fontWeight: 700 }} />
                               ) : (
-                                <span onDoubleClick={() => !esModoPasado && (setEditingContactoId(cliente.id), setTempContacto(cliente.contacto || ''))} title={esModoPasado ? '' : 'Doble clic para editar'} style={{ cursor: esModoPasado ? 'default' : 'text', fontFamily: 'var(--mono)', fontWeight: 700, color: cliente.contacto ? '#3b7dd8' : 'var(--text-muted)' }}>
+                                <span onDoubleClick={() => !esModoPasado && (setEditingContactoId(cliente.id), setTempContacto(cliente.contacto || ''))} title={esModoPasado ? '' : 'Doble clic para editar'} style={{ cursor: esModoPasado ? 'default' : 'text', fontFamily: 'var(--mono)', fontWeight: 600, fontSize:'12px', color: cliente.contacto ? '#6366f1' : 'var(--text-muted)' }}>
                                   {formatTelefono(cliente.contacto)}
                                 </span>
                               )}
-                            </td>
-
-                            <td style={{ width:'90px', textAlign:'center' }}>
+                              {esMorosoRecurrente(cliente) && <div style={{ fontSize:'11px', color:'#dc2626', marginTop:'1px' }}>⚠ Moroso</div>}
+                            </div>
+                            {/* ESTADO */}
+                            <div style={{ textAlign:'center' }}>
+                              <span className={`badge badge-${estadoActivoCliente(cliente).toLowerCase().replace(/ /g, '-')}`}>{estadoActivoCliente(cliente)}</span>
+                            </div>
+                            {/* MONTO */}
+                            <div style={{ textAlign:'right' }}>
                               {!tienePermiso('ver_montos') ? (
                                 <span style={{ color: 'var(--text-muted)', letterSpacing: '0.1em', fontWeight: 700 }}>***</span>
                               ) : editingMontoId === cliente.id ? (
-                                <input type="number" value={tempMonto} onChange={(e) => setTempMonto(e.target.value)} onBlur={() => guardarMontoInline(cliente.id)} onKeyDown={(e) => { if (e.key === 'Enter') guardarMontoInline(cliente.id); else if (e.key === 'Escape') cancelarEdicionMonto(); }} autoFocus step="0.01" style={{ width: '90px', padding: '0.35rem 0.5rem', border: '2px solid #0ea5e9', borderRadius: '6px', fontSize: '0.9rem', fontWeight: 700 }} />
+                                <input type="number" value={tempMonto} onChange={(e) => setTempMonto(e.target.value)} onBlur={() => guardarMontoInline(cliente.id)} onKeyDown={(e) => { if (e.key === 'Enter') guardarMontoInline(cliente.id); else if (e.key === 'Escape') cancelarEdicionMonto(); }} autoFocus step="0.01" style={{ width: '80px', padding: '0.25rem 0.4rem', border: '2px solid #0ea5e9', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 700 }} />
                               ) : (
                                 <div>
-                                  <span onDoubleClick={() => !esModoPasado && iniciarEdicionMonto(cliente)} style={{ cursor: esModoPasado ? 'default' : 'text', fontWeight: 800, fontSize: '0.92rem', color: 'var(--text)', fontFamily: 'var(--mono)' }} title={esModoPasado ? '' : 'Doble clic para editar'}>
+                                  <span onDoubleClick={() => !esModoPasado && iniciarEdicionMonto(cliente)} style={{ cursor: esModoPasado ? 'default' : 'text', fontWeight: 700, fontSize: '13px', color: '#1a1915', fontFamily: 'var(--mono)' }} title={esModoPasado ? '' : 'Doble clic para editar'}>
                                     {'$' + (parseFloat(cliente.monto) || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}
                                   </span>
-                                  {cliente.pagosRealizados && cliente.pagosRealizados.length > 0 && (() => { const s = calcularSaldoCliente(cliente); return <div style={{ fontSize: '0.68rem', marginTop: '0.15rem' }}><span style={{ color: '#059669', fontWeight: 700 }}>+${s.pagado.toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>{s.pendiente > 0 && <span style={{ color: '#ea580c', fontWeight: 700 }}> ${s.pendiente.toLocaleString('en-US', { maximumFractionDigits: 0 })} pend.</span>}</div>; })()}
+                                  {cliente.pagosRealizados && cliente.pagosRealizados.length > 0 && (() => { const s = calcularSaldoCliente(cliente); return <div style={{ fontSize: '10px', marginTop: '1px' }}><span style={{ color: '#059669', fontWeight: 700 }}>+${s.pagado.toLocaleString('en-US', { maximumFractionDigits: 0 })}</span></div>; })()}
                                 </div>
                               )}
-                            </td>
-
-                            <td style={{ width:'160px', textAlign:'center' }}>
-                              <div className="proceso-icons">
+                            </div>
+                            {/* PROCESO */}
+                            <div style={{ textAlign:'center' }}>
+                              <div className="proceso-icons" style={{ justifyContent:'center' }}>
                                 <button className={`proceso-icon cotizado ${cliente.fechaCotizacion ? 'done' : ''}`} disabled={esModoPasado} title={cliente.fechaCotizacion ? 'Cotizado' : 'Marcar Cotizado'} onClick={() => { if (esModoPasado) return; const a = { ...cliente }; if (!a.fechaCotizacion) { a.fechaCotizacion = new Date().toISOString().split('T')[0]; a.estado = 'Cotizado'; } else { a.fechaCotizacion = ''; a.fechaNotificacion = ''; a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'No Generaron'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaCotizacion ? 'Marco Cotizado' : 'Desmarco Cotizado', usuario: currentUser || session?.user?.username || 'Sistema' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}><ClipboardList size={13}/></button>
                                 <button className={`proceso-icon notificado ${cliente.fechaNotificacion ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaCotizacion} style={{ opacity: !cliente.fechaCotizacion ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaCotizacion) return; if (!cliente.fechaNotificacion) { abrirWhatsappModal(cliente); } else { const a = { ...cliente, fechaNotificacion: '', fechaPago: '', fechaFacturacion: '', pagosRealizados: [], estado: 'Cotizado' }; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: 'Desmarco Notificado', usuario: currentUser || session?.user?.username || 'Sistema' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, 'Cotizado'); } }}><Mail size={13}/></button>
                                 {tienePermiso('registrar_pagos') && <button className={`proceso-icon pagado ${cliente.fechaPago ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaNotificacion} style={{ opacity: !cliente.fechaNotificacion ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaNotificacion) return; const a = { ...cliente }; if (!a.fechaPago) { a.fechaPago = new Date().toISOString().split('T')[0]; a.estado = 'Pagado'; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: 'Marco Pagado', usuario: currentUser || session?.user?.username || 'Sistema' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, 'Pagado'); return; } a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'Notificado'; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: 'Desmarco Pagado', usuario: currentUser || session?.user?.username || 'Sistema' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}><DollarSign size={13}/></button>}
                                 <button className={`proceso-icon facturado ${cliente.fechaFacturacion ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaPago} style={{ opacity: !cliente.fechaPago ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaPago) return; const a = { ...cliente }; if (!a.fechaFacturacion) { a.fechaFacturacion = new Date().toISOString().split('T')[0]; a.estado = 'Facturado'; } else { a.fechaFacturacion = ''; a.estado = 'Pagado'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaFacturacion ? 'Marco Facturado' : 'Desmarco Facturado', usuario: currentUser || session?.user?.username || 'Sistema' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}><FileText size={13}/></button>
                               </div>
-                            </td>
+                            </div>
 
                             <td style={{ width:'100px', textAlign:'center', position: 'relative' }}>
                               <div style={{ position: 'relative', display: 'inline-block' }}>
@@ -4591,12 +4591,12 @@ export default function App() {
                                   </div>
                                 )}
                               </div>
-                            </td>
-                          </tr>
+                            </div>
+                          </div>
                         );
                       })}
-                    </tbody>
-                  </table>
+                    </div>
+                  </div>
                 )}
               </div>
               {totalPaginas > 1 && (
