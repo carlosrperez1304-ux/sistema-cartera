@@ -3381,9 +3381,9 @@ export default function App() {
       </div>
 
       {showMobileMenu && <div className="mobile-overlay" onClick={() => setShowMobileMenu(false)} />}
-      <div className="main-layout">
-        {/* SIDEBAR */}
-        <div className={`sidebar${showMobileMenu ? ' mobile-open' : ''}`}>
+      <div className="main-layout" style={{ display:'block' }}>
+        {/* SIDEBAR — oculto */}
+        <div className={`sidebar${showMobileMenu ? ' mobile-open' : ''}`} style={{ display:'none' }}>
           {/* Logo — fuera del scroll, siempre visible */}
           <div style={{ padding: '1.1rem 1rem', borderBottom: '1px solid #e0dfd8', display: 'flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0 }}>
             <div style={{ width: '28px', height: '28px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(99,102,241,0.4)' }}>
@@ -3442,7 +3442,7 @@ export default function App() {
         </div>
 
         {/* CONTENT */}
-        <div className="content-area">
+        <div className="content-area" style={{ marginLeft:0, width:'100%' }}>
           <div className="page-header" style={{ flexDirection:'column', alignItems:'stretch', gap:'1rem', padding:'1.25rem 1.5rem', background:'var(--surface)', borderRadius:'14px', border:'1px solid var(--border)', marginBottom:'0.5rem' }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
               <div>
@@ -4245,22 +4245,25 @@ export default function App() {
               );
             })()}
 
-            <div className="dashboard">
+            <div style={{ display:'flex', gap:'8px', marginBottom:'1.25rem', flexWrap:'wrap' }}>
               {[
-                { key: 'cotizado', label: 'Cotizado', val: estadisticas.cotizado, pct: estadisticas.cotizadoPct, monto: estadisticas.montoCotizado, color: '#ea580c' },
-                { key: 'notificado', label: 'Notificado', val: estadisticas.notificado, pct: estadisticas.notificadoPct, monto: estadisticas.montoNotificado, color: '#0284c7' },
-                { key: 'pagado', label: 'Pagado', val: estadisticas.pagado, pct: estadisticas.pagadoPct, monto: estadisticas.montoPagado, color: '#059669' },
-                { key: 'facturado', label: 'Facturado', val: estadisticas.facturado, pct: estadisticas.facturadoPct, monto: estadisticas.montoFacturado, color: '#16a34a' },
-                { key: 'vencido', label: 'Vencido', val: estadisticas.vencido, pct: estadisticas.vencidoPct, monto: estadisticas.montoVencido, color: '#dc2626' },
-                { key: 'no-generaron', label: 'No Generaron', val: estadisticas.noGeneraron, pct: estadisticas.noGeneraronPct, monto: null, color: '#64748b' },
-                { key: 'suspendido', label: 'Suspendidos', val: estadisticas.suspendido, pct: estadisticas.suspendidoPct, monto: estadisticas.montoSuspendido, color: '#dc2626' },
-                ...(estadisticas.sinDocumento > 0 ? [{ key: 'sin-documento', label: 'Sin Documento', val: estadisticas.sinDocumento, pct: estadisticas.total > 0 ? ((estadisticas.sinDocumento / estadisticas.total) * 100).toFixed(0) : 0, monto: null, color: '#b45309' }] : []),
+                { key: 'cotizado',      label: 'Cotizado',      val: estadisticas.cotizado,    pct: estadisticas.cotizadoPct,    color: '#ea580c', bg: '#fff7ed', border: '#fed7aa' },
+                { key: 'notificado',    label: 'Notificado',    val: estadisticas.notificado,  pct: estadisticas.notificadoPct,  color: '#6366f1', bg: '#eff6ff', border: '#bfdbfe' },
+                { key: 'pagado',        label: 'Pagado',        val: estadisticas.pagado,      pct: estadisticas.pagadoPct,      color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
+                { key: 'facturado',     label: 'Facturado',     val: estadisticas.facturado,   pct: estadisticas.facturadoPct,   color: '#0d9488', bg: '#f0fdfa', border: '#99f6e4' },
+                { key: 'vencido',       label: 'Vencido',       val: estadisticas.vencido,     pct: estadisticas.vencidoPct,     color: '#dc2626', bg: '#fff1f2', border: '#fecdd3' },
+                { key: 'no-generaron',  label: 'No Generaron',  val: estadisticas.noGeneraron, pct: estadisticas.noGeneraronPct, color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' },
+                { key: 'suspendido',    label: 'Suspendidos',   val: estadisticas.suspendido,  pct: estadisticas.suspendidoPct,  color: '#e11d48', bg: '#fff1f2', border: '#fecdd3' },
+                ...(estadisticas.sinDocumento > 0 ? [{ key: 'sin-documento', label: 'Sin Doc.', val: estadisticas.sinDocumento, pct: estadisticas.total > 0 ? ((estadisticas.sinDocumento / estadisticas.total) * 100).toFixed(0) : 0, color: '#b45309', bg: '#fffbeb', border: '#fde68a' }] : []),
               ].map(s => (
-                <div key={s.key} className={`stat-card ${s.key}`} onClick={() => { setFilter(filter === s.key ? 'todos' : s.key); setPaginaActual(1); }} style={{ cursor: 'pointer', outline: filter === s.key ? `2px solid ${s.color}` : 'none', outlineOffset: '2px', transition: 'all 0.15s' }} title={filter === s.key ? 'Clic para quitar filtro' : `Filtrar por ${s.label}`}>
-                  <div className="stat-label">{s.label}</div>
-                  <div className="stat-value">{s.val}</div>
-                  <div className="stat-percentage">{s.pct}%{s.monto != null && fmtMonto(s.monto, s.val) && <span style={{ display: 'block', color: s.color, fontWeight: 800, fontSize: '0.85rem' }}>{fmtMonto(s.monto, s.val)}</span>}</div>
-                  {filter === s.key && <div style={{ fontSize: '0.65rem', fontWeight: 700, color: s.color, marginTop: '0.2rem' }}>✓ Filtrando</div>}
+                <div key={s.key} onClick={() => { setFilter(filter === s.key ? 'todos' : s.key); setPaginaActual(1); }}
+                  title={filter === s.key ? 'Clic para quitar filtro' : `Filtrar por ${s.label}`}
+                  style={{ display:'flex', alignItems:'center', gap:'8px', background: s.bg, border: `1px solid ${filter === s.key ? s.color : s.border}`, borderRadius:'10px', padding:'7px 13px', cursor:'pointer', transition:'all 0.15s', outline: filter === s.key ? `2px solid ${s.color}` : 'none', outlineOffset:'2px' }}>
+                  <div style={{ width:'8px', height:'8px', borderRadius:'50%', background: s.color, flexShrink:0 }}></div>
+                  <span style={{ fontSize:'12px', color:'#9a998f' }}>{s.label}</span>
+                  <span style={{ fontSize:'16px', fontWeight:700, color: s.color, fontFamily:'monospace', lineHeight:1 }}>{s.val}</span>
+                  <span style={{ fontSize:'10px', color: s.color }}>{s.pct}%</span>
+                  {filter === s.key && <span style={{ fontSize:'10px', fontWeight:700, color: s.color }}>✓</span>}
                 </div>
               ))}
             </div>
