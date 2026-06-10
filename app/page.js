@@ -3184,6 +3184,15 @@ export default function App() {
                 <button onClick={() => { setShowTopbarMenu(false); setDarkMode(!darkMode); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'var(--text)', borderBottom:'1px solid var(--border)' }}>
                   {darkMode ? <Sun size={14}/> : <Moon size={14}/>} {darkMode ? 'Modo claro' : 'Modo oscuro'}
                 </button>
+                {esAdmin && <button onClick={() => { setShowTopbarMenu(false); cargarUsuariosAdmin(); setActiveTab('usuarios'); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'var(--text)', borderBottom:'1px solid var(--border)' }}>
+                  <Users size={14}/> Usuarios
+                </button>}
+                {['admin','supervisor_cobro','supervisor_contabilidad'].includes(session?.user?.rol) && <button onClick={() => { setShowTopbarMenu(false); setShowDescargaMesModal(true); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'#dc2626', borderBottom:'1px solid var(--border)' }}>
+                  <Save size={14}/> Cierre de Mes
+                </button>}
+                {esAdmin && <button onClick={() => { setShowTopbarMenu(false); setShowSettingsPanel(true); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'var(--text)', borderBottom:'1px solid var(--border)' }}>
+                  <Settings size={14}/> Configuración
+                </button>}
                 <button onClick={() => { setShowTopbarMenu(false); window._manualLogout = true; signOut({ callbackUrl: '/' }); setTimeout(() => { window.location.href = '/'; }, 500); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'#dc2626', fontWeight:600 }}>
                   <LogOut size={14}/> Cerrar sesión
                 </button>
