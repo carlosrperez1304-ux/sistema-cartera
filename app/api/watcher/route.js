@@ -12,7 +12,7 @@ export async function GET(req) {
 
   const { data, error } = await db()
     .from('clientes')
-    .select('id, nombre, contacto, estado, empresa_id')
+    .select('id, nombre, contacto, estado, empresa_id, monto')
     .ilike('nombre', '%' + nombre + '%')
     .limit(1)
     .maybeSingle();
