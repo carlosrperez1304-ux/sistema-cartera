@@ -225,7 +225,7 @@ const OFFLINE_HTML = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"
 
 // ── Main Window ──────────────────────────────────────────────
 function createMainWindow() {
-  mainWin = new BrowserWindow({ width: 1280, height: 800, minWidth: 960, minHeight: 600, frame: false, titleBarStyle: 'hidden', show: false, backgroundColor: '#f5f4ef', icon: path.join(__dirname, 'assets', 'icon.png'), title: 'PayTrack', webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false } });
+  mainWin = new BrowserWindow({ width: 1280, height: 800, minWidth: 960, minHeight: 600, frame: true, autoHideMenuBar: true, title: 'PayTrack — Gestión de Cartera', show: false, backgroundColor: '#f5f4ef', icon: path.join(__dirname, 'assets', 'icon.png'), webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false } });
   mainWin.setMenuBarVisibility(false);
 
   mainWin.webContents.session.clearCache().then(() => {
@@ -286,6 +286,12 @@ function createMainWindow() {
   });
 
   mainWin.on('closed', () => { mainWin = null; });
+  mainWin.on('close', (e) => {
+    if (!app._quitting) {
+      e.preventDefault();
+      mainWin.hide();
+    }
+  });
 }
 
 // ── Segunda instancia ────────────────────────────────────────
@@ -321,8 +327,27 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') { detenerWatcher(); tray?.destroy(); tray = null; app.quit(); }
+  // No cerrar completamente - mantener watcher y Baileys activos
 });
+
+// Minimizar al tray en vez de cerrar
+if (mainWin) {
+  mainWin.on('close', (e) => {
+    if (!app._quitting) {
+      e.preventDefault();
+      mainWin.hide();
+      if (tray) {
+        tray.displayBalloon && tray.displayBalloon({
+          title: 'PayTrack',
+          content: 'La app sigue corriendo en segundo plano. El watcher está activo.',
+          icon: 'info'
+        });
+      }
+    }
+  });
+}
+
+app.on('before-quit', () => { app._quitting = true; });
 
 // ── IPC: activación ──────────────────────────────────────────
 ipcMain.handle('validate-activation', async (event, codigo) => {
