@@ -3220,6 +3220,11 @@ export default function App() {
               Watcher activo
             </div>
           )}
+          {/* ESTADO WHATSAPP */}
+          <div title={whatsappConectado ? 'WhatsApp conectado' : 'WhatsApp desconectado'} style={{ display:'flex', alignItems:'center', gap:'5px', fontSize:'11px', color: whatsappConectado ? '#16a34a' : '#9a998f', background: whatsappConectado ? '#f0fdf4' : '#f5f4ef', border: whatsappConectado ? '1px solid #bbf7d0' : '1px solid #e0dfd8', borderRadius:'20px', padding:'4px 10px', cursor:'default' }}>
+            <div style={{ width:'6px', height:'6px', borderRadius:'50%', background: whatsappConectado ? '#16a34a' : '#9a998f' }}></div>
+            WA {whatsappConectado ? 'ON' : 'OFF'}
+          </div>
 
           {/* AVATAR + CERRAR SESIÓN */}
           <div style={{ position:'relative' }}>

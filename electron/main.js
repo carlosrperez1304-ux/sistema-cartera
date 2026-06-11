@@ -135,6 +135,16 @@ function iniciarWatcher(carpeta) {
                     await baileys.enviarPDF(cliente.contacto, pdfPath, filename, mensaje);
                     log.info('[watcher] PDF enviado por WhatsApp a:', cliente.nombre);
 
+                    // Notificación nativa de Windows
+                    const { Notification } = require('electron');
+                    if (Notification.isSupported()) {
+                      new Notification({
+                        title: 'PayTrack — PDF Enviado',
+                        body: `✅ Factura enviada a ${cliente.nombre} por WhatsApp`,
+                        icon: path.join(__dirname, 'assets', 'icon.png')
+                      }).show();
+                    }
+
                     // Marcar como Cotizado
                     await fetch(`${PROD_URL}/api/watcher?accion=cotizado&id=${cliente.id}&secret=paytrack-watcher-2026`, { method: 'POST' }).catch(() => {});
 
