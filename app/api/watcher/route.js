@@ -12,13 +12,13 @@ export async function GET(req) {
 
   const { data, error } = await db()
     .from('clientes')
-    .select('id, nombre, contacto, estado, empresa_id, monto_cotizacion')
+    .select('id, nombre, contacto, estado, empresa_id')
     .ilike('nombre', '%' + nombre + '%')
     .limit(1)
     .maybeSingle();
 
-  if (error) return Response.json({ debug_error: error.message });
-  return Response.json(data ?? { debug_null: true, nombre_buscado: nombre });
+  if (error) return Response.json(null);
+  return Response.json(data);
 }
 
 export async function POST(req) {
