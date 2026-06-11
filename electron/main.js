@@ -116,11 +116,31 @@ function iniciarWatcher(carpeta) {
                   if (cliente?.contacto) {
                     const hora = new Date().getHours();
                     const saludo = hora >= 5 && hora < 12 ? 'Buenos días' : hora >= 12 && hora < 19 ? 'Buenas tardes' : 'Buenas noches';
-                    const mensaje = `${saludo} ${cliente.nombre}, adjunto encontrará su factura del mes. Gracias.`;
+
+                    // Extraer mes y año del nombre del archivo (ej: YASMIN.SER.MAYO.2026.pdf)
+                    const partes = sinExt.split('.');
+                    const mesNombre = partes[2] || '';
+                    const anio = partes[3] || new Date().getFullYear();
+
+                    // Calcular fecha límite (día 15 del mes siguiente)
+                    const meses = { ENERO:'FEBRERO', FEBRERO:'MARZO', MARZO:'ABRIL', ABRIL:'MAYO', MAYO:'JUNIO', JUNIO:'JULIO', JULIO:'AGOSTO', AGOSTO:'SEPTIEMBRE', SEPTIEMBRE:'OCTUBRE', OCTUBRE:'NOVIEMBRE', NOVIEMBRE:'DICIEMBRE', DICIEMBRE:'ENERO' };
+                    const mesSiguiente = meses[mesNombre.toUpperCase()] || 'SIGUIENTE';
+
+                    const monto = cliente.monto_cotizacion ? `$${parseFloat(cliente.monto_cotizacion).toFixed(2)}` : '$0.00';
+
+                    const mensaje = `Saludos ${saludo}!\nLa factura por EL MES DE ${mesNombre.toUpperCase()} ${anio}📃 ha sido generada.\n💠Recordandole: que la misma tiene un plazo hasta el dia 15 DE ${mesSiguiente} ${anio} para el pago.\n💰 Monto a pagar: ${monto}\n⚠️LOS PAGOS SE REALIZAN A NUESTRAS CUENTAS DE BANCOS⚠️\nCUENTAS:\nA nombre: 7LABS\n🟢Reservas: 248 013348 5\n🔵Popular:     782 6584 05\n🟢BHD:         1587 811 0015\n🧾RNC: 130-82698-6`;
+
                     const pdfPath = path.join(PDFS_DIR, `${Date.now()}_${filename}`);
                     fs.writeFileSync(pdfPath, buffer);
                     await baileys.enviarPDF(cliente.contacto, pdfPath, filename, mensaje);
                     log.info('[watcher] PDF enviado por WhatsApp a:', cliente.nombre);
+
+                    // Marcar como Cotizado
+                    await fetch(`${PROD_URL}/api/watcher?accion=cotizado&id=${cliente.id}&secret=paytrack-watcher-2026`, { method: 'POST' }).catch(() => {});
+
+                    // Marcar como Notificado
+                    await fetch(`${PROD_URL}/api/watcher?accion=notificado&id=${cliente.id}&secret=paytrack-watcher-2026`, { method: 'POST' }).catch(() => {});
+
                     if (mainWin && !mainWin.isDestroyed()) {
                       mainWin.webContents.send('pdf-enviado-whatsapp', { filename, nombreCliente, ok: true });
                     }
