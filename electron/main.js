@@ -160,7 +160,13 @@ function iniciarWatcher(carpeta) {
                         log.warn('[watcher] Error leyendo PDF:', await resPDF.text());
                       }
                     } catch(e) { log.warn('[watcher] No se pudo leer monto del PDF:', e.message); }
-                    const monto = `$${parseFloat(montoNum).toFixed(2)}`;
+                    const monto = `$${parseFloat(montoNum).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+                    // Actualizar monto en Supabase
+                    if (montoNum > 0) {
+                      await fetch(`${PROD_URL}/api/watcher?accion=actualizar-monto&id=${cliente.id}&monto=${montoNum}&secret=paytrack-watcher-2026`, { method: 'POST' }).catch(() => {});
+                      log.info('[watcher] Monto actualizado en Supabase:', montoNum);
+                    }
 
                     const mensaje = `Saludos ${saludo}!\nLa factura por EL MES DE ${mesNombre.toUpperCase()} ${anio}📃 ha sido generada.\n💠Recordandole: que la misma tiene un plazo hasta el dia 15 DE ${mesSiguiente} ${anio} para el pago.\n💰 Monto a pagar: ${monto}\n⚠️LOS PAGOS SE REALIZAN A NUESTRAS CUENTAS DE BANCOS⚠️\nCUENTAS:\nA nombre: 7LABS\n🟢Reservas: 248 013348 5\n🔵Popular:     782 6584 05\n🟢BHD:         1587 811 0015\n🧾RNC: 130-82698-6`;
 
