@@ -143,7 +143,20 @@ function iniciarWatcher(carpeta) {
                     const meses = { ENERO:'FEBRERO', FEBRERO:'MARZO', MARZO:'ABRIL', ABRIL:'MAYO', MAYO:'JUNIO', JUNIO:'JULIO', JULIO:'AGOSTO', AGOSTO:'SEPTIEMBRE', SEPTIEMBRE:'OCTUBRE', OCTUBRE:'NOVIEMBRE', NOVIEMBRE:'DICIEMBRE', DICIEMBRE:'ENERO' };
                     const mesSiguiente = meses[mesNombre.toUpperCase()] || 'SIGUIENTE';
 
-                    const monto = cliente.monto ? `$${parseFloat(cliente.monto).toFixed(2)}` : '$0.00';
+                    // Extraer monto del PDF via API
+                    let montoNum = cliente.monto || 0;
+                    try {
+                      const { FormData: NodeFormData } = await import('formdata-node');
+                      const { fileFromPath } = await import('formdata-node/file-from-path');
+                      const fd = new NodeFormData();
+                      fd.append('pdf', new Blob([buffer], { type: 'application/pdf' }), filename);
+                      const resPDF = await fetch(`${PROD_URL}/api/leer-pdf`, { method: 'POST', body: fd });
+                      if (resPDF.ok) {
+                        const dataPDF = await resPDF.json();
+                        if (dataPDF.monto != null) montoNum = dataPDF.monto;
+                      }
+                    } catch(e) { log.warn('[watcher] No se pudo leer monto del PDF:', e.message); }
+                    const monto = `$${parseFloat(montoNum).toFixed(2)}`;
 
                     const mensaje = `Saludos ${saludo}!\nLa factura por EL MES DE ${mesNombre.toUpperCase()} ${anio}📃 ha sido generada.\n💠Recordandole: que la misma tiene un plazo hasta el dia 15 DE ${mesSiguiente} ${anio} para el pago.\n💰 Monto a pagar: ${monto}\n⚠️LOS PAGOS SE REALIZAN A NUESTRAS CUENTAS DE BANCOS⚠️\nCUENTAS:\nA nombre: 7LABS\n🟢Reservas: 248 013348 5\n🔵Popular:     782 6584 05\n🟢BHD:         1587 811 0015\n🧾RNC: 130-82698-6`;
 
