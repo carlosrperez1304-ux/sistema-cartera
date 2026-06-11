@@ -17,8 +17,8 @@ export async function GET(req) {
     .limit(1)
     .maybeSingle();
 
-  if (error) return Response.json(null);
-  return Response.json(data);
+  if (error) return Response.json({ debug_error: error.message });
+  return Response.json(data ?? { debug_null: true, nombre_buscado: nombre });
 }
 
 export async function POST(req) {
