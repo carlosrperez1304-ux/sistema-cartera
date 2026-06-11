@@ -10,7 +10,7 @@ export async function GET(req) {
     .select('id, nombre, contacto, estado, empresa_id')
     .ilike('nombre', '%' + nombre + '%')
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (error) return Response.json(null);
   return Response.json(data);
