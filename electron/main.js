@@ -105,6 +105,23 @@ function iniciarWatcher(carpeta) {
             log.info('[watcher] PDF detectado:', filename);
           }
 
+          // Buscar cliente y subir PDF siempre (independiente de WhatsApp)
+          ;(async () => {
+            try {
+              const res = await fetch(`${PROD_URL}/api/watcher?nombre=${encodeURIComponent(nombreCliente)}&secret=paytrack-watcher-2026`);
+              if (res.ok) {
+                const cliente = await res.json();
+                if (cliente?.id) {
+                  // Marcar como Cotizado siempre
+                  await fetch(`${PROD_URL}/api/watcher?accion=cotizado&id=${cliente.id}&secret=paytrack-watcher-2026`, { method: 'POST' }).catch(() => {});
+                  log.info('[watcher] Cliente marcado como Cotizado:', cliente.nombre);
+                }
+              }
+            } catch(err) {
+              log.error('[watcher] Error marcando cotizado:', err.message);
+            }
+          })();
+
           // Enviar automáticamente por Baileys si está conectado
           ;(async () => {
             try {
