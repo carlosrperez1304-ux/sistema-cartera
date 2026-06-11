@@ -146,10 +146,9 @@ function iniciarWatcher(carpeta) {
                     // Extraer monto del PDF via API
                     let montoNum = cliente.monto || 0;
                     try {
-                      const { FormData: NodeFormData } = await import('formdata-node');
-                      const { fileFromPath } = await import('formdata-node/file-from-path');
-                      const fd = new NodeFormData();
-                      fd.append('pdf', new Blob([buffer], { type: 'application/pdf' }), filename);
+                      const fd = new FormData();
+                      const blob = new Blob([buffer], { type: 'application/pdf' });
+                      fd.append('pdf', blob, filename);
                       const resPDF = await fetch(`${PROD_URL}/api/leer-pdf`, { method: 'POST', body: fd });
                       if (resPDF.ok) {
                         const dataPDF = await resPDF.json();
