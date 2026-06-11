@@ -1,4 +1,5 @@
 const { app, BrowserWindow, ipcMain, shell, screen, Tray, Menu, nativeImage, dialog } = require('electron');
+const baileys = require('./baileys');
 const path = require('path');
 const fs   = require('fs');
 const os   = require('os');
@@ -103,6 +104,33 @@ function iniciarWatcher(carpeta) {
             mainWin.webContents.send('pdf-nuevo-detectado', { filename, nombreCliente, base64 });
             log.info('[watcher] PDF detectado:', filename);
           }
+
+          // Enviar automáticamente por Baileys si está conectado
+          ;(async () => {
+            try {
+              const conectado = await baileys.esperarConexion(30000);
+              if (!conectado) { log.warn('[watcher] Baileys no conectado, no se envió:', filename); return; }
+              const res = await fetch(`${PROD_URL}/api/watcher?nombre=${encodeURIComponent(nombreCliente)}&secret=paytrack-watcher-2026`);
+                if (res.ok) {
+                  const cliente = await res.json();
+                  if (cliente?.contacto) {
+                    const hora = new Date().getHours();
+                    const saludo = hora >= 5 && hora < 12 ? 'Buenos días' : hora >= 12 && hora < 19 ? 'Buenas tardes' : 'Buenas noches';
+                    const mensaje = `${saludo} ${cliente.nombre}, adjunto encontrará su factura del mes. Gracias.`;
+                    const pdfPath = path.join(PDFS_DIR, `${Date.now()}_${filename}`);
+                    fs.writeFileSync(pdfPath, buffer);
+                    await baileys.enviarPDF(cliente.contacto, pdfPath, filename, mensaje);
+                    log.info('[watcher] PDF enviado por WhatsApp a:', cliente.nombre);
+                    if (mainWin && !mainWin.isDestroyed()) {
+                      mainWin.webContents.send('pdf-enviado-whatsapp', { filename, nombreCliente, ok: true });
+                    }
+                  }
+                }
+              } catch(err) {
+                log.error('[watcher] Error enviando por WhatsApp:', err.message);
+              }
+            })();
+
         } catch (err) { log.error('[watcher] Error leyendo PDF:', err.message); }
       }, 2000);
 
@@ -251,6 +279,15 @@ app.whenReady().then(async () => {
   if (!fs.existsSync(PDFS_DIR)) fs.mkdirSync(PDFS_DIR, { recursive: true });
   createTray();
   createSplashWindow();
+
+  // Iniciar Baileys WhatsApp
+  baileys.onQR((qrImage) => {
+    if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('whatsapp-qr', qrImage);
+  });
+  baileys.onStatus((status) => {
+    if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('whatsapp-status', status);
+  });
+  baileys.iniciarBaileys().catch(err => log.error('[Baileys] Error al iniciar:', err.message));
   const deviceId = getOrCreateDeviceId();
   const saved    = loadActivation();
   if (saved?.code) {
@@ -327,14 +364,9 @@ ipcMain.handle('send-pdf-whatsapp', async (event, payload) => {
 
     // FIX #1: usar SetFileDropList de System.Windows.Forms
     await new Promise((resolve, reject) => {
-      const psScript = `
-Add-Type -AssemblyName System.Windows.Forms
-$files = New-Object System.Collections.Specialized.StringCollection
-$files.Add('${pdfPath.replace(/'/g, "''")}')
-[System.Windows.Forms.Clipboard]::SetFileDropList($files)
-`;
+      const psScript = `Add-Type -AssemblyName System.Windows.Forms;$f=New-Object System.Collections.Specialized.StringCollection;$f.Add('${pdfPath.replace(/'/g, "''")}');[System.Windows.Forms.Clipboard]::SetFileDropList($f)`;
       const encoded = Buffer.from(psScript, 'utf16le').toString('base64');
-      execFile('powershell', ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded],
+      execFile('powershell', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-EncodedCommand', encoded],
         { timeout: 10000 },
         (err) => (err ? reject(err) : resolve())
       );
@@ -404,3 +436,38 @@ ipcMain.handle('seleccionar-carpeta-pdfs', async () => {
 
 ipcMain.handle('detener-watcher', () => { detenerWatcher(); return { ok: true }; });
 ipcMain.handle('estado-watcher', () => ({ activo: !!watcherActivo, carpeta: carpetaVigilada }));
+
+// ── IPC: WhatsApp Baileys ─────────────────────────────────────
+ipcMain.handle('whatsapp-status', () => ({ conectado: baileys.estaConectado() }));
+
+ipcMain.handle('whatsapp-enviar-mensaje', async (event, { numero, mensaje }) => {
+  try {
+    await baileys.enviarMensaje(numero, mensaje);
+    return { ok: true };
+  } catch(err) {
+    log.error('[Baileys] enviarMensaje:', err.message);
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle('whatsapp-enviar-pdf', async (event, { numero, base64, filename, mensaje }) => {
+  try {
+    const cleanB64 = base64.includes(',') ? base64.split(',')[1] : base64;
+    const pdfPath = path.join(PDFS_DIR, Date.now() + '_' + filename);
+    fs.writeFileSync(pdfPath, Buffer.from(cleanB64, 'base64'));
+    await baileys.enviarPDF(numero, pdfPath, filename, mensaje);
+    return { ok: true };
+  } catch(err) {
+    log.error('[Baileys] enviarPDF:', err.message);
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle('whatsapp-cerrar-sesion', async () => {
+  try {
+    await baileys.cerrarSesion();
+    return { ok: true };
+  } catch(err) {
+    return { ok: false, error: err.message };
+  }
+});
