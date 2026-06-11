@@ -39,6 +39,13 @@ export async function POST(req) {
     }).eq('id', id);
   }
 
+  if (accion === 'actualizar-monto') {
+    const monto = searchParams.get('monto');
+    if (monto) {
+      await db().from('clientes').update({ monto: parseFloat(monto) }).eq('id', id);
+    }
+  }
+
   if (accion === 'notificado') {
     await db().from('clientes').update({
       estado: 'Notificado',

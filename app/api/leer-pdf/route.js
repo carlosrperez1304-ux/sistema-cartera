@@ -38,6 +38,25 @@ function extraerTotal(texto) {
 }
 
 export async function POST(req) {
+  // Permitir sin auth si viene con base64 (desde Electron watcher)
+  const contentType = req.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    try {
+      const { base64, filename } = await req.json();
+      if (!base64) return Response.json({ error: 'No base64' }, { status: 400 });
+      const buffer = Buffer.from(base64, 'base64');
+      const { text: textoArr } = await extractText(new Uint8Array(buffer), { mergePages: false });
+      const textoRaw = Array.isArray(textoArr) ? textoArr.join('\n') : textoArr;
+      const texto = textoRaw.replace(/([^\n])(?=TOTAL\s)/g, '$1\n').replace(/\n+/g, '\n').trim();
+      const textoFix = texto.replace(/([^\n])(?=TOTAL\s)/g, '$1\n');
+      const monto = extraerTotal(textoFix);
+      if (monto === null) return Response.json({ error: 'No se encontró monto' }, { status: 422 });
+      return Response.json({ monto });
+    } catch(err) {
+      return Response.json({ error: err.message }, { status: 500 });
+    }
+  }
+
   const auth = await requireAuth(req);
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
   const { searchParams } = new URL(req.url);

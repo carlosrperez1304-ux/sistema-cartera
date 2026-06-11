@@ -143,16 +143,21 @@ function iniciarWatcher(carpeta) {
                     const meses = { ENERO:'FEBRERO', FEBRERO:'MARZO', MARZO:'ABRIL', ABRIL:'MAYO', MAYO:'JUNIO', JUNIO:'JULIO', JULIO:'AGOSTO', AGOSTO:'SEPTIEMBRE', SEPTIEMBRE:'OCTUBRE', OCTUBRE:'NOVIEMBRE', NOVIEMBRE:'DICIEMBRE', DICIEMBRE:'ENERO' };
                     const mesSiguiente = meses[mesNombre.toUpperCase()] || 'SIGUIENTE';
 
-                    // Extraer monto del PDF via API
+                    // Extraer monto del PDF via API (base64)
                     let montoNum = cliente.monto || 0;
                     try {
-                      const fd = new FormData();
-                      const blob = new Blob([buffer], { type: 'application/pdf' });
-                      fd.append('pdf', blob, filename);
-                      const resPDF = await fetch(`${PROD_URL}/api/leer-pdf`, { method: 'POST', body: fd });
+                      const base64PDF = buffer.toString('base64');
+                      const resPDF = await fetch(`${PROD_URL}/api/leer-pdf`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ base64: base64PDF, filename })
+                      });
                       if (resPDF.ok) {
                         const dataPDF = await resPDF.json();
                         if (dataPDF.monto != null) montoNum = dataPDF.monto;
+                        log.info('[watcher] Monto leído del PDF:', dataPDF.monto);
+                      } else {
+                        log.warn('[watcher] Error leyendo PDF:', await resPDF.text());
                       }
                     } catch(e) { log.warn('[watcher] No se pudo leer monto del PDF:', e.message); }
                     const monto = `$${parseFloat(montoNum).toFixed(2)}`;
