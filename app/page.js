@@ -3152,9 +3152,7 @@ export default function App() {
           )}
           <div id="electron-win-controls" style={{ display: 'flex', gap: '0.3rem', WebkitAppRegion: 'no-drag' }}>
             <button onClick={() => window.electronAPI?.toggleMini()} title="Modo mini" style={{ width: '28px', height: '20px', background: 'none', border: 'none', cursor: 'pointer', color: '#7878a0', borderRadius: '4px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.1)'} onMouseLeave={e => e.currentTarget.style.background='none'}><Minimize2 size={10}/></button>
-            <button onClick={() => window.electronAPI?.minimizeWindow()} title="Minimizar" style={{ width: '28px', height: '20px', background: 'none', border: 'none', cursor: 'pointer', color: '#7878a0', borderRadius: '4px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.1)'} onMouseLeave={e => e.currentTarget.style.background='none'}>─</button>
-            <button onClick={() => window.electronAPI?.maximizeWindow()} title="Maximizar" style={{ width: '28px', height: '20px', background: 'none', border: 'none', cursor: 'pointer', color: '#7878a0', borderRadius: '4px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.1)'} onMouseLeave={e => e.currentTarget.style.background='none'}>□</button>
-            <button onClick={() => window.electronAPI?.closeWindow()} title="Cerrar" style={{ width: '28px', height: '20px', background: 'none', border: 'none', cursor: 'pointer', color: '#7878a0', borderRadius: '4px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => { e.currentTarget.style.background='#ef4444'; e.currentTarget.style.color='#fff'; }} onMouseLeave={e => { e.currentTarget.style.background='none'; e.currentTarget.style.color='#7878a0'; }}>✕</button>
+
           </div>
         </div>
       )}
