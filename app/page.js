@@ -61,6 +61,7 @@ export default function App() {
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showTopbarMenu, setShowTopbarMenu] = useState(false);
+  const [carpetaVigilada, setCarpetaVigilada] = useState('');
   const [whatsappQR, setWhatsappQR] = useState(null);
   const [whatsappConectado, setWhatsappConectado] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -120,6 +121,17 @@ export default function App() {
 
   // Si hay sesión NextAuth: usar el rol del token JWT o el email de Google
   // Si no: fallback a la lista local (para compatibilidad)
+  // Carpeta vigilada
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.electronAPI) return;
+    window.electronAPI.estadoWatcher().then(s => {
+      if (s?.carpeta) setCarpetaVigilada(s.carpeta);
+    }).catch(() => {});
+    window.electronAPI.onWatcherIniciado && window.electronAPI.onWatcherIniciado((carpeta) => {
+      setCarpetaVigilada(carpeta);
+    });
+  }, []);
+
   // WhatsApp Baileys listeners
   useEffect(() => {
     if (typeof window === 'undefined' || !window.electronAPI) return;
@@ -3203,6 +3215,14 @@ export default function App() {
             })()}
           </div>
           <div ref={clockRef} style={{ fontSize:'0.75rem', color:'var(--text-muted)', whiteSpace:'nowrap', letterSpacing:'0.02em' }} />
+          {/* CARPETA VIGILADA */}
+          {carpetaVigilada && (
+            <div title={'Carpeta vigilada: ' + carpetaVigilada} style={{ display:'flex', alignItems:'center', gap:'5px', fontSize:'11px', color:'#16a34a', background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:'20px', padding:'4px 10px', cursor:'default' }}>
+              <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:'#16a34a' }}></div>
+              Watcher activo
+            </div>
+          )}
+
           {/* AVATAR + CERRAR SESIÓN */}
           <div style={{ position:'relative' }}>
             <div onClick={() => setShowTopbarMenu(v => !v)} style={{ width:'32px', height:'32px', borderRadius:'50%', background:'linear-gradient(135deg,#4f46e5,#6366f1)', color:'#fff', fontSize:'12px', fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
