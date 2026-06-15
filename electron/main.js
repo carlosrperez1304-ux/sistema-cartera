@@ -229,7 +229,7 @@ function createTray() {
   tray.setToolTip('PayTrack');
   updateTrayMenu();
   tray.on('click', () => {
-    if (mainWin && !mainWin.isDestroyed()) { mainWin.show(); mainWin.focus(); }
+    if (mainWin && !mainWin.isDestroyed()) { mainWin.show(); if (mainWin.isMinimized()) mainWin.restore(); mainWin.focus(); }
     else if (activationWin && !activationWin.isDestroyed()) activationWin.focus();
   });
 }
@@ -355,7 +355,7 @@ function createMainWindow() {
 
 // ── Segunda instancia ────────────────────────────────────────
 app.on('second-instance', () => {
-  if (mainWin && !mainWin.isDestroyed()) { if (mainWin.isMinimized()) mainWin.restore(); mainWin.focus(); }
+  if (mainWin && !mainWin.isDestroyed()) { mainWin.show(); if (mainWin.isMinimized()) mainWin.restore(); mainWin.focus(); }
   else if (activationWin && !activationWin.isDestroyed()) activationWin.focus();
 });
 
