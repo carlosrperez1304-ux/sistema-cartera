@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import TabTickets from './components/TabTickets';
 import TabGrupos from './components/TabGrupos';
+import TabRecordatorio from './components/TabRecordatorio';
 import { getSupabaseBrowser } from '../lib/supabase-browser.js';
 import * as XLSX from 'xlsx';
 import { signIn, signOut, useSession } from 'next-auth/react';
@@ -3176,6 +3177,7 @@ export default function App() {
           {[
             { tab:'dashboard', label:'Inicio' },
             ...(tienePermiso('ver_clientes') ? [{ tab:'cartera', label:'Cartera' }] : []),
+            ...(tienePermiso('ver_clientes') ? [{ tab:'recordatorio', label:'Recordatorio' }] : []),
             { tab:'tickets', label:'Tickets' },
             ...(tienePermiso('ver_creditos') ? [{ tab:'credito', label:'Crédito' }] : []),
             { tab:'agenda', label:'Agenda' },
@@ -4762,6 +4764,11 @@ export default function App() {
 
           <div className={`tab-content ${activeTab === 'grupos' ? 'active' : ''}`}>
             <TabGrupos clientes={clientes} session={session} currentUser={currentUser} empresaActual={empresaActual} showToast={showToast} />
+          </div>
+
+          {/* TAB RECORDATORIO */}
+          <div className={`tab-content ${activeTab === 'recordatorio' ? 'active' : ''}`}>
+            <TabRecordatorio clientes={clientes} showToast={showToast} />
           </div>
 
           <div className={`tab-content ${activeTab === 'credito' ? 'active' : ''}`}>
