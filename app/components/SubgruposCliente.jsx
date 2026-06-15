@@ -2,6 +2,34 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight, Plus, Trash2, MessageCircle, FileUp, X, Check } from 'lucide-react';
 
+function EditableContacto({ sg, onSave }) {
+  const [editando, setEditando] = useState(false);
+  const [valor, setValor] = useState(sg.contacto || '');
+
+  if (editando) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <input
+          value={valor}
+          onChange={e => setValor(e.target.value)}
+          placeholder="Número"
+          autoFocus
+          style={{ width: '110px', padding: '2px 6px', fontSize: '11px', borderRadius: '5px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
+          onKeyDown={e => { if (e.key === 'Enter') { onSave(valor); setEditando(false); } if (e.key === 'Escape') setEditando(false); }}
+        />
+        <button onClick={() => { onSave(valor); setEditando(false); }} style={{ padding: '2px 5px', fontSize: '10px', borderRadius: '4px', background: '#16a34a', color: 'white', border: 'none', cursor: 'pointer' }}>✓</button>
+        <button onClick={() => setEditando(false)} style={{ padding: '2px 5px', fontSize: '10px', borderRadius: '4px', background: 'none', border: '1px solid var(--border)', cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
+      </div>
+    );
+  }
+
+  return (
+    <div onClick={() => setEditando(true)} style={{ fontSize: '11px', color: sg.contacto ? 'var(--text-muted)' : '#ea580c', cursor: 'pointer', borderBottom: '1px dashed var(--border)' }} title="Clic para editar contacto">
+      {sg.contacto || 'Sin contacto'} · {sg.pdf_nombre ? '📎 PDF' : 'Sin PDF'}
+    </div>
+  );
+}
+
 const ESTADOS = ['Pendiente', 'Cotizado', 'Notificado', 'Pagado'];
 const ESTADO_COLORS = {
   Pendiente: { bg: '#fef2f2', color: '#dc2626' },
@@ -136,7 +164,11 @@ export default function SubgruposCliente({ cliente, empresaActual, showToast }) 
             <div key={sg.id} style={{ display: 'grid', gridTemplateColumns: '1fr 100px 80px 80px', gap: '8px', padding: '8px 12px', borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
               <div>
                 <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text)' }}>{sg.nombre}</div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{sg.contacto || 'Sin contacto'} · {sg.pdf_nombre ? '📎 PDF' : 'Sin PDF'}</div>
+                <EditableContacto sg={sg} onSave={async (contacto) => {
+                  const res = await fetch('/api/subgrupos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: sg.id, contacto }) });
+                  const data = await res.json();
+                  setSubgrupos(prev => prev.map(s => s.id === sg.id ? data : s));
+                }} />
               </div>
               <div style={{ fontSize: '12px', fontFamily: 'monospace', color: 'var(--text)' }}>
                 ${parseFloat(sg.monto || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
