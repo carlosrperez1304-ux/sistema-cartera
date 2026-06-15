@@ -186,10 +186,11 @@ function iniciarWatcher(carpeta) {
                     }
 
                     // Marcar como Cotizado
-                    await fetch(`${PROD_URL}/api/watcher?accion=cotizado&id=${cliente.id}&secret=paytrack-watcher-2026`, { method: 'POST' }).catch(() => {});
+                    const tipo = cliente._tipo || 'cliente';
+                    await fetch(`${PROD_URL}/api/watcher?accion=cotizado&id=${cliente.id}&tipo=${tipo}&secret=paytrack-watcher-2026`, { method: 'POST' }).catch(() => {});
 
                     // Marcar como Notificado
-                    await fetch(`${PROD_URL}/api/watcher?accion=notificado&id=${cliente.id}&secret=paytrack-watcher-2026`, { method: 'POST' }).catch(() => {});
+                    await fetch(`${PROD_URL}/api/watcher?accion=notificado&id=${cliente.id}&tipo=${tipo}&secret=paytrack-watcher-2026`, { method: 'POST' }).catch(() => {});
 
                     if (mainWin && !mainWin.isDestroyed()) {
                       mainWin.webContents.send('pdf-enviado-whatsapp', { filename, nombreCliente, ok: true });
@@ -250,7 +251,15 @@ function updateTrayMenu() {
 
 // ── autoUpdater ──────────────────────────────────────────────
 autoUpdater.on('error', (err) => { log.error('[autoUpdater]', err.message); if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('update-error', err.message); });
-autoUpdater.on('update-available', (info) => { if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('update-available', info.version); });
+autoUpdater.on('update-available', (info) => {
+  log.info('[autoUpdater] update-available:', info.version);
+  if (mainWin && !mainWin.isDestroyed()) {
+    mainWin.webContents.send('update-available', info.version);
+    log.info('[autoUpdater] Evento enviado al renderer');
+  } else {
+    log.warn('[autoUpdater] mainWin no disponible');
+  }
+});
 autoUpdater.on('download-progress', (p) => { if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('download-progress', Math.round(p.percent)); });
 autoUpdater.on('update-downloaded', () => { if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('update-downloaded'); });
 
