@@ -284,7 +284,7 @@ const OFFLINE_HTML = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"
 
 // ── Main Window ──────────────────────────────────────────────
 function createMainWindow() {
-  mainWin = new BrowserWindow({ width: 1280, height: 800, minWidth: 960, minHeight: 600, frame: true, autoHideMenuBar: true, title: 'PayTrack — Gestión de Cartera', show: false, backgroundColor: '#1a1915', icon: path.join(__dirname, 'assets', 'icon.png'), titleBarOverlay: { color: '#191919', symbolColor: '#ffffff', height: 36 }, webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false } });
+  mainWin = new BrowserWindow({ width: 1280, height: 800, minWidth: 960, minHeight: 600, frame: true, autoHideMenuBar: true, title: `PayTrack — Gestión de Cartera v${require('./package.json').version}`, show: false, backgroundColor: '#1a1915', icon: path.join(__dirname, 'assets', 'icon.png'), titleBarOverlay: { color: '#191919', symbolColor: '#ffffff', height: 36 }, webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false } });
   mainWin.setMenuBarVisibility(false);
 
   mainWin.webContents.session.clearCache().then(() => {
