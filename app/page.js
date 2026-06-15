@@ -3255,6 +3255,13 @@ export default function App() {
                 <button onClick={() => { setShowTopbarMenu(false); abrirCargaMasiva(); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'var(--text)', borderBottom:'1px solid var(--border)' }}>
                   <Upload size={14}/> Carga Masiva PDF
                 </button>
+                {typeof window !== 'undefined' && window.electronAPI?.isElectron && (
+                  <button onClick={() => { setShowTopbarMenu(false); if (updateDownloaded) { window.electronAPI.installUpdate(); } else if (updateAvailable) { setDownloading(true); window.electronAPI.startDownload(); } }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor: updateAvailable ? 'pointer' : 'default', fontSize:'13px', color: updateDownloaded ? '#22c55e' : updateAvailable ? '#6366f1' : 'var(--text-muted)', borderBottom:'1px solid var(--border)' }}>
+                    <Download size={14}/>
+                    {updateDownloaded ? 'Reiniciar y actualizar' : downloading ? `Descargando... ${downloadProgress}%` : updateAvailable ? `Actualizar a v${updateVersion}` : 'App actualizada'}
+                    {updateAvailable && !downloading && !updateDownloaded && <span style={{ marginLeft:'auto', width:'7px', height:'7px', borderRadius:'50%', background:'#6366f1' }}/>}
+                  </button>
+                )}
                 <button onClick={() => { setShowTopbarMenu(false); setShowWhatsappStatusModal(true); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'var(--text)', borderBottom:'1px solid var(--border)' }}>
                   <MessageCircle size={14}/> WhatsApp
                 </button>
@@ -3488,32 +3495,7 @@ export default function App() {
                       <Settings size={14}/> Preferencias
                     </button>
                   )}
-                  {/* Actualización — solo en Electron */}
-                  {typeof window !== 'undefined' && window.electronAPI?.isElectron && (
-                    <button
-                      onClick={() => {
-                        setShowUserMenu(false);
-                        if (updateDownloaded) { window.electronAPI.installUpdate(); }
-                        else if (downloading) { /* en progreso */ }
-                        else if (updateAvailable) { setDownloading(true); window.electronAPI.startDownload(); }
-                      }}
-                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.75rem', background: 'none', border: 'none', cursor: updateAvailable ? 'pointer' : 'default', borderRadius: '6px', fontSize: '0.83rem', color: updateDownloaded ? '#22c55e' : updateAvailable ? '#6366f1' : 'var(--text-muted)', textAlign: 'left' }}
-                      onMouseEnter={e => e.currentTarget.style.background='var(--surface-2)'}
-                      onMouseLeave={e => e.currentTarget.style.background='none'}
-                    >
-                      <Download size={14}/>
-                      {updateDownloaded
-                        ? 'Reiniciar y actualizar'
-                        : downloading
-                          ? `Descargando... ${downloadProgress}%`
-                          : updateAvailable
-                            ? `Actualizar a v${updateVersion}`
-                            : 'App actualizada'}
-                      {updateAvailable && !downloading && !updateDownloaded && (
-                        <span style={{ marginLeft: 'auto', width: '7px', height: '7px', borderRadius: '50%', background: '#6366f1', flexShrink: 0 }}/>
-                      )}
-                    </button>
-                  )}
+
                   <button onClick={() => { setShowTopbarMenu(false); window._manualLogout = true; signOut({ callbackUrl: '/' }); setTimeout(() => { window.location.href = '/'; }, 500); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.75rem', background: 'none', border: 'none', cursor: 'pointer', borderRadius: '6px', fontSize: '0.83rem', color: '#ef4444', textAlign: 'left' }} onMouseEnter={e => e.currentTarget.style.background='#fff1f2'} onMouseLeave={e => e.currentTarget.style.background='none'}>
                     <LogOut size={14}/> Cerrar sesión
                   </button>
