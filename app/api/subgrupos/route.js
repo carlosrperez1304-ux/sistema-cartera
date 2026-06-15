@@ -3,14 +3,15 @@ import { db } from '../../../lib/supabase.js';
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const cliente_id = searchParams.get('cliente_id');
-  if (!cliente_id) return Response.json([]);
+  const empresa_id = searchParams.get('empresa_id');
 
-  const { data, error } = await db()
-    .from('subgrupos_cliente')
-    .select('*')
-    .eq('cliente_id', cliente_id)
-    .order('created_at', { ascending: true });
+  let query = db().from('subgrupos_cliente').select('*').order('created_at', { ascending: true });
 
+  if (cliente_id) query = query.eq('cliente_id', cliente_id);
+  else if (empresa_id) query = query.eq('empresa_id', empresa_id);
+  else return Response.json([]);
+
+  const { data, error } = await query;
   if (error) return Response.json([]);
   return Response.json(data);
 }

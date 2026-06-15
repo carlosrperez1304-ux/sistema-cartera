@@ -26,6 +26,13 @@ export default function TabRecordatorio({ clientes, showToast, empresaActual }) 
   const intervalRef = useRef(null);
   const countdownRef = useRef(null);
 
+  const cargarSubgrupos = async () => {
+    try {
+      const res = await fetch(`/api/subgrupos?empresa_id=${empresaActual?.id || 1}`);
+      return await res.json();
+    } catch(e) { return []; }
+  };
+
   const cargarLista = async () => {
     setCargando(true);
     try {
@@ -40,7 +47,15 @@ export default function TabRecordatorio({ clientes, showToast, empresaActual }) 
         !yaEnviados.includes(c.id)
       );
 
-      setCola(pendientes.map(c => ({ ...c, _enviado: false })));
+      // Cargar subgrupos pendientes
+      const todosSubgrupos = await cargarSubgrupos();
+      const subgruposPendientes = todosSubgrupos.filter(sg =>
+        ['Notificado', 'Cotizado'].includes(sg.estado) &&
+        sg.contacto &&
+        !yaEnviados.includes(`sg_${sg.id}`)
+      ).map(sg => ({ ...sg, _enviado: false, _esSubgrupo: true, id: `sg_${sg.id}`, _idReal: sg.id }));
+
+      setCola([...pendientes.map(c => ({ ...c, _enviado: false })), ...subgruposPendientes]);
     } catch(e) {
       setCola((clientes || []).filter(c =>
         ['Notificado', 'Cotizado'].includes(c.estado) && !c.suspendido && c.contacto
@@ -94,10 +109,11 @@ export default function TabRecordatorio({ clientes, showToast, empresaActual }) 
         await window.electronAPI.whatsappEnviarMensaje(cliente.contacto, mensaje);
       }
       // Guardar en BD
+      const idGuardar = cliente._esSubgrupo ? `sg_${cliente._idReal}` : cliente.id;
       await fetch('/api/recordatorios', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cliente_id: cliente.id, empresa_id: empresaActual?.id || 1 })
+        body: JSON.stringify({ cliente_id: idGuardar, empresa_id: empresaActual?.id || 1 })
       }).catch(() => {});
 
       setCola(prev => prev.map(c => c.id === cliente.id ? { ...c, _enviado: true } : c));
