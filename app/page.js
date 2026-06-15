@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import TabTickets from './components/TabTickets';
 import TabGrupos from './components/TabGrupos';
 import TabRecordatorio from './components/TabRecordatorio';
+import SubgruposCliente from './components/SubgruposCliente';
 import { getSupabaseBrowser } from '../lib/supabase-browser.js';
 import * as XLSX from 'xlsx';
 import { signIn, signOut, useSession } from 'next-auth/react';
@@ -4604,6 +4605,7 @@ export default function App() {
                                       <span style={{ fontSize:'0.68rem', fontWeight:600, color:'#92400e', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{cliente.nota.length > 35 ? cliente.nota.slice(0, 35) + '…' : cliente.nota}</span>
                                     </div>
                                   )}
+                                  <SubgruposCliente cliente={cliente} empresaActual={empresaActual} showToast={showToast} />
                                 </div>
                               </div>
                             </td>

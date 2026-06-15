@@ -23,6 +23,8 @@ export default withAuth(
         if (pathname === '/') return true;
         if (pathname === '/api/activaciones') return true;
         if (pathname === '/api/watcher') return true;
+        if (pathname.startsWith('/api/subgrupos')) return true;
+        if (pathname.startsWith('/api/recordatorios')) return true;
         if (pathname === '/api/leer-pdf') return true;
         // El resto de APIs requieren token
         if (pathname.startsWith('/api/')) return !!token;
