@@ -1,6 +1,6 @@
 {
     "name":  "paytrack",
-    "version":  "1.2.0",
+    "version":  "1.3.0",
     "description":  "PayTrack — Gestión de Cartera",
     "author":  "7LABS",
     "main":  "main.js",
@@ -14,8 +14,10 @@
                   "copyright":  "7LABS",
                   "publish": [
                                   {
-                                      "provider": "generic",
-                                      "url": "https://app.cashrd.com/updates"
+                                      "provider": "github",
+                                      "owner": "carlosrperez1304-ux",
+                                      "repo": "sistema-cartera",
+                                      "releaseType": "release"
                                   }
                               ],
                   "win":  {
