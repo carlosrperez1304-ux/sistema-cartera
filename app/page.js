@@ -4768,7 +4768,7 @@ export default function App() {
 
           {/* TAB RECORDATORIO */}
           <div className={`tab-content ${activeTab === 'recordatorio' ? 'active' : ''}`}>
-            <TabRecordatorio clientes={clientes} showToast={showToast} />
+            <TabRecordatorio clientes={clientes} showToast={showToast} empresaActual={empresaActual} />
           </div>
 
           <div className={`tab-content ${activeTab === 'credito' ? 'active' : ''}`}>
