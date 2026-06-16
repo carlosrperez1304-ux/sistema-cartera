@@ -681,6 +681,8 @@ export default function App() {
   const [filtroMontoMax, setFiltroMontoMax] = useState('');
   const [filtroEstados, setFiltroEstados] = useState([]);
   const [recordatoriosDias, setRecordatoriosDias] = useState(7);
+  const [diaVencimiento, setDiaVencimiento] = useState(15);
+  const [mensajeRecordatorio, setMensajeRecordatorio] = useState('');
   const [activaciones, setActivaciones] = useState([]);
   const [nuevaActivNombre, setNuevaActivNombre] = useState('');
   const [loadingActivaciones, setLoadingActivaciones] = useState(false);
@@ -752,6 +754,8 @@ export default function App() {
         if (cfg.meta_mensual   != null) setMetaMensual(parseFloat(cfg.meta_mensual) || 0);
         if (cfg.color_acento)           setColorAcento(cfg.color_acento);
         if (cfg.recordatorio_dias)      setRecordatoriosDias(parseInt(cfg.recordatorio_dias) || 7);
+        if (cfg.dia_vencimiento)         setDiaVencimiento(parseInt(cfg.dia_vencimiento) || 15);
+        if (cfg.mensaje_recordatorio)    setMensajeRecordatorio(cfg.mensaje_recordatorio);
         if (cfg.modo_compacto  != null) setModoCompacto(cfg.modo_compacto === 'true');
         // Guardar si ya fue enviado este mes para usarlo en el efecto separado
         const hoy = new Date();
@@ -916,16 +920,29 @@ export default function App() {
     if (!hydrated) return;
     const verificarVencimientos = () => {
       const hoy = new Date();
-      if (hoy.getDate() >= 16) {
-        const updated = clientes.map(cliente => {
-          if (!['Pagado','Facturado','Vencido','No Generaron'].includes(cliente.estado)) {
-            if (parseInt(cliente.mes) === hoy.getMonth() + 1 && parseInt(cliente.año) === hoy.getFullYear()) {
-              return { ...cliente, estado: 'Vencido', historial: [...(cliente.historial||[]), { fecha: hoy.toISOString(), accion: 'Movido automáticamente a Vencido (día 16)', usuario: 'Sistema' }] };
-            }
-          }
-          return cliente;
-        });
-        if (JSON.stringify(updated) !== JSON.stringify(clientes)) setClientes(updated);
+      if (hoy.getDate() > diaVencimiento) {
+        const clientesAVencer = clientes.filter(c =>
+          !['Pagado','Facturado','Vencido','No Generaron'].includes(c.estado) &&
+          parseInt(c.mes) === hoy.getMonth() + 1 &&
+          parseInt(c.año) === hoy.getFullYear()
+        );
+        if (clientesAVencer.length > 0) {
+          // Actualizar en Supabase
+          clientesAVencer.forEach(c => {
+            fetch(`/api/clientes/${c.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ estado: 'Vencido' })
+            }).catch(() => {});
+          });
+          // Actualizar en frontend
+          const updated = clientes.map(c =>
+            clientesAVencer.find(cv => cv.id === c.id)
+              ? { ...c, estado: 'Vencido' }
+              : c
+          );
+          setClientes(updated);
+        }
       }
     };
     verificarVencimientos();
@@ -2975,9 +2992,9 @@ export default function App() {
   if (!isAuthenticated && !session) {
     return (
       <div className="login-container" style={{ position: 'relative', zIndex: 1, isolation: 'isolate' }}>
-        {/* Fondo animado con gráficas */}
-        <div style={{ position: 'fixed', inset: 0, zIndex: 0, background: '#0a0f1e', overflow: 'hidden' }}>
-          <svg width="100%" height="100%" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+        {/* Fondo oscuro */}
+        <div style={{ position: 'fixed', inset: 0, zIndex: 0, background: '#1a1915', overflow: 'hidden' }}>
+          <svg width="0" height="0" style={{display:'none'}}>
             <defs>
               <linearGradient id="line1grad" x1="0%" y1="0%" x2="100%" y2="0%">
                 <stop offset="0%" stopColor="#4f46e5" stopOpacity="0"/>
@@ -4763,7 +4780,7 @@ export default function App() {
 
           {/* TAB RECORDATORIO */}
           <div className={`tab-content ${activeTab === 'recordatorio' ? 'active' : ''}`}>
-            <TabRecordatorio clientes={clientes} showToast={showToast} empresaActual={empresaActual} />
+            <TabRecordatorio clientes={clientes} showToast={showToast} empresaActual={empresaActual} diaVencimiento={diaVencimiento} setDiaVencimiento={setDiaVencimiento} mensajeRecordatorio={mensajeRecordatorio} setMensajeRecordatorio={setMensajeRecordatorio} />
           </div>
 
           <div className={`tab-content ${activeTab === 'credito' ? 'active' : ''}`}>
