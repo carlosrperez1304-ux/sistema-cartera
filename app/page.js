@@ -927,6 +927,7 @@ export default function App() {
           parseInt(c.mes) === hoy.getMonth() + 1 &&
           parseInt(c.año) === hoy.getFullYear()
         );
+        console.log('[vencimiento] clientes a vencer:', clientesAVencer.length);
         if (clientesAVencer.length > 0) {
           // Actualizar en Supabase
           clientesAVencer.forEach(c => {
