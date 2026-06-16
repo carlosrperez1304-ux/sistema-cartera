@@ -41,26 +41,25 @@ export async function PUT(req, { params }) {
 
   const body = await req.json();
 
-  const row = {
-    nombre:             sanitize(body.nombre, 128),
-    contacto:           body.contacto           || null,
-    estado:             body.estado             || 'Cotizado',
-    fecha_cotizacion:   body.fechaCotizacion     || null,
-    fecha_notificacion: body.fechaNotificacion   || null,
-    fecha_pago:         body.fechaPago           || null,
-    fecha_facturacion:  body.fechaFacturacion    || null,
-    fecha_suspension:   body.fechaSuspension     || null,
-    mes:                body.mes                || null,
-    anio:               body.año                || null,
-    monto:              (body.monto !== null && body.monto !== undefined && body.monto !== '') ? parseFloat(body.monto) : null,
-    codigo_cliente:     (body.codigoCliente !== null && body.codigoCliente !== undefined && body.codigoCliente !== '') ? parseInt(body.codigoCliente) : null,
-    comentario:         body.comentario ? sanitize(body.comentario, 500) : null,
-    nota:               body.nota ? sanitize(body.nota, 500) : null,
-    suspendido:         body.suspendido         || false,
-    tags:               body.tags               || [],
-    historial:          body.historial          || [],
-    updated_at:         new Date().toISOString(),
-  };
+  // Protección: solo actualizar campos que vienen explícitamente en el body
+  const row = { updated_at: new Date().toISOString() };
+  if (body.nombre !== undefined && body.nombre !== null && body.nombre !== '')  row.nombre = sanitize(body.nombre, 128);
+  if (body.contacto !== undefined)           row.contacto = body.contacto || null;
+  if (body.estado !== undefined)             row.estado = body.estado || 'Cotizado';
+  if (body.fechaCotizacion !== undefined)    row.fecha_cotizacion = body.fechaCotizacion || null;
+  if (body.fechaNotificacion !== undefined)  row.fecha_notificacion = body.fechaNotificacion || null;
+  if (body.fechaPago !== undefined)          row.fecha_pago = body.fechaPago || null;
+  if (body.fechaFacturacion !== undefined)   row.fecha_facturacion = body.fechaFacturacion || null;
+  if (body.fechaSuspension !== undefined)    row.fecha_suspension = body.fechaSuspension || null;
+  if (body.mes !== undefined)                row.mes = body.mes || null;
+  if (body.año !== undefined)                row.anio = body.año || null;
+  if (body.monto !== undefined && body.monto !== null && body.monto !== '') row.monto = parseFloat(body.monto);
+  if (body.codigoCliente !== undefined && body.codigoCliente !== null && body.codigoCliente !== '') row.codigo_cliente = parseInt(body.codigoCliente);
+  if (body.comentario !== undefined)         row.comentario = body.comentario ? sanitize(body.comentario, 500) : null;
+  if (body.nota !== undefined)               row.nota = body.nota ? sanitize(body.nota, 500) : null;
+  if (body.suspendido !== undefined)         row.suspendido = body.suspendido || false;
+  if (body.tags !== undefined)               row.tags = body.tags || [];
+  if (body.historial !== undefined)          row.historial = body.historial || [];
 
   const { error } = await db().from('clientes').update(row).eq('id', id);
   if (error) return Response.json({ error: error.message }, { status: 500 });
