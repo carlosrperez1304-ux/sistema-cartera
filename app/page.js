@@ -3064,26 +3064,37 @@ export default function App() {
             <rect width="1440" height="900" fill="url(#glow2)"/>
           </svg>
         </div>
-        <div className="login-box" style={{ position: 'relative', zIndex: 2 }}>
-          <div className="login-header">
-            <div className="login-logo"><BarChart2 size={34} strokeWidth={2}/></div>
-            <h1 className="login-title"><span className="logo-carta">Pay</span><span className="logo-master">Track</span></h1>
-            <p className="login-subtitle">Sistema de Gestión de Cartera</p>
+        <div style={{ position:'relative', zIndex:2, display:'flex', width:'100%', maxWidth:'860px', minHeight:'480px', borderRadius:'16px', overflow:'hidden', boxShadow:'0 20px 60px rgba(0,0,0,0.4)' }}>
+          {/* Lado izquierdo - Logo */}
+          <div style={{ flex:'1.1', background:'#1a1915', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'40px', position:'relative', overflow:'hidden' }}>
+            <div style={{ position:'absolute', left:'-60px', top:'50%', transform:'translateY(-50%)', width:'300px', height:'300px', borderRadius:'50%', border:'40px solid rgba(255,255,255,0.03)' }}></div>
+            <div style={{ position:'relative', zIndex:1, width:'100%' }}>
+              <img src="/CashRD_logo.png" alt="CashRD" style={{ width:'100%', maxWidth:'260px', filter:'brightness(0) invert(1)', marginBottom:'20px' }}/>
+              <p style={{ color:'rgba(255,255,255,0.4)', fontSize:'13px', margin:'0', letterSpacing:'2px', textTransform:'uppercase' }}>Sistema de Gestión de Cartera</p>
+              <p style={{ color:'rgba(255,255,255,0.2)', fontSize:'11px', margin:'8px 0 0' }}>app.cashrd.com</p>
+            </div>
           </div>
-          <form className="login-form" onSubmit={handleLogin}>
-            <div className="login-input-group">
-              <label>Usuario</label>
-              <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Ingresa tu usuario" autoFocus />
+          {/* Lado derecho - Formulario */}
+          <div style={{ flex:'1', background:'#f5f4ef', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'40px' }}>
+            <div style={{ width:'100%', maxWidth:'280px' }}>
+              <div style={{ marginBottom:'28px' }}>
+                <h2 style={{ fontSize:'20px', fontWeight:700, color:'#1a1915', margin:'0 0 6px' }}>Bienvenido</h2>
+                <p style={{ fontSize:'13px', color:'#9a998f', margin:0 }}>Ingresa tus credenciales para acceder</p>
+              </div>
+              <div style={{ marginBottom:'14px' }}>
+                <label style={{ display:'block', fontSize:'11px', fontWeight:700, color:'#5f5e5a', marginBottom:'5px', textTransform:'uppercase', letterSpacing:'0.05em' }}>Usuario</label>
+                <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Tu usuario" autoFocus style={{ width:'100%', padding:'10px 12px', border:'1px solid #e0dfd8', borderRadius:'8px', fontSize:'13px', background:'white', color:'#1a1915', boxSizing:'border-box' }}/>
+              </div>
+              <div style={{ marginBottom:'22px' }}>
+                <label style={{ display:'block', fontSize:'11px', fontWeight:700, color:'#5f5e5a', marginBottom:'5px', textTransform:'uppercase', letterSpacing:'0.05em' }}>Contraseña</label>
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" style={{ width:'100%', padding:'10px 12px', border:'1px solid #e0dfd8', borderRadius:'8px', fontSize:'13px', background:'white', color:'#1a1915', boxSizing:'border-box' }}/>
+              </div>
+              {loginError && <div style={{ background:'#fef2f2', border:'1px solid #fca5a5', borderRadius:'8px', padding:'10px 12px', fontSize:'13px', color:'#dc2626', marginBottom:'16px' }}>{loginError}</div>}
+              <button type="button" onClick={handleLogin} style={{ width:'100%', padding:'11px', background:'#1a1915', color:'white', border:'none', borderRadius:'8px', fontSize:'14px', fontWeight:700, cursor:'pointer' }}>Iniciar sesión</button>
+              <p style={{ textAlign:'center', fontSize:'11px', color:'#b4b2a9', margin:'18px 0 0' }}>PayTrack · 7LABS © 2026</p>
             </div>
-            <div className="login-input-group">
-              <label>Contraseña</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Ingresa tu contraseña" />
-            </div>
-            {loginError && <div className="login-error">{loginError}</div>}
-            <button type="submit" className="login-btn">Iniciar Sesión</button>
-          </form>
+          </div>
         </div>
-        <p className="login-footer" style={{ position: 'relative', zIndex: 2 }}>© 2026 PayTrack · Todos los derechos reservados</p>
       </div>
     );
   }
