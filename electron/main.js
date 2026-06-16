@@ -179,7 +179,7 @@ function iniciarWatcher(carpeta) {
                     const { Notification } = require('electron');
                     if (Notification.isSupported()) {
                       new Notification({
-                        title: 'PayTrack — PDF Enviado',
+                        title: 'CashRD — PDF Enviado',
                         body: `✅ Factura enviada a ${cliente.nombre} por WhatsApp`,
                         icon: path.join(__dirname, 'assets', 'icon.png')
                       }).show();
@@ -226,7 +226,7 @@ function createTray() {
   const iconPath = path.join(__dirname, 'assets', 'icon.png');
   const icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
   tray = new Tray(icon);
-  tray.setToolTip('PayTrack');
+  tray.setToolTip('CashRD');
   updateTrayMenu();
   tray.on('click', () => {
     if (mainWin && !mainWin.isDestroyed()) { mainWin.show(); if (mainWin.isMinimized()) mainWin.restore(); mainWin.focus(); }
@@ -237,7 +237,7 @@ function createTray() {
 function updateTrayMenu() {
   if (!tray) return;
   const menu = Menu.buildFromTemplate([
-    { label: 'PayTrack', enabled: false },
+    { label: 'CashRD', enabled: false },
     { type: 'separator' },
     { label: carpetaVigilada ? `Vigilando: ${path.basename(carpetaVigilada)}` : 'Sin carpeta vigilada', enabled: false },
     ...(carpetaVigilada ? [{ label: 'Detener watcher', click: () => { detenerWatcher(); if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.send('watcher-detenido'); } }] : []),
@@ -265,7 +265,7 @@ autoUpdater.on('update-downloaded', () => { if (mainWin && !mainWin.isDestroyed(
 
 // ── Splash ───────────────────────────────────────────────────
 function createSplashWindow() {
-  splashWin = new BrowserWindow({ width: 480, height: 300, resizable: false, frame: false, transparent: false, skipTaskbar: true, alwaysOnTop: true, center: true, icon: path.join(__dirname, 'assets', 'icon.png'), title: 'PayTrack', webPreferences: { contextIsolation: true, nodeIntegration: false } });
+  splashWin = new BrowserWindow({ width: 480, height: 300, resizable: false, frame: false, transparent: false, skipTaskbar: true, alwaysOnTop: true, center: true, icon: path.join(__dirname, 'assets', 'icon.png'), title: 'CashRD', webPreferences: { contextIsolation: true, nodeIntegration: false } });
   splashWin.loadFile(path.join(__dirname, 'splash.html'));
   splashWin.setMenuBarVisibility(false);
 }
@@ -273,18 +273,18 @@ function closeSplash() { if (!splashWin) return; splashWin.destroy(); splashWin 
 
 // ── Activation ───────────────────────────────────────────────
 function createActivationWindow() {
-  activationWin = new BrowserWindow({ width: 460, height: 500, resizable: false, frame: false, titleBarStyle: 'hidden', icon: path.join(__dirname, 'assets', 'icon.png'), title: 'PayTrack — Activación', webPreferences: { preload: path.join(__dirname, 'preload-activation.js'), contextIsolation: true, nodeIntegration: false } });
+  activationWin = new BrowserWindow({ width: 460, height: 500, resizable: false, frame: false, titleBarStyle: 'hidden', icon: path.join(__dirname, 'assets', 'icon.png'), title: 'CashRD — Activación', webPreferences: { preload: path.join(__dirname, 'preload-activation.js'), contextIsolation: true, nodeIntegration: false } });
   activationWin.loadFile(path.join(__dirname, 'activation.html'));
   activationWin.setMenuBarVisibility(false);
   activationWin.on('closed', () => { activationWin = null; });
 }
 
 // ── Offline HTML ─────────────────────────────────────────────
-const OFFLINE_HTML = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Sin conexión — PayTrack</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,sans-serif;background:#0f0f11;color:#e4e4e7;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;-webkit-app-region:drag}.card{-webkit-app-region:no-drag;text-align:center;display:flex;flex-direction:column;align-items:center;gap:0.75rem}h2{font-size:1.25rem;color:#f87171}p{font-size:0.85rem;color:#71717a;max-width:320px;line-height:1.6}button{margin-top:0.25rem;padding:0.6rem 1.5rem;background:#635bff;color:#fff;border:none;border-radius:8px;font-size:0.9rem;cursor:pointer}button:hover{background:#4f46e5}</style></head><body><div class="card"><h2>Sin conexión a Internet</h2><p>PayTrack necesita conexión para cargar.<br>Verifica tu red y vuelve a intentarlo.</p><button onclick="if(window.electronAPI)window.electronAPI.reloadApp();else location.reload()">Reintentar</button></div></body></html>`;
+const OFFLINE_HTML = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Sin conexión — CashRD</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,sans-serif;background:#0f0f11;color:#e4e4e7;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;-webkit-app-region:drag}.card{-webkit-app-region:no-drag;text-align:center;display:flex;flex-direction:column;align-items:center;gap:0.75rem}h2{font-size:1.25rem;color:#f87171}p{font-size:0.85rem;color:#71717a;max-width:320px;line-height:1.6}button{margin-top:0.25rem;padding:0.6rem 1.5rem;background:#635bff;color:#fff;border:none;border-radius:8px;font-size:0.9rem;cursor:pointer}button:hover{background:#4f46e5}</style></head><body><div class="card"><h2>Sin conexión a Internet</h2><p>CashRD necesita conexión para cargar.<br>Verifica tu red y vuelve a intentarlo.</p><button onclick="if(window.electronAPI)window.electronAPI.reloadApp();else location.reload()">Reintentar</button></div></body></html>`;
 
 // ── Main Window ──────────────────────────────────────────────
 function createMainWindow() {
-  mainWin = new BrowserWindow({ width: 1280, height: 800, minWidth: 960, minHeight: 600, frame: true, autoHideMenuBar: true, title: `PayTrack — Gestión de Cartera v${require('./package.json').version}`, show: false, backgroundColor: '#1a1915', icon: path.join(__dirname, 'assets', 'icon.png'), titleBarOverlay: { color: '#191919', symbolColor: '#ffffff', height: 36 }, webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false } });
+  mainWin = new BrowserWindow({ width: 1280, height: 800, minWidth: 960, minHeight: 600, frame: true, autoHideMenuBar: true, title: `CashRD — Gestión de Cartera v${require('./package.json').version}`, show: false, backgroundColor: '#1a1915', icon: path.join(__dirname, 'assets', 'icon.png'), titleBarOverlay: { color: '#191919', symbolColor: '#ffffff', height: 36 }, webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false } });
   mainWin.setMenuBarVisibility(false);
 
   mainWin.webContents.session.clearCache().then(() => {
@@ -330,7 +330,7 @@ function createMainWindow() {
             b.onclick = fn; return b;
           }
           floatWrap.appendChild(mkBtn('─', 'Minimizar', 'rgba(255,255,255,0.2)', '#a1a1aa', () => window.electronAPI?.minimizeWindow()));
-          floatWrap.appendChild(mkBtn('✕', 'Cerrar PayTrack', 'rgba(248,113,113,0.4)', '#f87171', () => window.electronAPI?.closeWindow()));
+          floatWrap.appendChild(mkBtn('✕', 'Cerrar CashRD', 'rgba(248,113,113,0.4)', '#f87171', () => window.electronAPI?.closeWindow()));
           document.body.appendChild(floatWrap);
         }
         syncControls();
@@ -348,7 +348,35 @@ function createMainWindow() {
   mainWin.on('close', (e) => {
     if (!app._quitting) {
       e.preventDefault();
-      mainWin.hide();
+      const { dialog } = require('electron');
+      dialog.showMessageBox(mainWin, {
+        type: 'question',
+        buttons: ['Cerrar', 'Cancelar'],
+        defaultId: 1,
+        cancelId: 1,
+        title: 'CashRD',
+        message: '¿Está seguro de que desea cerrar la aplicación?',
+        detail: 'Se cerrará la sesión actual.',
+        icon: require('path').join(__dirname, 'assets', 'icon.png')
+      }).then(({ response }) => {
+        if (response === 0) {
+          app._quitting = true;
+          // Limpiar sesión para que pida login al abrir
+          mainWin.webContents.session.clearStorageData({ storages: ['cookies', 'localstorage', 'sessionstorage'] }).then(() => {
+            detenerWatcher();
+            tray?.destroy();
+            tray = null;
+            mainWin.destroy();
+            app.quit();
+          }).catch(() => {
+            detenerWatcher();
+            tray?.destroy();
+            tray = null;
+            mainWin.destroy();
+            app.quit();
+          });
+        }
+      });
     }
   });
 }
@@ -397,7 +425,7 @@ if (mainWin) {
       mainWin.hide();
       if (tray) {
         tray.displayBalloon && tray.displayBalloon({
-          title: 'PayTrack',
+          title: 'CashRD',
           content: 'La app sigue corriendo en segundo plano. El watcher está activo.',
           icon: 'info'
         });

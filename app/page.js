@@ -3171,10 +3171,7 @@ export default function App() {
             {showMobileMenu ? <X size={20}/> : <Menu size={20}/>}
           </button>
           <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
-            <div style={{ width:'26px', height:'26px', background:'linear-gradient(135deg,#4f46e5,#7c3aed)', borderRadius:'7px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <CircleDollarSign size={14} color="#fff" strokeWidth={2}/>
-            </div>
-            <span style={{ fontWeight:300, fontSize:'0.92rem', color:'#6366f1', letterSpacing:'-0.02em' }}>Pay<span style={{ fontWeight:800, color:'var(--text)' }}>Track</span></span>
+            <img src="/CashRD_logo.png" alt="CashRD" style={{ height:'28px', objectFit:'contain' }}/>
           </div>
         </div>
 
