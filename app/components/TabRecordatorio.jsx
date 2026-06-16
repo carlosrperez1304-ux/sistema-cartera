@@ -35,7 +35,9 @@ function ColaEnvio({ titulo, clientes, empresaActual, showToast, tipo, diaVencim
   const intervalRef = useRef(null);
   const countdownRef = useRef(null);
 
-  const estadoFiltro = tipo === 'recordatorio' ? 'Notificado' : 'Vencido';
+  const hoy = new Date();
+  const esVencido = tipo === 'vencido' && hoy.getDate() > diaVencimiento;
+  const estadoFiltro = 'Notificado';
 
   useEffect(() => {
     setMensajeTemp(mensajeCustom || (tipo === 'recordatorio' ? getMensajeRecordatorio(diaVencimiento) : getMensajeVencido(diaVencimiento)));

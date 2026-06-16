@@ -920,30 +920,7 @@ export default function App() {
     if (!hydrated) return;
     const verificarVencimientos = () => {
       const hoy = new Date();
-      console.log('[vencimiento] dia hoy:', hoy.getDate(), 'diaVencimiento:', diaVencimiento);
-      if (hoy.getDate() > diaVencimiento) {
-        const clientesAVencer = clientes.filter(c =>
-          c.estado === 'Notificado'
-        );
-        console.log('[vencimiento] clientes a vencer:', clientesAVencer.length);
-        if (clientesAVencer.length > 0) {
-          // Actualizar en Supabase
-          clientesAVencer.forEach(c => {
-            fetch(`/api/clientes/${c.id}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ estado: 'Vencido' })
-            }).catch(() => {});
-          });
-          // Actualizar en frontend
-          const updated = clientes.map(c =>
-            clientesAVencer.find(cv => cv.id === c.id)
-              ? { ...c, estado: 'Vencido' }
-              : c
-          );
-          setClientes(updated);
-        }
-      }
+      // Vencimiento manejado en TabRecordatorio sin cambiar estado
     };
     verificarVencimientos();
     const interval = setInterval(verificarVencimientos, 3600000);
