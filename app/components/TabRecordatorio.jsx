@@ -53,7 +53,6 @@ function ColaEnvio({ titulo, clientes, empresaActual, showToast, tipo, diaVencim
       const pendientes = (clientes || []).filter(c =>
         c.estado === estadoFiltro &&
         !c.suspendido &&
-        c.contacto &&
         !yaEnviados.includes(c.id)
       );
 
