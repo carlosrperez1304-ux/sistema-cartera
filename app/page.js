@@ -3069,7 +3069,7 @@ export default function App() {
           <div style={{ flex:'1.1', background:'#1a1915', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'40px', position:'relative', overflow:'hidden' }}>
             <div style={{ position:'absolute', left:'-60px', top:'50%', transform:'translateY(-50%)', width:'300px', height:'300px', borderRadius:'50%', border:'40px solid rgba(255,255,255,0.03)' }}></div>
             <div style={{ position:'relative', zIndex:1, width:'100%' }}>
-              <img src="/CashRD_logo.png" alt="CashRD" style={{ width:'100%', maxWidth:'260px', filter:'brightness(0) invert(1)', marginBottom:'20px' }}/>
+              <img src="/CashRD_logo.png" alt="CashRD" style={{ width:'100%', maxWidth:'260px', marginBottom:'20px', borderRadius:'12px', padding:'12px', background:'white' }}/>
               <p style={{ color:'rgba(255,255,255,0.4)', fontSize:'13px', margin:'0', letterSpacing:'2px', textTransform:'uppercase' }}>Sistema de Gestión de Cartera</p>
               <p style={{ color:'rgba(255,255,255,0.2)', fontSize:'11px', margin:'8px 0 0' }}>app.cashrd.com</p>
             </div>
