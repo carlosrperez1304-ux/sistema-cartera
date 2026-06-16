@@ -5,6 +5,7 @@ const MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO'
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const empresa_id = searchParams.get('empresa_id');
+  const tipo = searchParams.get('tipo') || 'recordatorio';
   const mes = MESES[new Date().getMonth()];
   const anio = new Date().getFullYear();
 
@@ -13,20 +14,21 @@ export async function GET(req) {
     .select('cliente_id')
     .eq('mes', mes)
     .eq('anio', anio)
-    .eq('empresa_id', empresa_id);
+    .eq('empresa_id', empresa_id)
+    .eq('tipo', tipo);
 
   if (error) return Response.json([]);
   return Response.json(data.map(r => r.cliente_id));
 }
 
 export async function POST(req) {
-  const { cliente_id, empresa_id } = await req.json();
+  const { cliente_id, empresa_id, tipo } = await req.json();
   const mes = MESES[new Date().getMonth()];
   const anio = new Date().getFullYear();
 
   await db().from('recordatorios_enviados').upsert({
-    cliente_id, mes, anio, empresa_id
-  }, { onConflict: 'cliente_id,mes,anio' });
+    cliente_id, mes, anio, empresa_id, tipo: tipo || 'recordatorio'
+  }, { onConflict: 'cliente_id,mes,anio,tipo' });
 
   return Response.json({ ok: true });
 }
