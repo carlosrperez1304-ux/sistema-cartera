@@ -923,9 +923,7 @@ export default function App() {
       console.log('[vencimiento] dia hoy:', hoy.getDate(), 'diaVencimiento:', diaVencimiento);
       if (hoy.getDate() > diaVencimiento) {
         const clientesAVencer = clientes.filter(c =>
-          c.estado === 'Notificado' &&
-          parseInt(c.mes) === hoy.getMonth() + 1 &&
-          parseInt(c.año) === hoy.getFullYear()
+          c.estado === 'Notificado'
         );
         console.log('[vencimiento] clientes a vencer:', clientesAVencer.length);
         if (clientesAVencer.length > 0) {
