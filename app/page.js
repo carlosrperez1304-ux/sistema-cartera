@@ -3137,12 +3137,9 @@ export default function App() {
 
       {/* ── ELECTRON: Custom Titlebar ─────────────────────────── */}
       {isElectron && !isMiniMode && (
-        <div style={{ height: '36px', background: '#1e1e2e', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 1rem', WebkitAppRegion: 'drag', flexShrink: 0, zIndex: 9999 }}>
+        <div style={{ height: '36px', background: '#1a1915', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 1rem', WebkitAppRegion: 'drag', flexShrink: 0, zIndex: 9999 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <div style={{ width: '20px', height: '20px', background: 'linear-gradient(135deg, #6366f1, #7c3aed)', borderRadius: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ color: '#fff', fontSize: '0.65rem', fontWeight: 800 }}>P</span>
-            </div>
-            <span style={{ color: '#818cf8', fontSize: '0.78rem', fontWeight: 300 }}>Pay</span><span style={{ color: '#ffffff', fontSize: '0.78rem', fontWeight: 800 }}>Track</span>
+            <span style={{ fontFamily:'Georgia,serif', fontWeight:700, fontSize:'0.85rem', letterSpacing:'-0.01em', color:'white' }}>Cash<span style={{ color:'#b8962e' }}>RD</span></span>
           </div>
           {tickerItems.length > 0 && (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '0 1rem' }}>
