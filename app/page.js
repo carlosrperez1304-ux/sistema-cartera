@@ -922,7 +922,7 @@ export default function App() {
       const hoy = new Date();
       if (hoy.getDate() > diaVencimiento) {
         const clientesAVencer = clientes.filter(c =>
-          !['Pagado','Facturado','Vencido','No Generaron'].includes(c.estado) &&
+          c.estado === 'Notificado' &&
           parseInt(c.mes) === hoy.getMonth() + 1 &&
           parseInt(c.año) === hoy.getFullYear()
         );
