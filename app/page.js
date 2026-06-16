@@ -920,6 +920,7 @@ export default function App() {
     if (!hydrated) return;
     const verificarVencimientos = () => {
       const hoy = new Date();
+      console.log('[vencimiento] dia hoy:', hoy.getDate(), 'diaVencimiento:', diaVencimiento);
       if (hoy.getDate() > diaVencimiento) {
         const clientesAVencer = clientes.filter(c =>
           c.estado === 'Notificado' &&
