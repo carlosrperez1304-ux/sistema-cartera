@@ -3171,7 +3171,7 @@ export default function App() {
             {showMobileMenu ? <X size={20}/> : <Menu size={20}/>}
           </button>
           <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
-            <img src="/CashRD_logo.png" alt="CashRD" style={{ height:'28px', objectFit:'contain' }}/>
+            <span style={{ fontFamily:'Georgia,serif', fontWeight:700, fontSize:'1.1rem', letterSpacing:'-0.01em', color:'var(--text)' }}>Cash<span style={{ color:'#b8962e' }}>RD</span></span>
           </div>
         </div>
 
