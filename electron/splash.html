@@ -3,13 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:;">
-  <title>PayTrack</title>
+  <title>CashRD</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #0a0f19;
+      background: #1a1915;
       width: 480px;
       height: 300px;
       overflow: hidden;
@@ -20,105 +19,47 @@
       justify-content: center;
       user-select: none;
     }
-
-    /* ── Fondo: líneas de gráfica animadas ── */
-    .chart-bg {
+    .ring {
       position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
+      border-radius: 50%;
+      border: 1px solid rgba(184,150,46,0.08);
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
     }
-
-    /* Cada polyline se dibuja de izq a der */
-    .line-main {
-      stroke-dasharray: 900;
-      stroke-dashoffset: 900;
-      animation: drawLine 1.6s cubic-bezier(0.22, 1, 0.36, 1) 0.1s forwards;
-    }
-    .line-mid {
-      stroke-dasharray: 800;
-      stroke-dashoffset: 800;
-      animation: drawLine 1.8s cubic-bezier(0.22, 1, 0.36, 1) 0.25s forwards;
-    }
-    .line-low {
-      stroke-dasharray: 700;
-      stroke-dashoffset: 700;
-      animation: drawLine 2.0s cubic-bezier(0.22, 1, 0.36, 1) 0.4s forwards;
-    }
-    .line-dots {
-      stroke-dasharray: 4 10;
-      opacity: 0;
-      animation: fadeIn 0.6s ease 1.2s forwards;
-    }
-
-    @keyframes drawLine {
-      to { stroke-dashoffset: 0; }
-    }
-    @keyframes fadeIn {
-      to { opacity: 1; }
-    }
-
-    /* ── Logo y texto ── */
     .logo-wrap {
       position: relative;
       z-index: 2;
       display: flex;
       flex-direction: column;
       align-items: center;
-      animation: riseIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both;
+      animation: riseIn 0.6s cubic-bezier(0.22,1,0.36,1) both;
     }
-
     @keyframes riseIn {
-      from { opacity: 0; transform: translateY(14px) scale(0.94); }
-      to   { opacity: 1; transform: translateY(0)    scale(1); }
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
-
-    .logo {
-      width: 76px;
-      height: 76px;
-      border-radius: 20px;
-      animation: glow 2.4s ease-in-out infinite;
+    .logo-img {
+      width: 260px;
+      margin-bottom: 14px;
     }
-
-    @keyframes glow {
-      0%, 100% { box-shadow: 0 0 28px rgba(99,102,241,0.30), 0 0 0 1px rgba(99,102,241,0.15); }
-         50%   { box-shadow: 0 0 56px rgba(99,102,241,0.55), 0 0 0 1px rgba(99,102,241,0.30); }
-    }
-
-    .brand {
-      margin-top: 1rem;
-      font-size: 1.45rem;
-      font-weight: 700;
-      color: #f0f0f5;
-      letter-spacing: 0.01em;
-    }
-
     .tagline {
-      margin-top: 0.28rem;
-      font-size: 0.7rem;
-      color: #3a4560;
-      letter-spacing: 0.1em;
+      font-size: 0.68rem;
+      color: rgba(255,255,255,0.3);
+      letter-spacing: 0.18em;
       text-transform: uppercase;
     }
-
-    /* ── Barra de progreso ── */
     .progress-track {
       position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
+      bottom: 0; left: 0; right: 0;
       height: 2px;
       background: rgba(255,255,255,0.04);
     }
-
     .progress-fill {
       height: 100%;
-      background: linear-gradient(90deg, #4338ca 0%, #6366f1 50%, #818cf8 100%);
-      border-radius: 0 2px 2px 0;
+      background: linear-gradient(90deg, #b8962e, #d4af5a);
       width: 0%;
-      animation: loadBar 2.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      animation: loadBar 2.6s cubic-bezier(0.4,0,0.2,1) forwards;
     }
-
     @keyframes loadBar {
       0%   { width: 0%; }
       40%  { width: 55%; }
@@ -126,103 +67,27 @@
       90%  { width: 90%; }
       100% { width: 100%; }
     }
-
-    /* ── Versión ── */
     .version {
       position: absolute;
-      bottom: 10px;
-      right: 14px;
-      font-size: 0.62rem;
-      color: #1e2a3d;
-      letter-spacing: 0.05em;
+      bottom: 10px; right: 14px;
+      font-size: 0.6rem;
+      color: rgba(255,255,255,0.15);
     }
   </style>
 </head>
 <body>
+  <div class="ring" style="width:320px;height:320px;"></div>
+  <div class="ring" style="width:220px;height:220px;"></div>
 
-  <!-- Líneas de gráfica animadas en el fondo -->
-  <svg class="chart-bg" viewBox="0 0 480 300" preserveAspectRatio="none" aria-hidden="true">
-    <defs>
-      <!-- Degradado para el área bajo la curva principal -->
-      <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%"   stop-color="#6366f1" stop-opacity="0.18"/>
-        <stop offset="100%" stop-color="#6366f1" stop-opacity="0"/>
-      </linearGradient>
-      <!-- Degradado horizontal para línea principal (glow al final) -->
-      <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0%"   stop-color="#4338ca" stop-opacity="0.5"/>
-        <stop offset="70%"  stop-color="#6366f1" stop-opacity="0.9"/>
-        <stop offset="100%" stop-color="#a5b4fc" stop-opacity="1"/>
-      </linearGradient>
-    </defs>
-
-    <!-- Área rellena bajo la línea principal (sin animación; aparece con la línea) -->
-    <path
-      fill="url(#areaGrad)"
-      d="M0,252 L48,228 L96,240 L144,204 L192,216 L240,180 L288,186 L336,150 L384,156 L432,118 L480,96 L480,300 L0,300 Z"
-      style="opacity:0; animation: fadeIn 0.4s ease 1.4s forwards;"
-    />
-
-    <!-- Línea principal — tendencia alcista con volatilidad -->
-    <polyline
-      class="line-main"
-      fill="none"
-      stroke="url(#lineGrad)"
-      stroke-width="2.2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      points="0,252 48,228 96,240 144,204 192,216 240,180 288,186 336,150 384,156 432,118 480,96"
-    />
-
-    <!-- Línea secundaria — más suave, azul -->
-    <polyline
-      class="line-mid"
-      fill="none"
-      stroke="#3b82f6"
-      stroke-width="1.4"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      opacity="0.45"
-      points="0,270 60,260 120,252 180,238 240,228 300,212 360,196 420,175 480,160"
-    />
-
-    <!-- Línea terciaria — muy sutil -->
-    <polyline
-      class="line-low"
-      fill="none"
-      stroke="#818cf8"
-      stroke-width="1"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      opacity="0.22"
-      points="0,285 80,278 160,268 240,258 320,244 400,226 480,212"
-    />
-
-    <!-- Puntos clave sobre la línea principal (nodos) -->
-    <g class="line-dots" stroke="#6366f1" stroke-width="1.5" fill="#0a0f19">
-      <circle cx="144" cy="204" r="3"/>
-      <circle cx="240" cy="180" r="3"/>
-      <circle cx="336" cy="150" r="3"/>
-      <circle cx="432" cy="118" r="3"/>
-      <circle cx="480" cy="96"  r="4" fill="#6366f1"/>
-    </g>
-  </svg>
-
-  <!-- Logo + nombre -->
   <div class="logo-wrap">
-    <img class="logo" src="assets/icon.png" alt="PayTrack"
-         onerror="this.style.display='none'">
-    <div class="brand">PayTrack</div>
-    <div class="tagline">Gestión de Cartera</div>
+    <img class="logo-img" src="../public/CashRD_logo.png" alt="CashRD" style="filter:brightness(10);" onerror="this.style.display='none'">
+    <div class="tagline">Gestión de Cartera · app.cashrd.com</div>
   </div>
 
-  <!-- Barra de carga -->
   <div class="progress-track">
     <div class="progress-fill"></div>
   </div>
 
-  <!-- Versión discreta -->
-  <div class="version">v1.2.0</div>
-
+  <div class="version">v1.7.0</div>
 </body>
 </html>
