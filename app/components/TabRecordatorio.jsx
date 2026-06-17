@@ -49,6 +49,7 @@ function ColaEnvio({ titulo, clientes, empresaActual, showToast, tipo, diaVencim
       const empresa_id = empresaActual?.id || 1;
       const res = await fetch(`/api/recordatorios?empresa_id=${empresa_id}&tipo=${tipo}`);
       const yaEnviados = await res.json();
+      console.log('[recordatorio]', tipo, 'yaEnviados:', yaEnviados);
 
       const yaEnviadosStr = yaEnviados.map(id => String(id));
       const pendientes = (clientes || []).filter(c =>
