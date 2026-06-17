@@ -29,7 +29,7 @@ export async function POST(req) {
     .eq('empresa_id', empresa_id)
     .gte('fecha_notificacion', inicioMesStr);
 
-  // 1. Resetear todos los clientes
+  // 1. Resetear todos los clientes EXCEPTO los archivados
   const { error } = await db()
     .from('clientes')
     .update({
@@ -41,7 +41,8 @@ export async function POST(req) {
       fecha_facturacion: null,
       suspendido: false,
     })
-    .eq('empresa_id', empresa_id);
+    .eq('empresa_id', empresa_id)
+    .neq('estado', 'Archivado');
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
