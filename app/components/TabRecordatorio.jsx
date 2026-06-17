@@ -91,11 +91,13 @@ function ColaEnvio({ titulo, clientes, empresaActual, showToast, tipo, diaVencim
       if (window.electronAPI?.whatsappEnviarMensaje) {
         await window.electronAPI.whatsappEnviarMensaje(cliente.contacto, mensaje);
       }
-      await fetch('/api/recordatorios', {
+      const respPost = await fetch('/api/recordatorios', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cliente_id: cliente.id, empresa_id: empresaActual?.id || 1, tipo })
-      }).catch(() => {});
+      });
+      const dataPost = await respPost.json().catch(() => null);
+      console.log('[recordatorio] POST status:', respPost.status, 'body:', dataPost, 'cliente_id enviado:', cliente.id);
       setCola(prev => prev.map(c => c.id === cliente.id ? { ...c, _enviado: true } : c));
       showToast(`✅ Mensaje enviado a ${cliente.nombre}`, 'success');
     } catch(err) {
