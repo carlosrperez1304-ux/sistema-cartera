@@ -58,6 +58,7 @@ function ColaEnvio({ titulo, clientes, empresaActual, showToast, tipo, diaVencim
         !yaEnviadosStr.includes(String(c.id))
       );
 
+      console.log('[recordatorio] pendientes resultantes:', pendientes.map(c => c.id));
       setCola(pendientes.map(c => ({ ...c, _enviado: false })));
     } catch(e) {
       setCola((clientes || []).filter(c => c.estado === estadoFiltro && !c.suspendido && c.contacto).map(c => ({ ...c, _enviado: false })));
