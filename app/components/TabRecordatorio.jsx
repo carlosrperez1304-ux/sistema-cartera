@@ -49,7 +49,6 @@ function ColaEnvio({ titulo, clientes, empresaActual, showToast, tipo, diaVencim
       const empresa_id = empresaActual?.id || 1;
       const res = await fetch(`/api/recordatorios?empresa_id=${empresa_id}&tipo=${tipo}`);
       const yaEnviados = await res.json();
-      console.log('[recordatorio]', tipo, 'yaEnviados:', yaEnviados);
 
       const yaEnviadosStr = yaEnviados.map(id => String(id));
       const pendientes = (clientes || []).filter(c =>
@@ -58,7 +57,6 @@ function ColaEnvio({ titulo, clientes, empresaActual, showToast, tipo, diaVencim
         !yaEnviadosStr.includes(String(c.id))
       );
 
-      console.log('[recordatorio] pendientes resultantes:', pendientes.map(c => c.id));
       setCola(pendientes.map(c => ({ ...c, _enviado: false })));
     } catch(e) {
       setCola((clientes || []).filter(c => c.estado === estadoFiltro && !c.suspendido && c.contacto).map(c => ({ ...c, _enviado: false })));
@@ -91,13 +89,11 @@ function ColaEnvio({ titulo, clientes, empresaActual, showToast, tipo, diaVencim
       if (window.electronAPI?.whatsappEnviarMensaje) {
         await window.electronAPI.whatsappEnviarMensaje(cliente.contacto, mensaje);
       }
-      const respPost = await fetch('/api/recordatorios', {
+      await fetch('/api/recordatorios', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cliente_id: cliente.id, empresa_id: empresaActual?.id || 1, tipo })
-      });
-      const dataPost = await respPost.json().catch(() => null);
-      console.log('[recordatorio] POST status:', respPost.status, 'body:', dataPost, 'cliente_id enviado:', cliente.id);
+      }).catch(() => {});
       setCola(prev => prev.map(c => c.id === cliente.id ? { ...c, _enviado: true } : c));
       showToast(`✅ Mensaje enviado a ${cliente.nombre}`, 'success');
     } catch(err) {

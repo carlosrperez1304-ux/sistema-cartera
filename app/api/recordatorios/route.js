@@ -26,9 +26,9 @@ export async function POST(req) {
   const mes = MESES[new Date().getMonth()];
   const anio = new Date().getFullYear();
 
-  await db().from('recordatorios_enviados').upsert({
+  const { error } = await db().from('recordatorios_enviados').upsert({
     cliente_id, mes, anio, empresa_id, tipo: tipo || 'recordatorio'
   }, { onConflict: 'cliente_id,mes,anio,tipo' });
-
+  if (error) return Response.json({ ok: false, error: error.message }, { status: 500 });
   return Response.json({ ok: true });
 }
