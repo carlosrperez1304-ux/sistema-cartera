@@ -6678,10 +6678,13 @@ export default function App() {
                 <button className={`settings-nav-item ${settingsSection === 'vendedores' ? 'active' : ''}`} onClick={() => setSettingsSection('vendedores')}>
                   <span>Vendedores</span>
                 </button>
-              <button className={`settings-nav-item ${settingsSection === 'activaciones' ? 'active' : ''}`} onClick={async () => { setSettingsSection('activaciones'); setLoadingActivaciones(true); const r = await fetch('/api/activaciones/admin'); if (r.ok) setActivaciones(await r.json()); setLoadingActivaciones(false); }}>
+              )}
+              {esAdmin && (
+                <button className={`settings-nav-item ${settingsSection === 'activaciones' ? 'active' : ''}`} onClick={async () => { setSettingsSection('activaciones'); setLoadingActivaciones(true); const r = await fetch('/api/activaciones/admin'); if (r.ok) setActivaciones(await r.json()); setLoadingActivaciones(false); }}>
                   <Monitor size={14}/>
                   Licencias App
                 </button>
+              )}
               <button className="settings-nav-item" style={{ marginTop: 'auto', color: 'var(--danger)', opacity: 0.8 }} onClick={() => { window._manualLogout = true; setShowSettingsPanel(false); signOut({ callbackUrl: '/' }); setTimeout(() => { window.location.href = '/'; }, 500); }}>
                 <LogOut size={14}/>
                 Cerrar sesión
