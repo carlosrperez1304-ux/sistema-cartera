@@ -206,6 +206,7 @@ export default function App() {
   };
 
   const [clientes, setClientes] = useState([]);
+  const [vendedores, setVendedores] = useState([]);
   const [creditos, setCreditos] = useState([]);
   const [historialMeses, setHistorialMeses] = useState({});
   const [hydrated, setHydrated] = useState(false);
@@ -388,6 +389,7 @@ export default function App() {
     // Carga inicial de datos
     cargarClientes();
     cargarCreditos();
+    fetch('/api/vendedores').then(r => r.ok ? r.json() : []).then(setVendedores).catch(() => {});
     cargarNotasDashboard();
     cargarTodosDocumentos();
     if (['contabilidad', 'supervisor_cobro', 'supervisor_contabilidad', 'admin'].includes(session?.user?.rol)) {
@@ -5750,15 +5752,20 @@ export default function App() {
                 )}
 
                 {/* Vendedor */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div style={{ margin: 0 }}>
-                    <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Vendedor</label>
-                    <input type="text" value={creditoFormData.vendedor || ''} onChange={(e) => setCreditoFormData({ ...creditoFormData, vendedor: e.target.value })} placeholder="Nombre del vendedor" style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
-                  </div>
-                  <div style={{ margin: 0 }}>
-                    <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>WhatsApp Vendedor</label>
-                    <input type="text" value={creditoFormData.vendedor_whatsapp || ''} onChange={(e) => setCreditoFormData({ ...creditoFormData, vendedor_whatsapp: e.target.value })} placeholder="Ej: 8091234567" style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
-                  </div>
+                <div style={{ margin: 0 }}>
+                  <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Vendedor</label>
+                  <select value={creditoFormData.vendedor || ''} onChange={(e) => {
+                    const v = vendedores.find(v => v.nombre === e.target.value);
+                    setCreditoFormData({ ...creditoFormData, vendedor: e.target.value, vendedor_whatsapp: v?.whatsapp || '' });
+                  }} style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', background: '#fff', boxSizing: 'border-box' }}>
+                    <option value=''>Sin vendedor asignado</option>
+                    {vendedores.map(v => <option key={v.id} value={v.nombre}>{v.nombre} {v.whatsapp ? `· ${v.whatsapp}` : ''}</option>)}
+                  </select>
+                  {creditoFormData.vendedor_whatsapp && (
+                    <div style={{ fontSize: '11px', color: '#16a34a', marginTop: '4px' }}>
+                      📱 WhatsApp: {creditoFormData.vendedor_whatsapp}
+                    </div>
+                  )}
                 </div>
 
                 {/* Comentario */}
@@ -6666,7 +6673,10 @@ export default function App() {
                 </button>
               )}
               {esAdmin && (
-                <button className={`settings-nav-item ${settingsSection === 'activaciones' ? 'active' : ''}`} onClick={async () => { setSettingsSection('activaciones'); setLoadingActivaciones(true); const r = await fetch('/api/activaciones/admin'); if (r.ok) setActivaciones(await r.json()); setLoadingActivaciones(false); }}>
+                <button className={`settings-nav-item ${settingsSection === 'vendedores' ? 'active' : ''}`} onClick={() => setSettingsSection('vendedores')}>
+                <span>Vendedores</span>
+              </button>
+              <button className={`settings-nav-item ${settingsSection === 'activaciones' ? 'active' : ''}`} onClick={async () => { setSettingsSection('activaciones'); setLoadingActivaciones(true); const r = await fetch('/api/activaciones/admin'); if (r.ok) setActivaciones(await r.json()); setLoadingActivaciones(false); }}>
                   <Monitor size={14}/>
                   Licencias App
                 </button>
@@ -7053,6 +7063,43 @@ export default function App() {
                     </div>
                   </div>
                 ))}
+              {settingsSection === 'vendedores' && (<>
+                <div className="settings-content-header">
+                  <div className="settings-content-title">Vendedores</div>
+                  <button className="settings-close-btn" onClick={() => setShowSettingsPanel(false)}>×</button>
+                </div>
+                <div style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'10px', padding:'1rem', marginBottom:'1rem' }}>
+                  <div style={{ fontWeight:700, fontSize:'0.85rem', marginBottom:'0.65rem' }}>Agregar vendedor</div>
+                  <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
+                    <input id="vnd-nombre" placeholder="Nombre" style={{ flex:2, minWidth:'120px', padding:'0.5rem 0.75rem', border:'1px solid var(--border)', borderRadius:'7px', fontSize:'0.83rem', background:'var(--surface)', color:'var(--text)' }} />
+                    <input id="vnd-whatsapp" placeholder="WhatsApp (ej: 8091234567)" style={{ flex:2, minWidth:'140px', padding:'0.5rem 0.75rem', border:'1px solid var(--border)', borderRadius:'7px', fontSize:'0.83rem', background:'var(--surface)', color:'var(--text)' }} />
+                    <button className="btn btn-primary" onClick={async () => {
+                      const nombre = document.getElementById('vnd-nombre').value.trim();
+                      const whatsapp = document.getElementById('vnd-whatsapp').value.trim();
+                      if (!nombre) return showToast('Escribe el nombre', 'error');
+                      const r = await fetch('/api/vendedores', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ nombre, whatsapp }) });
+                      if (r.ok) { const d = await r.json(); setVendedores(prev => [...prev, d]); document.getElementById('vnd-nombre').value = ''; document.getElementById('vnd-whatsapp').value = ''; showToast('Vendedor agregado', 'success'); }
+                      else showToast('Error agregando vendedor', 'error');
+                    }}>+ Agregar</button>
+                  </div>
+                </div>
+                <div style={{ display:'flex', flexDirection:'column', gap:'0.5rem' }}>
+                  {vendedores.length === 0 && <div style={{ color:'var(--text-muted)', fontSize:'0.85rem', textAlign:'center', padding:'1rem' }}>No hay vendedores registrados</div>}
+                  {vendedores.map(v => (
+                    <div key={v.id} style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'8px', padding:'0.75rem 1rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                      <div>
+                        <div style={{ fontWeight:600, fontSize:'0.9rem', color:'var(--text)' }}>{v.nombre}</div>
+                        <div style={{ fontSize:'0.78rem', color:'var(--text-muted)' }}>{v.whatsapp || 'Sin WhatsApp'}</div>
+                      </div>
+                      <button onClick={async () => {
+                        if (!confirm(`¿Eliminar a ${v.nombre}?`)) return;
+                        const r = await fetch(`/api/vendedores?id=${v.id}`, { method:'DELETE' });
+                        if (r.ok) { setVendedores(prev => prev.filter(x => x.id !== v.id)); showToast('Vendedor eliminado', 'success'); }
+                      }} style={{ padding:'0.3rem 0.6rem', borderRadius:'6px', border:'1px solid var(--border)', background:'none', cursor:'pointer', color:'#dc2626', fontSize:'0.8rem' }}>Eliminar</button>
+                    </div>
+                  ))}
+                </div>
+              </>)}
               </>)}
             </div>
           </div>
