@@ -57,7 +57,20 @@ function ColaEnvio({ titulo, clientes, empresaActual, showToast, tipo, diaVencim
         !yaEnviadosStr.includes(String(c.id))
       );
 
-      setCola(pendientes.map(c => ({ ...c, _enviado: false })));
+      // Cargar subgrupos con estado Notificado
+      const resSg = await fetch(`/api/subgrupos?empresa_id=${empresa_id}`);
+      const todosSubgrupos = resSg.ok ? await resSg.json() : [];
+      const subgruposPendientes = todosSubgrupos.filter(sg =>
+        sg.estado === estadoFiltro &&
+        sg.contacto &&
+        !yaEnviadosStr.includes(`sg_${sg.id}`)
+      ).map(sg => ({
+        ...sg,
+        _esSubgrupo: true,
+        _enviado: false,
+        id: `sg_${sg.id}`,
+      }));
+      setCola([...pendientes.map(c => ({ ...c, _enviado: false })), ...subgruposPendientes]);
     } catch(e) {
       setCola((clientes || []).filter(c => c.estado === estadoFiltro && !c.suspendido && c.contacto).map(c => ({ ...c, _enviado: false })));
     }
