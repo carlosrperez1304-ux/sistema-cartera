@@ -51,6 +51,13 @@ export default function SubgruposCliente({ cliente, empresaActual, showToast }) 
     if (expandido) cargarSubgrupos();
   }, [expandido]);
 
+  useEffect(() => {
+    if (!window.electronAPI?.on) return;
+    const handler = () => { if (expandido) cargarSubgrupos(); };
+    window.electronAPI.on('pdf-enviado-whatsapp', handler);
+    return () => window.electronAPI.off?.('pdf-enviado-whatsapp', handler);
+  }, [expandido]);
+
   async function cargarSubgrupos() {
     setCargando(true);
     try {
@@ -181,6 +188,20 @@ export default function SubgruposCliente({ cliente, empresaActual, showToast }) 
                 {ESTADOS.map(e => <option key={e} value={e}>{e}</option>)}
               </select>
               <div style={{ display: 'flex', gap: '4px' }}>
+                {sg.pdf_nombre && (
+                  <button onClick={async () => {
+                    const res = await fetch('/api/subgrupos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: sg.id, pdf_nombre: null, pdf_base64: null }) });
+                    const data = await res.json();
+                    setSubgrupos(prev => prev.map(s => s.id === sg.id ? data : s));
+                  }} title="Eliminar PDF" style={{ padding: '3px 5px', borderRadius: '5px', background: 'none', border: '1px solid #dc2626', cursor: 'pointer', color: '#dc2626', fontSize: '10px' }}>✕PDF</button>
+                )}
+                {sg.pdf_nombre && (
+                  <button onClick={async () => {
+                    const res = await fetch('/api/subgrupos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: sg.id, pdf_nombre: null, pdf_base64: null }) });
+                    const data = await res.json();
+                    setSubgrupos(prev => prev.map(s => s.id === sg.id ? data : s));
+                  }} title="Eliminar PDF" style={{ padding: '3px 5px', borderRadius: '5px', background: 'none', border: '1px solid #dc2626', cursor: 'pointer', color: '#dc2626', fontSize: '10px' }}>✕PDF</button>
+                )}
                 <button onClick={() => subirPDF(sg)} title="Subir PDF" style={{ padding: '3px 5px', borderRadius: '5px', background: 'none', border: '1px solid var(--border)', cursor: 'pointer', color: 'var(--text-muted)' }}><FileUp size={11}/></button>
                 <button onClick={() => enviarWhatsApp(sg)} title="WhatsApp" style={{ padding: '3px 5px', borderRadius: '5px', background: 'none', border: '1px solid var(--border)', cursor: 'pointer', color: '#16a34a' }}><MessageCircle size={11}/></button>
                 <button onClick={() => eliminarSubgrupo(sg.id)} title="Eliminar" style={{ padding: '3px 5px', borderRadius: '5px', background: 'none', border: '1px solid var(--border)', cursor: 'pointer', color: '#dc2626' }}><Trash2 size={11}/></button>
