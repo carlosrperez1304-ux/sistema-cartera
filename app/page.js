@@ -518,6 +518,7 @@ export default function App() {
   }, [session?.user?.username]);
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [clientesIdsSubgrupo, setClientesIdsSubgrupo] = useState(new Set());
   const [filter, setFilter] = useState('todos');
   const [showModal, setShowModal] = useState(false);
   const [duplicadosAlerta, setDuplicadosAlerta] = useState([]);
@@ -1118,7 +1119,7 @@ export default function App() {
       resultado = resultado.filter(c => c.creadoPor.toLowerCase() === myUsername);
     }
     if (filtroAgente) resultado = resultado.filter(c => c.creadoPor === filtroAgente);
-    if (searchTerm) resultado = resultado.filter(c => c.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || (c.contacto || '').includes(searchTerm) || c.id.toString().includes(searchTerm) || (c.codigoCliente || '').toLowerCase().includes(searchTerm.toLowerCase()));
+    if (searchTerm) resultado = resultado.filter(c => c.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || (c.contacto || '').includes(searchTerm) || c.id.toString().includes(searchTerm) || (c.codigoCliente || '').toLowerCase().includes(searchTerm.toLowerCase()) );
     if (fechaDesde) resultado = resultado.filter(c => c.fechaCotizacion && c.fechaCotizacion >= fechaDesde);
     if (fechaHasta) resultado = resultado.filter(c => c.fechaCotizacion && c.fechaCotizacion <= fechaHasta);
     if (filtroMontoMin !== '') resultado = resultado.filter(c => (parseFloat(c.monto) || 0) >= parseFloat(filtroMontoMin));
@@ -4458,7 +4459,18 @@ export default function App() {
             <div className="controls">
               <div className="search-box">
                 <span className="search-icon"><HelpCircle size={14}/></span>
-                <input type="text" placeholder="Buscar por nombre, ID o contacto... (F)" value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setPaginaActual(1); }} />
+                <input type="text" placeholder="Buscar por nombre, ID o contacto... (F)" value={searchTerm} onChange={async (e) => {
+                    const val = e.target.value;
+                    setSearchTerm(val);
+                    setPaginaActual(1);
+                    if (val.length >= 2) {
+                      const res = await fetch(`/api/subgrupos?buscar=${encodeURIComponent(val)}`);
+                      const sgs = res.ok ? await res.json() : [];
+                      setClientesIdsSubgrupo(new Set(sgs.map(sg => sg.cliente_id)));
+                    } else {
+                      setClientesIdsSubgrupo(new Set());
+                    }
+                  }} />
               </div>
 
 
