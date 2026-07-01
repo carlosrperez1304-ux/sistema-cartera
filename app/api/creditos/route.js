@@ -15,6 +15,8 @@ function toFront(c) {
     fechaPagoC:       c.fecha_pago_c     || '',
     estado:           c.estado           || 'Activo',
     comentario:       c.comentario       || '',
+    vendedor:         c.vendedor         || '',
+    vendedor_whatsapp: c.vendedor_whatsapp || '',
     creadoPor:        c.creado_por       || '',
     historial:        c.historial        || [],
     abonos: (c.abonos || []).map(a => ({
@@ -87,6 +89,8 @@ export async function POST(req) {
     fecha_pago_c:      creditoData.fechaPagoC      || null,
     estado:            creditoData.estado          || 'Activo',
     comentario:        creditoData.comentario ? sanitize(creditoData.comentario, 500) : null,
+    vendedor:          creditoData.vendedor          || null,
+    vendedor_whatsapp: creditoData.vendedor_whatsapp || null,
     historial:         creditoData.historial       || [],
     creado_por:        auth.session.user.username,
     empresa_id:        auth.session.user.empresa_id || null,

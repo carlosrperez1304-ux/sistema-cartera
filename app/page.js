@@ -601,7 +601,7 @@ export default function App() {
   }, [menuAbierto]);
   const [showCreditoModal, setShowCreditoModal] = useState(false);
   const [editingCredito, setEditingCredito] = useState(null);
-  const [creditoFormData, setCreditoFormData] = useState({ id: '', numeroOrden: '', cliente: '', monto: '', fechaInicio: '', plazoMeses: '', fechaVencimiento: '', estado: 'Activo', comentario: '', historial: [], abonos: [] });
+  const [creditoFormData, setCreditoFormData] = useState({ id: '', numeroOrden: '', cliente: '', monto: '', fechaInicio: '', plazoMeses: '', fechaVencimiento: '', estado: 'Activo', comentario: '', historial: [], abonos: [], vendedor: '', vendedor_whatsapp: '' });
   const [nuevoAbono, setNuevoAbono] = useState('');
   const [mostrarAutocomplete, setMostrarAutocomplete] = useState(false);
   const [clientesFiltradosAuto, setClientesFiltradosAuto] = useState([]);
@@ -1512,7 +1512,7 @@ export default function App() {
     else {
       setEditingCredito(null);
       const nuevoId = creditos.length > 0 ? Math.max(...creditos.map(c => c.id)) + 1 : 1;
-      setCreditoFormData({ id: nuevoId, numeroOrden: '', cliente: '', monto: '', fechaInicio: new Date().toISOString().split('T')[0], plazoMeses: '', fechaVencimiento: '', estado: 'Activo', comentario: '', historial: [], abonos: [] });
+      setCreditoFormData({ id: nuevoId, numeroOrden: '', cliente: '', monto: '', fechaInicio: new Date().toISOString().split('T')[0], plazoMeses: '', fechaVencimiento: '', estado: 'Activo', comentario: '', historial: [], abonos: [], vendedor: '', vendedor_whatsapp: '' });
     }
     setShowCreditoModal(true);
   };
@@ -5748,6 +5748,18 @@ export default function App() {
                     <span style={{ color: '#0ea5e9', fontWeight: 800, fontSize: '1rem' }}>{creditoFormData.plazoMeses || '0'} {creditoFormData.plazoMeses === '1' ? 'mes' : 'meses'}</span>
                   </div>
                 )}
+
+                {/* Vendedor */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div style={{ margin: 0 }}>
+                    <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Vendedor</label>
+                    <input type="text" value={creditoFormData.vendedor || ''} onChange={(e) => setCreditoFormData({ ...creditoFormData, vendedor: e.target.value })} placeholder="Nombre del vendedor" style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+                  </div>
+                  <div style={{ margin: 0 }}>
+                    <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>WhatsApp Vendedor</label>
+                    <input type="text" value={creditoFormData.vendedor_whatsapp || ''} onChange={(e) => setCreditoFormData({ ...creditoFormData, vendedor_whatsapp: e.target.value })} placeholder="Ej: 8091234567" style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+                  </div>
+                </div>
 
                 {/* Comentario */}
                 <div style={{ margin: 0 }}>
