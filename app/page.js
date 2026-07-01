@@ -6676,8 +6676,8 @@ export default function App() {
               )}
               {esAdmin && (
                 <button className={`settings-nav-item ${settingsSection === 'vendedores' ? 'active' : ''}`} onClick={() => setSettingsSection('vendedores')}>
-                <span>Vendedores</span>
-              </button>
+                  <span>Vendedores</span>
+                </button>
               <button className={`settings-nav-item ${settingsSection === 'activaciones' ? 'active' : ''}`} onClick={async () => { setSettingsSection('activaciones'); setLoadingActivaciones(true); const r = await fetch('/api/activaciones/admin'); if (r.ok) setActivaciones(await r.json()); setLoadingActivaciones(false); }}>
                   <Monitor size={14}/>
                   Licencias App
