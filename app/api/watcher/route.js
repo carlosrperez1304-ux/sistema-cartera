@@ -10,6 +10,7 @@ export async function GET(req) {
   if (secret !== SECRET) return Response.json({ error: 'unauthorized' }, { status: 401 });
   if (!nombre) return Response.json(null);
 
+  // Buscar primero en clientes
   const { data, error } = await db()
     .from('clientes')
     .select('id, nombre, contacto, estado, empresa_id, monto')
@@ -17,8 +18,19 @@ export async function GET(req) {
     .limit(1)
     .maybeSingle();
 
-  if (error) return Response.json(null);
-  return Response.json(data);
+  if (!error && data) return Response.json({ ...data, _tipo: 'cliente' });
+
+  // Si no encuentra en clientes, buscar en subgrupos
+  const { data: sg, error: sgError } = await db()
+    .from('subgrupos_cliente')
+    .select('id, nombre, contacto, estado, empresa_id, monto, cliente_id')
+    .ilike('nombre', '%' + nombre + '%')
+    .limit(1)
+    .maybeSingle();
+
+  if (!sgError && sg) return Response.json({ ...sg, _tipo: 'subgrupo' });
+
+  return Response.json(null);
 }
 
 export async function POST(req) {
@@ -32,25 +44,22 @@ export async function POST(req) {
 
   const hoy = new Date().toISOString().split('T')[0];
 
+  const tipo = searchParams.get('tipo') || 'cliente';
+  const tabla = tipo === 'subgrupo' ? 'subgrupos_cliente' : 'clientes';
+
   if (accion === 'cotizado') {
-    await db().from('clientes').update({
-      estado: 'Cotizado',
-      fecha_cotizacion: hoy,
-    }).eq('id', id);
+    await db().from(tabla).update({ estado: 'Cotizado', fecha_cotizacion: hoy }).eq('id', id);
   }
 
   if (accion === 'actualizar-monto') {
     const monto = searchParams.get('monto');
     if (monto) {
-      await db().from('clientes').update({ monto: parseFloat(monto) }).eq('id', id);
+      await db().from(tabla).update({ monto: parseFloat(monto) }).eq('id', id);
     }
   }
 
   if (accion === 'notificado') {
-    await db().from('clientes').update({
-      estado: 'Notificado',
-      fecha_notificacion: hoy,
-    }).eq('id', id);
+    await db().from(tabla).update({ estado: 'Notificado', fecha_notificacion: hoy }).eq('id', id);
   }
 
   return Response.json({ ok: true });
