@@ -1,9 +1,5 @@
 'use client';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import TabTickets from './components/TabTickets';
-import TabGrupos from './components/TabGrupos';
-import TabRecordatorio from './components/TabRecordatorio';
-import SubgruposCliente from './components/SubgruposCliente';
 import { getSupabaseBrowser } from '../lib/supabase-browser.js';
 import * as XLSX from 'xlsx';
 import { signIn, signOut, useSession } from 'next-auth/react';
@@ -62,10 +58,6 @@ export default function App() {
   const [sessionExpired, setSessionExpired] = useState(false);
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showTopbarMenu, setShowTopbarMenu] = useState(false);
-  const [carpetaVigilada, setCarpetaVigilada] = useState('');
-  const [whatsappQR, setWhatsappQR] = useState(null);
-  const [whatsappConectado, setWhatsappConectado] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [bancoMovimientos, setBancoMovimientos] = useState([]);
   const [bancoArchivoNombre, setBancoArchivoNombre] = useState('');
@@ -123,38 +115,6 @@ export default function App() {
 
   // Si hay sesión NextAuth: usar el rol del token JWT o el email de Google
   // Si no: fallback a la lista local (para compatibilidad)
-  // Carpeta vigilada
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.electronAPI) return;
-    window.electronAPI.estadoWatcher().then(s => {
-      if (s?.carpeta) setCarpetaVigilada(s.carpeta);
-    }).catch(() => {});
-    window.electronAPI.onWatcherIniciado && window.electronAPI.onWatcherIniciado((carpeta) => {
-      setCarpetaVigilada(carpeta);
-    });
-  }, []);
-
-  // WhatsApp Baileys listeners
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.electronAPI) return;
-    window.electronAPI.onWhatsappQR((qr) => {
-      setWhatsappQR(qr);
-      setWhatsappConectado(false);
-    });
-    window.electronAPI.onWhatsappStatus((status) => {
-      if (status.conectado) {
-        setWhatsappConectado(true);
-        setWhatsappQR(null);
-      } else {
-        setWhatsappConectado(false);
-      }
-    });
-    // Verificar estado inicial
-    window.electronAPI.whatsappStatus().then(s => {
-      if (s?.conectado) setWhatsappConectado(true);
-    }).catch(() => {});
-  }, []);
-
   const esAdmin = session
     ? (session.user?.rol === 'admin')
     : (usuarios[currentUser]?.rol === 'admin');
@@ -522,7 +482,6 @@ export default function App() {
   }, [session?.user?.username]);
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [clientesIdsSubgrupo, setClientesIdsSubgrupo] = useState(new Set());
   const [filter, setFilter] = useState('todos');
   const [showModal, setShowModal] = useState(false);
   const [duplicadosAlerta, setDuplicadosAlerta] = useState([]);
@@ -594,15 +553,6 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
-
-  useEffect(() => {
-    if (!menuAbierto) return;
-    const handler = (e) => {
-      if (!e.target.closest('[data-menu]')) setMenuAbierto(null);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [menuAbierto]);
   const [showCreditoModal, setShowCreditoModal] = useState(false);
   const [editingCredito, setEditingCredito] = useState(null);
   const [creditoFormData, setCreditoFormData] = useState({ id: '', numeroOrden: '', cliente: '', monto: '', fechaInicio: '', plazoMeses: '', fechaVencimiento: '', estado: 'Activo', comentario: '', historial: [], abonos: [], vendedor: '', vendedor_whatsapp: '' });
@@ -660,7 +610,6 @@ export default function App() {
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [updateDownloaded, setUpdateDownloaded] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const [showWhatsappStatusModal, setShowWhatsappStatusModal] = useState(false);
   const [showWhatsappModal, setShowWhatsappModal] = useState(false);
   const [whatsappCliente, setWhatsappCliente] = useState(null);
   const [whatsappMensaje, setWhatsappMensaje] = useState('');
@@ -695,8 +644,6 @@ export default function App() {
   const [filtroMontoMax, setFiltroMontoMax] = useState('');
   const [filtroEstados, setFiltroEstados] = useState([]);
   const [recordatoriosDias, setRecordatoriosDias] = useState(7);
-  const [diaVencimiento, setDiaVencimiento] = useState(15);
-  const [mensajeRecordatorio, setMensajeRecordatorio] = useState('');
   const [activaciones, setActivaciones] = useState([]);
   const [nuevaActivNombre, setNuevaActivNombre] = useState('');
   const [loadingActivaciones, setLoadingActivaciones] = useState(false);
@@ -768,8 +715,6 @@ export default function App() {
         if (cfg.meta_mensual   != null) setMetaMensual(parseFloat(cfg.meta_mensual) || 0);
         if (cfg.color_acento)           setColorAcento(cfg.color_acento);
         if (cfg.recordatorio_dias)      setRecordatoriosDias(parseInt(cfg.recordatorio_dias) || 7);
-        if (cfg.dia_vencimiento)         setDiaVencimiento(parseInt(cfg.dia_vencimiento) || 15);
-        if (cfg.mensaje_recordatorio)    setMensajeRecordatorio(cfg.mensaje_recordatorio);
         if (cfg.modo_compacto  != null) setModoCompacto(cfg.modo_compacto === 'true');
         // Guardar si ya fue enviado este mes para usarlo en el efecto separado
         const hoy = new Date();
@@ -934,7 +879,17 @@ export default function App() {
     if (!hydrated) return;
     const verificarVencimientos = () => {
       const hoy = new Date();
-      // Vencimiento manejado en TabRecordatorio sin cambiar estado
+      if (hoy.getDate() >= 16) {
+        const updated = clientes.map(cliente => {
+          if (!['Pagado','Facturado','Vencido','No Generaron'].includes(cliente.estado)) {
+            if (parseInt(cliente.mes) === hoy.getMonth() + 1 && parseInt(cliente.año) === hoy.getFullYear()) {
+              return { ...cliente, estado: 'Vencido', historial: [...(cliente.historial||[]), { fecha: hoy.toISOString(), accion: 'Movido automáticamente a Vencido (día 16)', usuario: 'Sistema' }] };
+            }
+          }
+          return cliente;
+        });
+        if (JSON.stringify(updated) !== JSON.stringify(clientes)) setClientes(updated);
+      }
     };
     verificarVencimientos();
     const interval = setInterval(verificarVencimientos, 3600000);
@@ -1123,7 +1078,7 @@ export default function App() {
       resultado = resultado.filter(c => c.creadoPor.toLowerCase() === myUsername);
     }
     if (filtroAgente) resultado = resultado.filter(c => c.creadoPor === filtroAgente);
-    if (searchTerm) resultado = resultado.filter(c => c.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || (c.contacto || '').includes(searchTerm) || c.id.toString().includes(searchTerm) || (c.codigoCliente || '').toLowerCase().includes(searchTerm.toLowerCase()) || clientesIdsSubgrupo.has(c.id));
+    if (searchTerm) resultado = resultado.filter(c => c.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || (c.contacto || '').includes(searchTerm) || c.id.toString().includes(searchTerm) || (c.codigoCliente || '').toLowerCase().includes(searchTerm.toLowerCase()));
     if (fechaDesde) resultado = resultado.filter(c => c.fechaCotizacion && c.fechaCotizacion >= fechaDesde);
     if (fechaHasta) resultado = resultado.filter(c => c.fechaCotizacion && c.fechaCotizacion <= fechaHasta);
     if (filtroMontoMin !== '') resultado = resultado.filter(c => (parseFloat(c.monto) || 0) >= parseFloat(filtroMontoMin));
@@ -1132,7 +1087,6 @@ export default function App() {
     else if (filter !== 'todos' && filter !== 'delegaciones') {
       if (filter === 'no-generaron') resultado = resultado.filter(c => c.estado === 'No Generaron');
       else if (filter === 'sin-documento') resultado = resultado.filter(c => estadoActivoCliente(c) === 'Cotizado' && (cotizaciones[c.id] || []).length === 0);
-      else if (filter === 'suspendido') resultado = datosActuales.clientes.filter(c => c.suspendido === true);
       else resultado = resultado.filter(c => estadoActivoCliente(c).toLowerCase() === filter);
     }
     resultado = [...resultado].sort((a, b) => {
@@ -1516,7 +1470,7 @@ export default function App() {
     else {
       setEditingCredito(null);
       const nuevoId = creditos.length > 0 ? Math.max(...creditos.map(c => c.id)) + 1 : 1;
-      setCreditoFormData({ id: nuevoId, numeroOrden: '', cliente: '', monto: '', fechaInicio: new Date().toISOString().split('T')[0], plazoMeses: '', fechaVencimiento: '', estado: 'Activo', comentario: '', historial: [], abonos: [], vendedor: '', vendedor_whatsapp: '' });
+      setCreditoFormData({ id: nuevoId, numeroOrden: '', cliente: '', monto: '', fechaInicio: new Date().toISOString().split('T')[0], plazoMeses: '', fechaVencimiento: '', estado: 'Activo', comentario: '', historial: [], abonos: [] });
     }
     setShowCreditoModal(true);
   };
@@ -1734,30 +1688,21 @@ export default function App() {
     }
 
     setShowWhatsappModal(false);
-    if (window.electronAPI?.isElectron) {
-      const waStatus = await window.electronAPI.whatsappStatus().catch(() => ({ conectado: false }));
-      if (waStatus.conectado && doc?.base64) {
-        showToast("Enviando por WhatsApp...", "info");
-        const result = await window.electronAPI.whatsappEnviarPDF(num, doc.base64, doc.nombre, whatsappMensaje);
-        if (result.ok) {
-          showToast("✅ Enviado por WhatsApp automáticamente", "success");
-        } else {
-          showToast("Error: " + result.error, "error");
-        }
-      } else if (doc?.base64) {
-        const result = await window.electronAPI.sendPDFWhatsApp(doc.base64, doc.nombre, num, whatsappMensaje);
-        if (!result.ok) {
-          if (doc) descargarDocumento(doc);
-          window.open(`https://wa.me/1${num}?text=${encodeURIComponent(whatsappMensaje)}`, "_blank");
-        } else {
-          showToast("PDF copiado al portapapeles — Ctrl+V en WhatsApp para pegarlo", "success");
-        }
+
+    if (window.electronAPI?.isElectron && doc?.base64) {
+      // Modo escritorio: PDF al portapapeles + WhatsApp Desktop con mensaje
+      const result = await window.electronAPI.sendPDFWhatsApp(doc.base64, doc.nombre, num, whatsappMensaje);
+      if (!result.ok) {
+        if (doc) descargarDocumento(doc);
+        window.open(`https://wa.me/1${num}?text=${encodeURIComponent(whatsappMensaje)}`, '_blank');
+      } else {
+        showToast('PDF copiado al portapapeles — Ctrl+V en WhatsApp para pegarlo', 'success');
       }
     } else {
+      // Modo web: descargar PDF (si hay) + abrir wa.me
       if (doc?.base64) descargarDocumento(doc);
-      window.open(`https://wa.me/1${num}?text=${encodeURIComponent(whatsappMensaje)}`, "_blank");
+      window.open(`https://wa.me/1${num}?text=${encodeURIComponent(whatsappMensaje)}`, '_blank');
     }
-
 
     // Marcar como Notificado automáticamente
     marcarNotificado(whatsappCliente);
@@ -2983,9 +2928,9 @@ export default function App() {
   if (!isAuthenticated && !session) {
     return (
       <div className="login-container" style={{ position: 'relative', zIndex: 1, isolation: 'isolate' }}>
-        {/* Fondo oscuro */}
-        <div style={{ position: 'fixed', inset: 0, zIndex: 0, background: '#1a1915', overflow: 'hidden' }}>
-          <svg width="0" height="0" style={{display:'none'}}>
+        {/* Fondo animado con gráficas */}
+        <div style={{ position: 'fixed', inset: 0, zIndex: 0, background: '#0a0f1e', overflow: 'hidden' }}>
+          <svg width="100%" height="100%" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <linearGradient id="line1grad" x1="0%" y1="0%" x2="100%" y2="0%">
                 <stop offset="0%" stopColor="#4f46e5" stopOpacity="0"/>
@@ -3072,37 +3017,26 @@ export default function App() {
             <rect width="1440" height="900" fill="url(#glow2)"/>
           </svg>
         </div>
-        <div style={{ position:'relative', zIndex:2, display:'flex', width:'100%', maxWidth:'860px', minHeight:'480px', borderRadius:'16px', overflow:'hidden', boxShadow:'0 20px 60px rgba(0,0,0,0.4)' }}>
-          {/* Lado izquierdo - Logo */}
-          <div style={{ flex:'1.1', background:'#1a1915', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'40px', position:'relative', overflow:'hidden' }}>
-            <div style={{ position:'absolute', left:'-60px', top:'50%', transform:'translateY(-50%)', width:'300px', height:'300px', borderRadius:'50%', border:'40px solid rgba(255,255,255,0.03)' }}></div>
-            <div style={{ position:'relative', zIndex:1, width:'100%' }}>
-              <img src="/CashRD_logo.png" alt="CashRD" style={{ width:'100%', maxWidth:'260px', marginBottom:'20px', borderRadius:'12px', padding:'12px', background:'white' }}/>
-              <p style={{ color:'rgba(255,255,255,0.4)', fontSize:'13px', margin:'0', letterSpacing:'2px', textTransform:'uppercase' }}>Sistema de Gestión de Cartera</p>
-              <p style={{ color:'rgba(255,255,255,0.2)', fontSize:'11px', margin:'8px 0 0' }}>app.cashrd.com</p>
-            </div>
+        <div className="login-box" style={{ position: 'relative', zIndex: 2 }}>
+          <div className="login-header">
+            <div className="login-logo"><BarChart2 size={34} strokeWidth={2}/></div>
+            <h1 className="login-title"><span className="logo-carta">Pay</span><span className="logo-master">Track</span></h1>
+            <p className="login-subtitle">Sistema de Gestión de Cartera</p>
           </div>
-          {/* Lado derecho - Formulario */}
-          <div style={{ flex:'1', background:'#f5f4ef', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'40px' }}>
-            <div style={{ width:'100%', maxWidth:'280px' }}>
-              <div style={{ marginBottom:'28px' }}>
-                <h2 style={{ fontSize:'20px', fontWeight:700, color:'#1a1915', margin:'0 0 6px' }}>Bienvenido</h2>
-                <p style={{ fontSize:'13px', color:'#9a998f', margin:0 }}>Ingresa tus credenciales para acceder</p>
-              </div>
-              <div style={{ marginBottom:'14px' }}>
-                <label style={{ display:'block', fontSize:'11px', fontWeight:700, color:'#5f5e5a', marginBottom:'5px', textTransform:'uppercase', letterSpacing:'0.05em' }}>Usuario</label>
-                <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Tu usuario" autoFocus style={{ width:'100%', padding:'10px 12px', border:'1px solid #e0dfd8', borderRadius:'8px', fontSize:'13px', background:'white', color:'#1a1915', boxSizing:'border-box' }}/>
-              </div>
-              <div style={{ marginBottom:'22px' }}>
-                <label style={{ display:'block', fontSize:'11px', fontWeight:700, color:'#5f5e5a', marginBottom:'5px', textTransform:'uppercase', letterSpacing:'0.05em' }}>Contraseña</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" style={{ width:'100%', padding:'10px 12px', border:'1px solid #e0dfd8', borderRadius:'8px', fontSize:'13px', background:'white', color:'#1a1915', boxSizing:'border-box' }}/>
-              </div>
-              {loginError && <div style={{ background:'#fef2f2', border:'1px solid #fca5a5', borderRadius:'8px', padding:'10px 12px', fontSize:'13px', color:'#dc2626', marginBottom:'16px' }}>{loginError}</div>}
-              <button type="button" onClick={handleLogin} style={{ width:'100%', padding:'11px', background:'#1a1915', color:'white', border:'none', borderRadius:'8px', fontSize:'14px', fontWeight:700, cursor:'pointer' }}>Iniciar sesión</button>
-              <p style={{ textAlign:'center', fontSize:'11px', color:'#b4b2a9', margin:'18px 0 0' }}>PayTrack · 7LABS © 2026</p>
+          <form className="login-form" onSubmit={handleLogin}>
+            <div className="login-input-group">
+              <label>Usuario</label>
+              <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Ingresa tu usuario" autoFocus />
             </div>
-          </div>
+            <div className="login-input-group">
+              <label>Contraseña</label>
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Ingresa tu contraseña" />
+            </div>
+            {loginError && <div className="login-error">{loginError}</div>}
+            <button type="submit" className="login-btn">Iniciar Sesión</button>
+          </form>
         </div>
+        <p className="login-footer" style={{ position: 'relative', zIndex: 2 }}>© 2026 PayTrack · Todos los derechos reservados</p>
       </div>
     );
   }
@@ -3151,9 +3085,12 @@ export default function App() {
 
       {/* ── ELECTRON: Custom Titlebar ─────────────────────────── */}
       {isElectron && !isMiniMode && (
-        <div style={{ height: '36px', background: '#1a1915', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 1rem', WebkitAppRegion: 'drag', flexShrink: 0, zIndex: 9999 }}>
+        <div style={{ height: '36px', background: '#1e1e2e', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 1rem', WebkitAppRegion: 'drag', flexShrink: 0, zIndex: 9999 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontFamily:'Georgia,serif', fontWeight:700, fontSize:'0.85rem', letterSpacing:'-0.01em', color:'white' }}>Cash<span style={{ color:'#b8962e' }}>RD</span></span>
+            <div style={{ width: '20px', height: '20px', background: 'linear-gradient(135deg, #6366f1, #7c3aed)', borderRadius: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ color: '#fff', fontSize: '0.65rem', fontWeight: 800 }}>P</span>
+            </div>
+            <span style={{ color: '#818cf8', fontSize: '0.78rem', fontWeight: 300 }}>Pay</span><span style={{ color: '#ffffff', fontSize: '0.78rem', fontWeight: 800 }}>Track</span>
           </div>
           {tickerItems.length > 0 && (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '0 1rem' }}>
@@ -3170,127 +3107,30 @@ export default function App() {
           )}
           <div id="electron-win-controls" style={{ display: 'flex', gap: '0.3rem', WebkitAppRegion: 'no-drag' }}>
             <button onClick={() => window.electronAPI?.toggleMini()} title="Modo mini" style={{ width: '28px', height: '20px', background: 'none', border: 'none', cursor: 'pointer', color: '#7878a0', borderRadius: '4px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.1)'} onMouseLeave={e => e.currentTarget.style.background='none'}><Minimize2 size={10}/></button>
-
+            <button onClick={() => window.electronAPI?.minimizeWindow()} title="Minimizar" style={{ width: '28px', height: '20px', background: 'none', border: 'none', cursor: 'pointer', color: '#7878a0', borderRadius: '4px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.1)'} onMouseLeave={e => e.currentTarget.style.background='none'}>─</button>
+            <button onClick={() => window.electronAPI?.maximizeWindow()} title="Maximizar" style={{ width: '28px', height: '20px', background: 'none', border: 'none', cursor: 'pointer', color: '#7878a0', borderRadius: '4px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.1)'} onMouseLeave={e => e.currentTarget.style.background='none'}>□</button>
+            <button onClick={() => window.electronAPI?.closeWindow()} title="Cerrar" style={{ width: '28px', height: '20px', background: 'none', border: 'none', cursor: 'pointer', color: '#7878a0', borderRadius: '4px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => { e.currentTarget.style.background='#ef4444'; e.currentTarget.style.color='#fff'; }} onMouseLeave={e => { e.currentTarget.style.background='none'; e.currentTarget.style.color='#7878a0'; }}>✕</button>
           </div>
         </div>
       )}
 
       {/* TOPBAR — ESPN style */}
-      <div className="topbar" style={{ background:'var(--bg)', borderBottom:'1px solid var(--border)', height:'52px', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 1.25rem', position:'sticky', top:0, zIndex:300 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
+      <div className="topbar">
+        <div className="topbar-left">
           <button className="hamburger-btn" onClick={() => setShowMobileMenu(v => !v)} title="Menú">
             {showMobileMenu ? <X size={20}/> : <Menu size={20}/>}
           </button>
-          <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
-            <span style={{ fontFamily:'Georgia,serif', fontWeight:700, fontSize:'1.1rem', letterSpacing:'-0.01em', color:'var(--text)' }}>Cash<span style={{ color:'#b8962e' }}>RD</span></span>
-          </div>
-        </div>
-
-        {/* NAV CENTRAL TIPO PILL */}
-        <div style={{ display:'flex', alignItems:'center', gap:'2px', background:'var(--surface-2)', borderRadius:'20px', padding:'3px' }}>
-          {[
-            { tab:'dashboard', label:'Inicio' },
-            ...(tienePermiso('ver_clientes') ? [{ tab:'cartera', label:'Cartera' }] : []),
-            ...(tienePermiso('ver_clientes') ? [{ tab:'recordatorio', label:'Recordatorio' }] : []),
-            { tab:'tickets', label:'Tickets' },
-            ...(tienePermiso('ver_creditos') ? [{ tab:'credito', label:'Crédito' }] : []),
-            { tab:'agenda', label:'Agenda' },
-            { tab:'documentos', label:'Documentos' },
-            { tab:'grupos', label:'Grupos' },
-          ].map(item => (
-            <button key={item.tab} onClick={() => setActiveTab(item.tab)} style={{ padding:'5px 14px', borderRadius:'16px', fontSize:'12px', fontWeight: activeTab === item.tab ? 600 : 400, background: activeTab === item.tab ? 'var(--text)' : 'transparent', color: activeTab === item.tab ? 'var(--bg)' : 'var(--text-muted)', border:'none', cursor:'pointer', transition:'all 0.15s', whiteSpace:'nowrap' }}>
-              {item.label}
-            </button>
-          ))}
-        </div>
-
-        {/* TOPBAR RIGHT */}
-        <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
-          <div style={{ position:'relative' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:'0.4rem', background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'10px', padding:'0.3rem 0.75rem', minWidth:'200px' }}>
-              <Search size={13} style={{ color:'var(--text-muted)', flexShrink:0 }}/>
-              <input type="text" value={busquedaGlobal} onChange={e => { setBusquedaGlobal(e.target.value); setShowBusquedaGlobal(true); }} onBlur={() => setTimeout(() => setShowBusquedaGlobal(false), 180)} placeholder="Buscar cliente..." style={{ border:'none', background:'transparent', outline:'none', fontSize:'0.82rem', color:'var(--text)', width:'100%' }}/>
-              {busquedaGlobal && <button onClick={() => { setBusquedaGlobal(''); setShowBusquedaGlobal(false); }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0, lineHeight:1 }}>×</button>}
-            </div>
-            {showBusquedaGlobal && busquedaGlobal.length > 1 && (() => {
-              const term = busquedaGlobal.toLowerCase();
-              const resultados = clientes.filter(c => (c.nombre || '').toLowerCase().includes(term) || (c.codigo || '').toLowerCase().includes(term)).slice(0, 6);
-              return (
-                <div style={{ position:'absolute', top:'calc(100% + 6px)', left:0, right:0, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'10px', boxShadow:'0 8px 24px rgba(0,0,0,0.25)', zIndex:9999, overflow:'hidden' }}>
-                  {resultados.length === 0 ? <div style={{ padding:'0.75rem 1rem', fontSize:'0.8rem', color:'var(--text-muted)' }}>Sin resultados</div> : resultados.map(c => (
-                    <div key={c.id} onMouseDown={() => { setBusquedaGlobal(''); setShowBusquedaGlobal(false); setActiveTab('cartera'); setTimeout(() => { setSearchTerm(c.nombre || ''); setPaginaActual(1); }, 100); }} style={{ display:'flex', alignItems:'center', gap:'0.6rem', padding:'0.55rem 0.9rem', cursor:'pointer', borderBottom:'1px solid var(--border)' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-2)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                      <div style={{ width:'28px', height:'28px', borderRadius:'50%', background:'var(--brand)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:'0.75rem', flexShrink:0 }}>{(c.nombre || '?').charAt(0).toUpperCase()}</div>
-                      <div><div style={{ fontWeight:600, fontSize:'0.82rem', color:'var(--text)' }}>{c.nombre}</div>{c.codigo && <div style={{ fontSize:'0.7rem', color:'var(--text-muted)' }}>{c.codigo}</div>}</div>
-                      <div style={{ marginLeft:'auto', fontSize:'0.7rem', fontWeight:600, color: c.estado === 'Vencido' ? '#ef4444' : 'var(--text-muted)' }}>{c.estado}</div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
-          </div>
-          <div ref={clockRef} style={{ fontSize:'0.75rem', color:'var(--text-muted)', whiteSpace:'nowrap', letterSpacing:'0.02em' }} />
-          {/* CARPETA VIGILADA */}
-          {carpetaVigilada && (
-            <div title={'Carpeta vigilada: ' + carpetaVigilada} style={{ display:'flex', alignItems:'center', gap:'5px', fontSize:'11px', color:'#16a34a', background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:'20px', padding:'4px 10px', cursor:'default' }}>
-              <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:'#16a34a' }}></div>
-              Watcher activo
+          {!(typeof window !== 'undefined' && window.electronAPI?.isElectron) && (
+            <div className="topbar-logo">
+              <div className="dot">
+                <BarChart2 size={16} strokeWidth={2.5}/>
+              </div>
             </div>
           )}
-          {/* ESTADO WHATSAPP */}
-          <div title={whatsappConectado ? 'WhatsApp conectado' : 'WhatsApp desconectado'} style={{ display:'flex', alignItems:'center', gap:'5px', fontSize:'11px', color: whatsappConectado ? '#16a34a' : '#9a998f', background: whatsappConectado ? '#f0fdf4' : '#f5f4ef', border: whatsappConectado ? '1px solid #bbf7d0' : '1px solid #e0dfd8', borderRadius:'20px', padding:'4px 10px', cursor:'default' }}>
-            <div style={{ width:'6px', height:'6px', borderRadius:'50%', background: whatsappConectado ? '#16a34a' : '#9a998f' }}></div>
-            WA {whatsappConectado ? 'ON' : 'OFF'}
-          </div>
-
-          {/* AVATAR + CERRAR SESIÓN */}
-          <div style={{ position:'relative' }}>
-            <div onClick={() => setShowTopbarMenu(v => !v)} style={{ width:'32px', height:'32px', borderRadius:'50%', background:'linear-gradient(135deg,#4f46e5,#6366f1)', color:'#fff', fontSize:'12px', fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
-              {(session?.user?.name || currentUser || 'U').charAt(0).toUpperCase()}
-            </div>
-            {showTopbarMenu && (
-              <div style={{ position:'absolute', top:'calc(100% + 8px)', right:0, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'10px', boxShadow:'0 8px 24px rgba(0,0,0,0.12)', zIndex:9999, minWidth:'180px', overflow:'hidden' }}>
-                <div style={{ padding:'10px 14px', borderBottom:'1px solid var(--border)', fontSize:'12px', color:'var(--text-muted)' }}>
-                  <div style={{ fontWeight:700, color:'var(--text)', fontSize:'13px' }}>{session?.user?.name || currentUser}</div>
-                  <div style={{ fontSize:'11px', marginTop:'2px' }}>{session?.user?.rol || 'Usuario'}</div>
-                </div>
-                <button onClick={() => { setShowTopbarMenu(false); setDarkMode(!darkMode); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'var(--text)', borderBottom:'1px solid var(--border)' }}>
-                  {darkMode ? <Sun size={14}/> : <Moon size={14}/>} {darkMode ? 'Modo claro' : 'Modo oscuro'}
-                </button>
-                {esAdmin && <button onClick={() => { setShowTopbarMenu(false); cargarUsuariosAdmin(); setActiveTab('usuarios'); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'var(--text)', borderBottom:'1px solid var(--border)' }}>
-                  <Users size={14}/> Usuarios
-                </button>}
-                {['admin','supervisor_cobro','supervisor_contabilidad'].includes(session?.user?.rol) && <button onClick={() => { setShowTopbarMenu(false); setShowDescargaMesModal(true); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'#dc2626', borderBottom:'1px solid var(--border)' }}>
-                  <Save size={14}/> Cierre de Mes
-                </button>}
-                {esAdmin && <button onClick={() => { setShowTopbarMenu(false); setShowSettingsPanel(true); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'var(--text)', borderBottom:'1px solid var(--border)' }}>
-                  <Settings size={14}/> Configuración
-                </button>}
-                <button onClick={() => { setShowTopbarMenu(false); abrirCargaMasiva(); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'var(--text)', borderBottom:'1px solid var(--border)' }}>
-                  <Upload size={14}/> Carga Masiva PDF
-                </button>
-                {typeof window !== 'undefined' && window.electronAPI?.isElectron && (
-                  <button onClick={() => { setShowTopbarMenu(false); if (updateDownloaded) { window.electronAPI.installUpdate(); } else if (updateAvailable) { setDownloading(true); window.electronAPI.startDownload(); } }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor: updateAvailable ? 'pointer' : 'default', fontSize:'13px', color: updateDownloaded ? '#22c55e' : updateAvailable ? '#6366f1' : 'var(--text-muted)', borderBottom:'1px solid var(--border)' }}>
-                    <Download size={14}/>
-                    {updateDownloaded ? 'Reiniciar y actualizar' : downloading ? `Descargando... ${downloadProgress}%` : updateAvailable ? `Actualizar a v${updateVersion}` : 'App actualizada'}
-                    {updateAvailable && !downloading && !updateDownloaded && <span style={{ marginLeft:'auto', width:'7px', height:'7px', borderRadius:'50%', background:'#6366f1' }}/>}
-                  </button>
-                )}
-                <button onClick={() => { setShowTopbarMenu(false); setShowWhatsappStatusModal(true); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'var(--text)', borderBottom:'1px solid var(--border)' }}>
-                  <MessageCircle size={14}/> WhatsApp
-                </button>
-                <button onClick={() => { setShowTopbarMenu(false); window._manualLogout = true; signOut({ callbackUrl: '/' }); setTimeout(() => { window.location.href = '/'; }, 500); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'#dc2626', fontWeight:600 }}>
-                  <LogOut size={14}/> Cerrar sesión
-                </button>
-              </div>
-            )}
-          </div>
         </div>
 
-        <div className="topbar-left" style={{ display:'none' }}>
-
-        </div>
         {/* TOPBAR CENTER — búsqueda global + reloj */}
-        <div className="topbar-center" style={{ display:"none" }}>
+        <div className="topbar-center">
           <div style={{ position: 'relative' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--surface-2, rgba(255,255,255,0.06))', border: '1px solid var(--border)', borderRadius: '10px', padding: '0.3rem 0.75rem', minWidth: '260px' }}>
               <Search size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }}/>
@@ -3341,7 +3181,7 @@ export default function App() {
           <div ref={clockRef} style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', letterSpacing: '0.02em', marginLeft: '1rem' }} />
         </div>
 
-        <div className="topbar-right" style={{ display:"none" }}>
+        <div className="topbar-right">
           {soloLectura && <span style={{ background: 'rgba(254,249,195,0.15)', color: '#fbbf24', fontSize: '0.67rem', padding: '0.2rem 0.55rem', borderRadius: '5px', fontWeight: 700, marginRight: '0.25rem', border: '1px solid rgba(251,191,36,0.25)' }}>Solo lectura</span>}
           <button className="topbar-icon-btn" onClick={() => setDarkMode(!darkMode)} title="Modo oscuro">
             {darkMode ? <Sun size={16}/> : <Moon size={16}/>}
@@ -3508,8 +3348,33 @@ export default function App() {
                       <Settings size={14}/> Preferencias
                     </button>
                   )}
-
-                  <button onClick={() => { setShowTopbarMenu(false); window._manualLogout = true; signOut({ callbackUrl: '/' }); setTimeout(() => { window.location.href = '/'; }, 500); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.75rem', background: 'none', border: 'none', cursor: 'pointer', borderRadius: '6px', fontSize: '0.83rem', color: '#ef4444', textAlign: 'left' }} onMouseEnter={e => e.currentTarget.style.background='#fff1f2'} onMouseLeave={e => e.currentTarget.style.background='none'}>
+                  {/* Actualización — solo en Electron */}
+                  {typeof window !== 'undefined' && window.electronAPI?.isElectron && (
+                    <button
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        if (updateDownloaded) { window.electronAPI.installUpdate(); }
+                        else if (downloading) { /* en progreso */ }
+                        else if (updateAvailable) { setDownloading(true); window.electronAPI.startDownload(); }
+                      }}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.75rem', background: 'none', border: 'none', cursor: updateAvailable ? 'pointer' : 'default', borderRadius: '6px', fontSize: '0.83rem', color: updateDownloaded ? '#22c55e' : updateAvailable ? '#6366f1' : 'var(--text-muted)', textAlign: 'left' }}
+                      onMouseEnter={e => e.currentTarget.style.background='var(--surface-2)'}
+                      onMouseLeave={e => e.currentTarget.style.background='none'}
+                    >
+                      <Download size={14}/>
+                      {updateDownloaded
+                        ? 'Reiniciar y actualizar'
+                        : downloading
+                          ? `Descargando... ${downloadProgress}%`
+                          : updateAvailable
+                            ? `Actualizar a v${updateVersion}`
+                            : 'App actualizada'}
+                      {updateAvailable && !downloading && !updateDownloaded && (
+                        <span style={{ marginLeft: 'auto', width: '7px', height: '7px', borderRadius: '50%', background: '#6366f1', flexShrink: 0 }}/>
+                      )}
+                    </button>
+                  )}
+                  <button onClick={() => { setShowUserMenu(false); window._manualLogout = true; signOut({ callbackUrl: '/' }); setTimeout(() => { window.location.href = '/'; }, 500); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.75rem', background: 'none', border: 'none', cursor: 'pointer', borderRadius: '6px', fontSize: '0.83rem', color: '#ef4444', textAlign: 'left' }} onMouseEnter={e => e.currentTarget.style.background='#fff1f2'} onMouseLeave={e => e.currentTarget.style.background='none'}>
                     <LogOut size={14}/> Cerrar sesión
                   </button>
                 </div>
@@ -3520,9 +3385,9 @@ export default function App() {
       </div>
 
       {showMobileMenu && <div className="mobile-overlay" onClick={() => setShowMobileMenu(false)} />}
-      <div className="main-layout" style={{ display:'block' }}>
-        {/* SIDEBAR — oculto */}
-        <div className={`sidebar${showMobileMenu ? ' mobile-open' : ''}`} style={{ display:'none' }}>
+      <div className="main-layout">
+        {/* SIDEBAR */}
+        <div className={`sidebar${showMobileMenu ? ' mobile-open' : ''}`}>
           {/* Logo — fuera del scroll, siempre visible */}
           <div style={{ padding: '1.1rem 1rem', borderBottom: '1px solid #e0dfd8', display: 'flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0 }}>
             <div style={{ width: '28px', height: '28px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(99,102,241,0.4)' }}>
@@ -3537,7 +3402,6 @@ export default function App() {
             <div className={`sidebar-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}><span className="icon"><LayoutGrid size={14}/></span> Inicio</div>
             <div className={`sidebar-item ${activeTab === 'calendario' ? 'active' : ''}`} onClick={() => setActiveTab('calendario')}><span className="icon"><Calendar size={14}/></span> Calendario</div>
             {tienePermiso('ver_clientes') && <div className={`sidebar-item ${activeTab === 'cartera' ? 'active' : ''}`} onClick={() => setActiveTab('cartera')}><span className="icon"><BarChart2 size={14}/></span> Cartera</div>}
-            <div className={`sidebar-item ${activeTab === 'tickets' ? 'active' : ''}`} onClick={() => setActiveTab('tickets')}><span className="icon"><ClipboardList size={14}/></span> Tickets</div>
             {tienePermiso('ver_creditos') && <div className={`sidebar-item ${activeTab === 'credito' ? 'active' : ''}`} onClick={() => setActiveTab('credito')}><span className="icon"><CreditCard size={14}/></span> Crédito</div>}
             <div className={`sidebar-item ${activeTab === 'agenda' ? 'active' : ''}`} onClick={() => setActiveTab('agenda')}><span className="icon"><Calendar size={14}/></span> Agenda del Día</div>
             <div className={`sidebar-item ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => { setActiveTab('documentos'); cargarTodosDocumentos(); }}><span className="icon"><FileText size={14}/></span> Documentos</div>
@@ -3582,7 +3446,7 @@ export default function App() {
         </div>
 
         {/* CONTENT */}
-        <div className="content-area" style={{ marginLeft:0, width:'100%' }}>
+        <div className="content-area">
           <div className="page-header" style={{ flexDirection:'column', alignItems:'stretch', gap:'1rem', padding:'1.25rem 1.5rem', background:'var(--surface)', borderRadius:'14px', border:'1px solid var(--border)', marginBottom:'0.5rem' }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
               <div>
@@ -4385,25 +4249,22 @@ export default function App() {
               );
             })()}
 
-            <div style={{ display:'flex', gap:'8px', marginBottom:'1.25rem', flexWrap:'wrap' }}>
+            <div className="dashboard">
               {[
-                { key: 'cotizado',      label: 'Cotizado',      val: estadisticas.cotizado,    pct: estadisticas.cotizadoPct,    color: '#ea580c', bg: '#fff7ed', border: '#fed7aa' },
-                { key: 'notificado',    label: 'Notificado',    val: estadisticas.notificado,  pct: estadisticas.notificadoPct,  color: '#6366f1', bg: '#eff6ff', border: '#bfdbfe' },
-                { key: 'pagado',        label: 'Pagado',        val: estadisticas.pagado,      pct: estadisticas.pagadoPct,      color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
-                { key: 'facturado',     label: 'Facturado',     val: estadisticas.facturado,   pct: estadisticas.facturadoPct,   color: '#0d9488', bg: '#f0fdfa', border: '#99f6e4' },
-                { key: 'vencido',       label: 'Vencido',       val: estadisticas.vencido,     pct: estadisticas.vencidoPct,     color: '#dc2626', bg: '#fff1f2', border: '#fecdd3' },
-                { key: 'no-generaron',  label: 'No Generaron',  val: estadisticas.noGeneraron, pct: estadisticas.noGeneraronPct, color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' },
-                { key: 'suspendido',    label: 'Suspendidos',   val: estadisticas.suspendido,  pct: estadisticas.suspendidoPct,  color: '#e11d48', bg: '#fff1f2', border: '#fecdd3' },
-                ...(estadisticas.sinDocumento > 0 ? [{ key: 'sin-documento', label: 'Sin Doc.', val: estadisticas.sinDocumento, pct: estadisticas.total > 0 ? ((estadisticas.sinDocumento / estadisticas.total) * 100).toFixed(0) : 0, color: '#b45309', bg: '#fffbeb', border: '#fde68a' }] : []),
+                { key: 'cotizado', label: 'Cotizado', val: estadisticas.cotizado, pct: estadisticas.cotizadoPct, monto: estadisticas.montoCotizado, color: '#ea580c' },
+                { key: 'notificado', label: 'Notificado', val: estadisticas.notificado, pct: estadisticas.notificadoPct, monto: estadisticas.montoNotificado, color: '#0284c7' },
+                { key: 'pagado', label: 'Pagado', val: estadisticas.pagado, pct: estadisticas.pagadoPct, monto: estadisticas.montoPagado, color: '#059669' },
+                { key: 'facturado', label: 'Facturado', val: estadisticas.facturado, pct: estadisticas.facturadoPct, monto: estadisticas.montoFacturado, color: '#16a34a' },
+                { key: 'vencido', label: 'Vencido', val: estadisticas.vencido, pct: estadisticas.vencidoPct, monto: estadisticas.montoVencido, color: '#dc2626' },
+                { key: 'no-generaron', label: 'No Generaron', val: estadisticas.noGeneraron, pct: estadisticas.noGeneraronPct, monto: null, color: '#64748b' },
+                { key: 'suspendido', label: 'Suspendidos', val: estadisticas.suspendido, pct: estadisticas.suspendidoPct, monto: estadisticas.montoSuspendido, color: '#dc2626' },
+                ...(estadisticas.sinDocumento > 0 ? [{ key: 'sin-documento', label: 'Sin Documento', val: estadisticas.sinDocumento, pct: estadisticas.total > 0 ? ((estadisticas.sinDocumento / estadisticas.total) * 100).toFixed(0) : 0, monto: null, color: '#b45309' }] : []),
               ].map(s => (
-                <div key={s.key} onClick={() => { setFilter(filter === s.key ? 'todos' : s.key); setPaginaActual(1); }}
-                  title={filter === s.key ? 'Clic para quitar filtro' : `Filtrar por ${s.label}`}
-                  style={{ display:'flex', alignItems:'center', gap:'8px', background: s.bg, border: `1px solid ${filter === s.key ? s.color : s.border}`, borderRadius:'10px', padding:'7px 13px', cursor:'pointer', transition:'all 0.15s', outline: filter === s.key ? `2px solid ${s.color}` : 'none', outlineOffset:'2px' }}>
-                  <div style={{ width:'8px', height:'8px', borderRadius:'50%', background: s.color, flexShrink:0 }}></div>
-                  <span style={{ fontSize:'12px', color:'#9a998f' }}>{s.label}</span>
-                  <span style={{ fontSize:'16px', fontWeight:700, color: s.color, fontFamily:'monospace', lineHeight:1 }}>{s.val}</span>
-                  <span style={{ fontSize:'10px', color: s.color }}>{s.pct}%</span>
-                  {filter === s.key && <span style={{ fontSize:'10px', fontWeight:700, color: s.color }}>✓</span>}
+                <div key={s.key} className={`stat-card ${s.key}`} onClick={() => { setFilter(filter === s.key ? 'todos' : s.key); setPaginaActual(1); }} style={{ cursor: 'pointer', outline: filter === s.key ? `2px solid ${s.color}` : 'none', outlineOffset: '2px', transition: 'all 0.15s' }} title={filter === s.key ? 'Clic para quitar filtro' : `Filtrar por ${s.label}`}>
+                  <div className="stat-label">{s.label}</div>
+                  <div className="stat-value">{s.val}</div>
+                  <div className="stat-percentage">{s.pct}%{s.monto != null && fmtMonto(s.monto, s.val) && <span style={{ display: 'block', color: s.color, fontWeight: 800, fontSize: '0.85rem' }}>{fmtMonto(s.monto, s.val)}</span>}</div>
+                  {filter === s.key && <div style={{ fontSize: '0.65rem', fontWeight: 700, color: s.color, marginTop: '0.2rem' }}>✓ Filtrando</div>}
                 </div>
               ))}
             </div>
@@ -4463,20 +4324,15 @@ export default function App() {
             <div className="controls">
               <div className="search-box">
                 <span className="search-icon"><HelpCircle size={14}/></span>
-                <input type="text" placeholder="Buscar por nombre, ID o contacto... (F)" value={searchTerm} onChange={async (e) => {
-                    const val = e.target.value;
-                    setSearchTerm(val);
-                    setPaginaActual(1);
-                    if (val.length >= 2) {
-                      const res = await fetch(`/api/subgrupos?buscar=${encodeURIComponent(val)}`);
-                      const sgs = res.ok ? await res.json() : [];
-                      setClientesIdsSubgrupo(new Set(sgs.map(sg => sg.cliente_id)));
-                    } else {
-                      setClientesIdsSubgrupo(new Set());
-                    }
-                  }} />
+                <input type="text" placeholder="Buscar por nombre, ID o contacto... (F)" value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setPaginaActual(1); }} />
               </div>
-
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>Desde:</span>
+                <input type="date" value={fechaDesde} onChange={e => { setFechaDesde(e.target.value); setPaginaActual(1); }} style={{ padding: '0.45rem 0.6rem', border: '1px solid var(--border2)', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--surface)', color: 'var(--text)' }} />
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>Hasta:</span>
+                <input type="date" value={fechaHasta} onChange={e => { setFechaHasta(e.target.value); setPaginaActual(1); }} style={{ padding: '0.45rem 0.6rem', border: '1px solid var(--border2)', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--surface)', color: 'var(--text)' }} />
+                {(fechaDesde || fechaHasta) && <button onClick={() => { setFechaDesde(''); setFechaHasta(''); }} style={{ padding: '0.4rem 0.7rem', borderRadius: '7px', border: '1px solid var(--danger)', background: '#fef2f2', color: 'var(--danger)', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}>✕ Limpiar</button>}
+              </div>
 
               <div style={{ display: 'flex', gap: '0.3rem' }}>
                 <button className="btn btn-secondary" onClick={() => setVistaCards(false)} style={{ background: !vistaCards ? 'var(--navy)' : '', color: !vistaCards ? 'white' : '' }} title="Tabla"><ClipboardList size={14}/></button>
@@ -4562,33 +4418,33 @@ export default function App() {
             )}
 
 
-            <div className="table-container" style={{ display: vistaCards ? 'none' : 'block', background:'transparent', border:'none', boxShadow:'none' }}>
+            <div className="table-container" style={{ display: vistaCards ? 'none' : 'block' }}>
               <div className="table-wrapper">
                 {clientesFiltrados.length === 0 ? (
                   <div className="empty-state"><h3>No se encontraron clientes</h3><p>Intenta ajustar los filtros o agregar un nuevo cliente</p></div>
                 ) : (
                   <table className={modoCompacto ? 'compact-mode' : ''}>
-                    <thead><tr style={{ background:'transparent' }}>
-                      <th style={{ width:'32px', textAlign:'center', padding:'6px 14px', fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', border:'none' }}><input type="checkbox" onChange={toggleTodos} checked={clientesPaginados.length > 0 && clientesPaginados.every(c => clientesSeleccionados.includes(c.id))} style={{ cursor:'pointer' }} title="Seleccionar todos" /></th>
+                    <thead><tr>
+                      <th style={{ width:'32px', textAlign:'center' }}><input type="checkbox" onChange={toggleTodos} checked={clientesPaginados.length > 0 && clientesPaginados.every(c => clientesSeleccionados.includes(c.id))} style={{ cursor:'pointer' }} title="Seleccionar todos" /></th>
                       <th style={{ width:'60px', display:'none' }}>ID</th>
-                      <th style={{ padding:'6px 8px', fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center', border:'none' }}># CÓD</th>
-                      <th style={{ padding:'6px 14px', fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'left', border:'none' }}>CLIENTE</th>
-                      {puedeVerTodo && <th style={{ padding:'6px 14px', fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center', border:'none' }}>AGENTE</th>}
-                      <th style={{ padding:'6px 14px', fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center', border:'none' }}>ESTADO</th>
-                      <th style={{ padding:'6px 14px', fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center', border:'none' }}>TELÉFONO</th>
-                      <th style={{ padding:'6px 14px', fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'right', border:'none' }}>MONTO</th>
-                      <th style={{ padding:'6px 14px', fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center', border:'none' }}>PROCESO</th>
-                      <th style={{ padding:'6px 14px', fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center', border:'none' }}>ACCIONES</th>
+                      <th style={{ width:'80px', textAlign:'center' }}>CÓDIGO</th>
+                      <th style={{ textAlign:'left' }}>CLIENTE</th>
+                      {puedeVerTodo && <th style={{ width:'90px', textAlign:'center' }}>AGENTE</th>}
+                      <th style={{ width:'130px', textAlign:'center' }}>ESTADO</th>
+                      <th style={{ width:'140px', textAlign:'center' }}>TELÉFONO</th>
+                      <th style={{ width:'90px', textAlign:'center' }}>MONTO</th>
+                      <th style={{ width:'160px', textAlign:'center' }}>PROCESO</th>
+                      <th style={{ width:'100px', textAlign:'center' }}>OPCIONES</th>
                     </tr></thead>
                     <tbody>
                       {clientesPaginados.map(cliente => {
                         const estaSuspendido = cliente.suspendido === true;
                         return (
-                          <tr key={cliente.id} className={`${estaSuspendido ? 'cliente-suspendido' : ''} ${clientesSeleccionados.includes(cliente.id) ? 'row-selected' : ''}`} style={{ background: clientesSeleccionados.includes(cliente.id) ? '#fefce8' : estaSuspendido ? '#fff1f2' : '#fff', border:'1px solid #f0efe9', borderRadius:'10px', marginBottom:'6px', boxShadow:'0 1px 3px rgba(0,0,0,0.04)', transition:'all 0.15s' }}>
+                          <tr key={cliente.id} className={`${estaSuspendido ? 'cliente-suspendido' : ''} ${clientesSeleccionados.includes(cliente.id) ? 'row-selected' : ''}`}>
                             <td style={{ width:'32px', textAlign:'center' }}><input type="checkbox" checked={clientesSeleccionados.includes(cliente.id)} onChange={() => toggleSeleccion(cliente.id)} style={{ cursor:'pointer' }} /></td>
                             <td style={{ display:'none' }}><div className="id-with-led"><span className={`status-led ${estaSuspendido ? 'suspended' : esClienteActivo(cliente) ? 'active' : 'inactive'}`}></span><strong>{cliente.id}</strong></div></td>
-                            <td style={{ padding:'10px 8px', fontSize:'12px', color:'#6366f1', fontFamily:'monospace', fontWeight:700, textAlign:'center', borderBottom:'1px solid #f5f4ef' }}>{cliente.codigoCliente || cliente.id}</td>
-                            <td style={{ padding:'10px 14px', borderBottom:'1px solid #f5f4ef' }}>
+                            <td style={{ width:'80px', textAlign:'center' }}><strong style={{ fontFamily: 'var(--mono)', color: 'var(--accent)' }}>{cliente.codigoCliente || '—'}</strong></td>
+                            <td>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 {(() => { const av = getAvatar(cliente.nombre); return <div className="avatar avatar-sm" style={{ background: av.color }}>{av.letra}</div>; })()}
                                 <div>
@@ -4611,7 +4467,6 @@ export default function App() {
                                       <span style={{ fontSize:'0.68rem', fontWeight:600, color:'#92400e', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{cliente.nota.length > 35 ? cliente.nota.slice(0, 35) + '…' : cliente.nota}</span>
                                     </div>
                                   )}
-                                  <SubgruposCliente cliente={cliente} empresaActual={empresaActual} showToast={showToast} />
                                 </div>
                               </div>
                             </td>
@@ -4667,7 +4522,7 @@ export default function App() {
                                   <MoreVertical size={15}/>
                                 </button>
                                 {menuAbierto === cliente.id && (
-                                  <div data-menu style={{ position: 'absolute', right: 0, ...(menuAbiertoDir === 'up' ? { bottom: '110%', top: 'auto' } : { top: '110%', bottom: 'auto' }), background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 9999, minWidth: '200px', maxHeight: '60vh', overflowY: 'auto' }}>
+                                  <div style={{ position: 'absolute', right: 0, top: '110%', background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 9999, minWidth: '200px', overflow: 'hidden' }}>
                                     {cliente.contacto && (
                                       <button onClick={() => { abrirWhatsappModal(cliente); setMenuAbierto(null); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 1rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#16a34a', fontWeight: 600, borderBottom: '1px solid #f1f5f9' }}>
                                         <Phone size={15}/>
@@ -4766,19 +4621,6 @@ export default function App() {
           </div>
 
           {/* TAB CRÉDITO */}
-          <div className={`tab-content ${activeTab === 'tickets' ? 'active' : ''}`}>
-            <TabTickets currentUser={currentUser} session={session} empresaActual={empresaActual} clientes={clientes} showToast={showToast} />
-          </div>
-
-          <div className={`tab-content ${activeTab === 'grupos' ? 'active' : ''}`}>
-            <TabGrupos clientes={clientes} session={session} currentUser={currentUser} empresaActual={empresaActual} showToast={showToast} />
-          </div>
-
-          {/* TAB RECORDATORIO */}
-          <div className={`tab-content ${activeTab === 'recordatorio' ? 'active' : ''}`}>
-            <TabRecordatorio clientes={clientes} showToast={showToast} empresaActual={empresaActual} diaVencimiento={diaVencimiento} setDiaVencimiento={setDiaVencimiento} mensajeRecordatorio={mensajeRecordatorio} setMensajeRecordatorio={setMensajeRecordatorio} />
-          </div>
-
           <div className={`tab-content ${activeTab === 'credito' ? 'active' : ''}`}>
             {creditosVencidos.length > 0 && <div className="alert-box danger"><h3><AlertTriangle size={14} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Créditos Vencidos ({creditosVencidos.length})</h3>{creditosVencidos.map(credito => <div key={credito.id} className="alert-item"><div><strong>{credito.cliente}</strong> - Orden: {credito.numeroOrden}<div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Vencido: {new Date(credito.fechaVencimiento).toLocaleDateString('es-DO')}</div></div><span className="dias-restantes critico">{Math.abs(getDiasRestantes(credito.fechaVencimiento))} días vencido</span></div>)}</div>}
             {creditosAlerta.length > 0 && <div className="alert-box"><h3><Clock size={14} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Créditos por Vencer ({creditosAlerta.length})</h3>{creditosAlerta.map(credito => { const dias = getDiasRestantes(credito.fechaVencimiento); return <div key={credito.id} className="alert-item"><div><strong>{credito.cliente}</strong> - Orden: {credito.numeroOrden}<div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Vence: {new Date(credito.fechaVencimiento).toLocaleDateString('es-DO')}</div></div><span className={`dias-restantes ${dias <= 3 ? 'critico' : 'advertencia'}`}>{dias} {dias === 1 ? 'día' : 'días'}</span></div>; })}</div>}
@@ -4802,7 +4644,7 @@ export default function App() {
             <div className="table-container">
               {creditos.length === 0 ? <div className="empty-state"><p>No hay créditos registrados</p></div> : (
                 <table>
-                  <thead><tr><th>ID</th><th>Nº Orden</th><th>Cliente</th><th>Monto</th><th>Saldo Pend.</th><th>Vendedor</th><th>Fecha Inicio</th><th>Plazo</th><th>Vencimiento</th><th>Días Restantes</th><th>Estado</th><th>Acciones</th></tr></thead>
+                  <thead><tr><th>ID</th><th>Nº Orden</th><th>Cliente</th><th>Monto</th><th>Saldo Pend.</th><th>Proceso</th><th>Fecha Inicio</th><th>Plazo</th><th>Vencimiento</th><th>Días Restantes</th><th>Estado</th><th>Acciones</th></tr></thead>
                   <tbody>
                     {creditos.filter(c => c.cliente.toLowerCase().includes(searchTerm.toLowerCase()) || c.numeroOrden.toLowerCase().includes(searchTerm.toLowerCase()) || c.id.toString().includes(searchTerm)).map(credito => {
                       const diasRestantes = getDiasRestantes(credito.fechaVencimiento);
@@ -4820,14 +4662,12 @@ export default function App() {
                           </td>
                           <td>{(() => { const s = calcularSaldosCredito(credito.monto, credito.abonos || []); const pct = s.total > 0 ? Math.min((s.abonado / s.total) * 100, 100) : 0; return <div style={{ minWidth: '110px' }}><div style={{ fontWeight: 700, color: s.pendiente > 0 ? '#f59e0b' : '#059669', marginBottom: '0.25rem' }}>${s.pendiente.toFixed(2)}</div>{s.total > 0 && <div className="progress-bar-wrap"><div className="progress-bar-fill" style={{ width: `${pct}%`, background: pct >= 100 ? '#059669' : '#635bff' }}></div></div>}{s.abonado > 0 && <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{pct.toFixed(0)}% pagado</div>}</div>; })()}</td>
                           <td>
-                            {credito.vendedor ? (
-                              <div>
-                                <div style={{ fontSize:'12px', fontWeight:600, color:'var(--text)' }}>{credito.vendedor}</div>
-                                {credito.vendedor_whatsapp && (
-                                  <button onClick={() => window.electronAPI?.whatsappEnviarMensaje(credito.vendedor_whatsapp, `Hola ${credito.vendedor}, el crédito de ${credito.cliente} (Orden: ${credito.numeroOrden}) está ${credito.estado}.`)} style={{ fontSize:'10px', padding:'2px 6px', borderRadius:'4px', border:'none', background:'#25D366', color:'white', cursor:'pointer', marginTop:'2px' }}>📱 Notificar</button>
-                                )}
-                              </div>
-                            ) : <span style={{ color:'var(--text-muted)', fontSize:'12px' }}>—</span>}
+                            <div className="proceso-icons">
+                              <button className={`proceso-icon cotizado ${credito.fechaCotizacion ? 'done' : ''}`} onClick={() => { const a = { ...credito }; if (!a.fechaCotizacion) a.fechaCotizacion = new Date().toISOString().split('T')[0]; else { a.fechaCotizacion = ''; a.fechaNotificacionC = ''; a.fechaPagoC = ''; a.fechaFacturacionC = ''; } actualizarCredito(a); }}><ClipboardList size={13}/></button>
+                              <button className={`proceso-icon notificado ${credito.fechaNotificacionC ? 'done' : ''}`} disabled={!credito.fechaCotizacion} style={{ opacity: !credito.fechaCotizacion ? 0.3 : 1 }} onClick={() => { if (!credito.fechaCotizacion) return; const a = { ...credito }; if (!a.fechaNotificacionC) a.fechaNotificacionC = new Date().toISOString().split('T')[0]; else { a.fechaNotificacionC = ''; a.fechaPagoC = ''; a.fechaFacturacionC = ''; } actualizarCredito(a); }}><Mail size={13}/></button>
+                              <button className={`proceso-icon pagado ${credito.fechaPagoC ? 'done' : ''}`} disabled={!credito.fechaNotificacionC} style={{ opacity: !credito.fechaNotificacionC ? 0.3 : 1 }} onClick={() => { if (!credito.fechaNotificacionC) return; if (!credito.fechaPagoC) { abrirPagoCreditoModal(credito); return; } const a = { ...credito }; a.fechaPagoC = ''; a.fechaFacturacionC = ''; a.abonos = []; a.estado = 'Activo'; actualizarCredito(a); }}><DollarSign size={13}/></button>
+                              <button className={`proceso-icon facturado ${credito.fechaFacturacionC ? 'done' : ''}`} disabled={!credito.fechaPagoC} style={{ opacity: !credito.fechaPagoC ? 0.3 : 1 }} onClick={() => { if (!credito.fechaPagoC) return; const a = { ...credito }; if (!a.fechaFacturacionC) a.fechaFacturacionC = new Date().toISOString().split('T')[0]; else a.fechaFacturacionC = ''; actualizarCredito(a); }}><DollarSign size={13}/></button>
+                            </div>
                           </td>
                           <td>{new Date(credito.fechaInicio).toLocaleDateString('es-DO')}</td>
                           <td>{credito.plazoMeses} {credito.plazoMeses === '1' ? 'mes' : 'meses'}</td>
@@ -5755,23 +5595,6 @@ export default function App() {
                   </div>
                 )}
 
-                {/* Vendedor */}
-                <div style={{ margin: 0 }}>
-                  <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Vendedor</label>
-                  <select value={creditoFormData.vendedor || ''} onChange={(e) => {
-                    const v = vendedores.find(v => v.nombre === e.target.value);
-                    setCreditoFormData({ ...creditoFormData, vendedor: e.target.value, vendedor_whatsapp: v?.whatsapp || '' });
-                  }} style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', background: '#fff', boxSizing: 'border-box' }}>
-                    <option value=''>Sin vendedor asignado</option>
-                    {vendedores.map(v => <option key={v.id} value={v.nombre}>{v.nombre} {v.whatsapp ? `· ${v.whatsapp}` : ''}</option>)}
-                  </select>
-                  {creditoFormData.vendedor_whatsapp && (
-                    <div style={{ fontSize: '11px', color: '#16a34a', marginTop: '4px' }}>
-                      📱 WhatsApp: {creditoFormData.vendedor_whatsapp}
-                    </div>
-                  )}
-                </div>
-
                 {/* Comentario */}
                 <div style={{ margin: 0 }}>
                   <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Comentario</label>
@@ -6678,11 +6501,11 @@ export default function App() {
               )}
               {esAdmin && (
                 <button className={`settings-nav-item ${settingsSection === 'vendedores' ? 'active' : ''}`} onClick={() => setSettingsSection('vendedores')}>
-                  <span>Vendedores</span>
+                  Vendedores
                 </button>
               )}
               {esAdmin && (
-                <button className={`settings-nav-item ${settingsSection === 'activaciones' ? 'active' : ''}`} onClick={async () => { setSettingsSection('activaciones'); setLoadingActivaciones(true); const r = await fetch('/api/activaciones/admin'); if (r.ok) setActivaciones(await r.json()); setLoadingActivaciones(false); }}>
+                <button className={`settings-nav-item ${settingsSection === 'activaciones'` ? 'active' : ''}`} onClick={async () => { setSettingsSection('activaciones'); setLoadingActivaciones(true); const r = await fetch('/api/activaciones/admin'); if (r.ok) setActivaciones(await r.json()); setLoadingActivaciones(false); }}>
                   <Monitor size={14}/>
                   Licencias App
                 </button>
@@ -6991,6 +6814,41 @@ export default function App() {
               </>)}
 
               {/* ── Panel Licencias App (Electron) ── */}
+              {settingsSection === 'vendedores' && esAdmin && (<>
+                <div className="settings-content-header">
+                  <div className="settings-content-title">Vendedores</div>
+                  <button className="settings-close-btn" onClick={() => setShowSettingsPanel(false)}>×</button>
+                </div>
+                <div style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'10px', padding:'1rem', marginBottom:'1rem' }}>
+                  <div style={{ fontWeight:700, fontSize:'0.85rem', marginBottom:'0.65rem' }}>Agregar vendedor</div>
+                  <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
+                    <input value={nuevoVendedorNombre} onChange={e => setNuevoVendedorNombre(e.target.value)} placeholder="Nombre" style={{ flex:2, minWidth:'120px', padding:'0.5rem 0.75rem', border:'1px solid var(--border)', borderRadius:'7px', fontSize:'0.83rem', background:'var(--surface)', color:'var(--text)' }} />
+                    <input value={nuevoVendedorWhatsapp} onChange={e => setNuevoVendedorWhatsapp(e.target.value)} placeholder="WhatsApp (ej: 8091234567)" style={{ flex:2, minWidth:'140px', padding:'0.5rem 0.75rem', border:'1px solid var(--border)', borderRadius:'7px', fontSize:'0.83rem', background:'var(--surface)', color:'var(--text)' }} />
+                    <button className="btn btn-primary" onClick={async () => {
+                      if (!nuevoVendedorNombre.trim()) return showToast('Escribe el nombre', 'error');
+                      const r = await fetch('/api/vendedores', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ nombre: nuevoVendedorNombre.trim(), whatsapp: nuevoVendedorWhatsapp.trim() }) });
+                      if (r.ok) { const d = await r.json(); setVendedores(prev => [...prev, d]); setNuevoVendedorNombre(''); setNuevoVendedorWhatsapp(''); showToast('Vendedor agregado', 'success'); }
+                      else showToast('Error agregando vendedor', 'error');
+                    }}>+ Agregar</button>
+                  </div>
+                </div>
+                <div style={{ display:'flex', flexDirection:'column', gap:'0.5rem' }}>
+                  {vendedores.length === 0 && <div style={{ color:'var(--text-muted)', fontSize:'0.85rem', textAlign:'center', padding:'1rem' }}>No hay vendedores registrados</div>}
+                  {vendedores.map(v => (
+                    <div key={v.id} style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'8px', padding:'0.75rem 1rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                      <div>
+                        <div style={{ fontWeight:600, fontSize:'0.9rem', color:'var(--text)' }}>{v.nombre}</div>
+                        <div style={{ fontSize:'0.78rem', color:'var(--text-muted)' }}>{v.whatsapp || 'Sin WhatsApp'}</div>
+                      </div>
+                      <button onClick={async () => {
+                        if (!confirm(`¿Eliminar a ${v.nombre}?`)) return;
+                        const r = await fetch(`/api/vendedores?id=${v.id}`, { method:'DELETE' });
+                        if (r.ok) { setVendedores(prev => prev.filter(x => x.id !== v.id)); showToast('Vendedor eliminado', 'success'); }
+                      }} style={{ padding:'0.3rem 0.6rem', borderRadius:'6px', border:'1px solid var(--border)', background:'none', cursor:'pointer', color:'#dc2626', fontSize:'0.8rem' }}>Eliminar</button>
+                    </div>
+                  ))}
+                </div>
+              </>)}
               {settingsSection === 'activaciones' && esAdmin && (<>
                 <div className="settings-content-header">
                   <div className="settings-content-title">Licencias App de Escritorio</div>
@@ -7069,46 +6927,11 @@ export default function App() {
                     </div>
                   </div>
                 ))}
-
+              </>)}
             </div>
           </div>
         </div>
       )}
-              {settingsSection === 'vendedores' && (<>
-                <div className="settings-content-header">
-                  <div className="settings-content-title">Vendedores</div>
-                  <button className="settings-close-btn" onClick={() => setShowSettingsPanel(false)}>×</button>
-                </div>
-                <div style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'10px', padding:'1rem', marginBottom:'1rem' }}>
-                  <div style={{ fontWeight:700, fontSize:'0.85rem', marginBottom:'0.65rem' }}>Agregar vendedor</div>
-                  <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
-                    <input value={nuevoVendedorNombre} onChange={e => setNuevoVendedorNombre(e.target.value)} placeholder="Nombre" style={{ flex:2, minWidth:'120px', padding:'0.5rem 0.75rem', border:'1px solid var(--border)', borderRadius:'7px', fontSize:'0.83rem', background:'var(--surface)', color:'var(--text)' }} />
-                    <input value={nuevoVendedorWhatsapp} onChange={e => setNuevoVendedorWhatsapp(e.target.value)} placeholder="WhatsApp (ej: 8091234567)" style={{ flex:2, minWidth:'140px', padding:'0.5rem 0.75rem', border:'1px solid var(--border)', borderRadius:'7px', fontSize:'0.83rem', background:'var(--surface)', color:'var(--text)' }} />
-                    <button className="btn btn-primary" onClick={async () => {
-                      if (!nuevoVendedorNombre.trim()) return showToast('Escribe el nombre', 'error');
-                      const r = await fetch('/api/vendedores', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ nombre: nuevoVendedorNombre.trim(), whatsapp: nuevoVendedorWhatsapp.trim() }) });
-                      if (r.ok) { const d = await r.json(); setVendedores(prev => [...prev, d]); setNuevoVendedorNombre(''); setNuevoVendedorWhatsapp(''); showToast('Vendedor agregado', 'success'); }
-                      else showToast('Error agregando vendedor', 'error');
-                    }}>+ Agregar</button>
-                  </div>
-                </div>
-                <div style={{ display:'flex', flexDirection:'column', gap:'0.5rem' }}>
-                  {vendedores.length === 0 && <div style={{ color:'var(--text-muted)', fontSize:'0.85rem', textAlign:'center', padding:'1rem' }}>No hay vendedores registrados</div>}
-                  {vendedores.map(v => (
-                    <div key={v.id} style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'8px', padding:'0.75rem 1rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                      <div>
-                        <div style={{ fontWeight:600, fontSize:'0.9rem', color:'var(--text)' }}>{v.nombre}</div>
-                        <div style={{ fontSize:'0.78rem', color:'var(--text-muted)' }}>{v.whatsapp || 'Sin WhatsApp'}</div>
-                      </div>
-                      <button onClick={async () => {
-                        if (!confirm(`¿Eliminar a ${v.nombre}?`)) return;
-                        const r = await fetch(`/api/vendedores?id=${v.id}`, { method:'DELETE' });
-                        if (r.ok) { setVendedores(prev => prev.filter(x => x.id !== v.id)); showToast('Vendedor eliminado', 'success'); }
-                      }} style={{ padding:'0.3rem 0.6rem', borderRadius:'6px', border:'1px solid var(--border)', background:'none', cursor:'pointer', color:'#dc2626', fontSize:'0.8rem' }}>Eliminar</button>
-                    </div>
-                  ))}
-                </div>
-              </>)}
 
       {/*  Modal Gestión de Usuarios  */}
       {showUsuariosModal && esAdmin && (
@@ -7956,43 +7779,6 @@ export default function App() {
       )}
 
       {/* Modal de sesión expirada */}
-      {/* MODAL WHATSAPP QR */}
-      {showWhatsappStatusModal && (
-        <div className="modal show">
-          <div className="modal-content" style={{ maxWidth:'420px', textAlign:'center' }}>
-            <div className="modal-header">
-              <h2>WhatsApp — PayTrack</h2>
-              <button className="close-btn" onClick={() => setShowWhatsappStatusModal(false)}>×</button>
-            </div>
-            <div style={{ padding:'1rem' }}>
-              {whatsappConectado ? (
-                <div>
-                  <div style={{ width:'60px', height:'60px', borderRadius:'50%', background:'#dcfce7', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1rem' }}>
-                    <MessageCircle size={28} style={{ color:'#16a34a' }}/>
-                  </div>
-                  <div style={{ fontSize:'16px', fontWeight:700, color:'#16a34a', marginBottom:'8px' }}>WhatsApp Conectado</div>
-                  <div style={{ fontSize:'13px', color:'#9a998f', marginBottom:'1.5rem' }}>Los mensajes se enviarán automáticamente</div>
-                  <button onClick={async () => { if(window.electronAPI) { await window.electronAPI.whatsappCerrarSesion(); setWhatsappConectado(false); setWhatsappQR(null); } }} style={{ padding:'8px 20px', borderRadius:'8px', fontSize:'13px', fontWeight:600, border:'1px solid #fca5a5', background:'#fee2e2', color:'#dc2626', cursor:'pointer' }}>
-                    Cerrar sesión WhatsApp
-                  </button>
-                </div>
-              ) : whatsappQR ? (
-                <div>
-                  <div style={{ fontSize:'13px', color:'#9a998f', marginBottom:'1rem' }}>Escanea este QR con tu WhatsApp</div>
-                  <img src={whatsappQR} alt="QR WhatsApp" style={{ width:'240px', height:'240px', borderRadius:'12px', border:'1px solid #e0dfd8' }}/>
-                  <div style={{ fontSize:'12px', color:'#9a998f', marginTop:'1rem' }}>Abre WhatsApp → Dispositivos vinculados → Vincular dispositivo</div>
-                </div>
-              ) : (
-                <div>
-                  <div style={{ fontSize:'13px', color:'#9a998f', marginBottom:'1rem' }}>Iniciando WhatsApp...</div>
-                  <div style={{ width:'40px', height:'40px', border:'3px solid #6366f1', borderTop:'3px solid transparent', borderRadius:'50%', margin:'0 auto', animation:'spin 1s linear infinite' }}></div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       {sessionExpired && (
         <div className="modal-overlay" style={{ zIndex: 9999, backdropFilter: 'blur(6px)' }}>
           <div className="modal-content" style={{ maxWidth: '380px', textAlign: 'center', padding: '2.5rem 2rem' }}>
