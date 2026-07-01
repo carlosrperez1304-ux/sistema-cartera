@@ -195,13 +195,6 @@ export default function SubgruposCliente({ cliente, empresaActual, showToast }) 
                     setSubgrupos(prev => prev.map(s => s.id === sg.id ? data : s));
                   }} title="Eliminar PDF" style={{ padding: '3px 5px', borderRadius: '5px', background: 'none', border: '1px solid #dc2626', cursor: 'pointer', color: '#dc2626', fontSize: '10px' }}>✕PDF</button>
                 )}
-                {sg.pdf_nombre && (
-                  <button onClick={async () => {
-                    const res = await fetch('/api/subgrupos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: sg.id, pdf_nombre: null, pdf_base64: null }) });
-                    const data = await res.json();
-                    setSubgrupos(prev => prev.map(s => s.id === sg.id ? data : s));
-                  }} title="Eliminar PDF" style={{ padding: '3px 5px', borderRadius: '5px', background: 'none', border: '1px solid #dc2626', cursor: 'pointer', color: '#dc2626', fontSize: '10px' }}>✕PDF</button>
-                )}
                 <button onClick={() => subirPDF(sg)} title="Subir PDF" style={{ padding: '3px 5px', borderRadius: '5px', background: 'none', border: '1px solid var(--border)', cursor: 'pointer', color: 'var(--text-muted)' }}><FileUp size={11}/></button>
                 <button onClick={() => enviarWhatsApp(sg)} title="WhatsApp" style={{ padding: '3px 5px', borderRadius: '5px', background: 'none', border: '1px solid var(--border)', cursor: 'pointer', color: '#16a34a' }}><MessageCircle size={11}/></button>
                 <button onClick={() => eliminarSubgrupo(sg.id)} title="Eliminar" style={{ padding: '3px 5px', borderRadius: '5px', background: 'none', border: '1px solid var(--border)', cursor: 'pointer', color: '#dc2626' }}><Trash2 size={11}/></button>
