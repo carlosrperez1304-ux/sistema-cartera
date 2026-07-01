@@ -207,6 +207,8 @@ export default function App() {
 
   const [clientes, setClientes] = useState([]);
   const [vendedores, setVendedores] = useState([]);
+  const [nuevoVendedorNombre, setNuevoVendedorNombre] = useState('');
+  const [nuevoVendedorWhatsapp, setNuevoVendedorWhatsapp] = useState('');
   const [creditos, setCreditos] = useState([]);
   const [historialMeses, setHistorialMeses] = useState({});
   const [hydrated, setHydrated] = useState(false);
@@ -7075,14 +7077,12 @@ export default function App() {
                 <div style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'10px', padding:'1rem', marginBottom:'1rem' }}>
                   <div style={{ fontWeight:700, fontSize:'0.85rem', marginBottom:'0.65rem' }}>Agregar vendedor</div>
                   <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
-                    <input id="vnd-nombre" placeholder="Nombre" style={{ flex:2, minWidth:'120px', padding:'0.5rem 0.75rem', border:'1px solid var(--border)', borderRadius:'7px', fontSize:'0.83rem', background:'var(--surface)', color:'var(--text)' }} />
-                    <input id="vnd-whatsapp" placeholder="WhatsApp (ej: 8091234567)" style={{ flex:2, minWidth:'140px', padding:'0.5rem 0.75rem', border:'1px solid var(--border)', borderRadius:'7px', fontSize:'0.83rem', background:'var(--surface)', color:'var(--text)' }} />
+                    <input value={nuevoVendedorNombre} onChange={e => setNuevoVendedorNombre(e.target.value)} placeholder="Nombre" style={{ flex:2, minWidth:'120px', padding:'0.5rem 0.75rem', border:'1px solid var(--border)', borderRadius:'7px', fontSize:'0.83rem', background:'var(--surface)', color:'var(--text)' }} />
+                    <input value={nuevoVendedorWhatsapp} onChange={e => setNuevoVendedorWhatsapp(e.target.value)} placeholder="WhatsApp (ej: 8091234567)" style={{ flex:2, minWidth:'140px', padding:'0.5rem 0.75rem', border:'1px solid var(--border)', borderRadius:'7px', fontSize:'0.83rem', background:'var(--surface)', color:'var(--text)' }} />
                     <button className="btn btn-primary" onClick={async () => {
-                      const nombre = document.getElementById('vnd-nombre').value.trim();
-                      const whatsapp = document.getElementById('vnd-whatsapp').value.trim();
-                      if (!nombre) return showToast('Escribe el nombre', 'error');
-                      const r = await fetch('/api/vendedores', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ nombre, whatsapp }) });
-                      if (r.ok) { const d = await r.json(); setVendedores(prev => [...prev, d]); document.getElementById('vnd-nombre').value = ''; document.getElementById('vnd-whatsapp').value = ''; showToast('Vendedor agregado', 'success'); }
+                      if (!nuevoVendedorNombre.trim()) return showToast('Escribe el nombre', 'error');
+                      const r = await fetch('/api/vendedores', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ nombre: nuevoVendedorNombre.trim(), whatsapp: nuevoVendedorWhatsapp.trim() }) });
+                      if (r.ok) { const d = await r.json(); setVendedores(prev => [...prev, d]); setNuevoVendedorNombre(''); setNuevoVendedorWhatsapp(''); showToast('Vendedor agregado', 'success'); }
                       else showToast('Error agregando vendedor', 'error');
                     }}>+ Agregar</button>
                   </div>
