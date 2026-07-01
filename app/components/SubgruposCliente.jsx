@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { getSupabaseBrowser } from '../../lib/supabase-browser.js';
 import { ChevronDown, ChevronRight, Plus, Trash2, MessageCircle, FileUp, X, Check } from 'lucide-react';
 
 function EditableMonto({ sg, onSave }) {
@@ -112,14 +113,13 @@ export default function SubgruposCliente({ cliente, empresaActual, showToast }) 
 
   useEffect(() => {
     if (!expandido) return;
-    import('../../../lib/supabase-browser.js').then(({ getSupabaseBrowser }) => {
-      const sb = getSupabaseBrowser(); if (!sb) return;
-      const channel = sb.channel(`subgrupos_${cliente.id}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'subgrupos_cliente', filter: `cliente_id=eq.${cliente.id}` },
-          () => cargarSubgrupos()
-        ).subscribe();
-      return () => sb.removeChannel(channel);
-    });
+    const sb = getSupabaseBrowser();
+    if (!sb) return;
+    const channel = sb.channel(`subgrupos_${cliente.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'subgrupos_cliente', filter: `cliente_id=eq.${cliente.id}` },
+        () => cargarSubgrupos()
+      ).subscribe();
+    return () => sb.removeChannel(channel);
   }, [expandido, cliente.id]);
 
   async function cargarSubgrupos() {
