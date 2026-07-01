@@ -1569,8 +1569,22 @@ export default function App() {
     try {
       const r = await fetch('/api/creditos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(entrada) });
       const data = await r.json();
-      if (r.ok) setCreditos(prev => [...prev, data]);
-      else showToast('Error al guardar crédito: ' + data.error, 'error');
+      if (r.ok) {
+        setCreditos(prev => [...prev, data]);
+        const monto = `$${parseFloat(entrada.monto||0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+        const fechaVenc = new Date(entrada.fechaVencimiento).toLocaleDateString('es-DO');
+        // Buscar contacto del cliente
+        const clienteObj = clientes.find(c => c.nombre === entrada.cliente);
+        if (clienteObj?.contacto && window.electronAPI?.whatsappEnviarMensaje) {
+          const msgCliente = `Estimado ${entrada.cliente}, le informamos que se ha generado un crédito a su nombre.\n\n📋 *Orden:* ${entrada.numeroOrden}\n💰 *Monto:* ${monto}\n📅 *Plazo:* ${entrada.plazoMeses} ${entrada.plazoMeses === '1' ? 'mes' : 'meses'}\n⏰ *Vencimiento:* ${fechaVenc}\n\nPor favor mantenga sus pagos al día. Gracias.`;
+          window.electronAPI.whatsappEnviarMensaje(clienteObj.contacto, msgCliente).catch(() => {});
+        }
+        // Notificar al vendedor
+        if (entrada.vendedor_whatsapp && window.electronAPI?.whatsappEnviarMensaje) {
+          const msgVendedor = `Hola ${entrada.vendedor}, se ha creado un nuevo crédito.\n\n👤 *Cliente:* ${entrada.cliente}\n📋 *Orden:* ${entrada.numeroOrden}\n💰 *Monto:* ${monto}\n📅 *Plazo:* ${entrada.plazoMeses} ${entrada.plazoMeses === '1' ? 'mes' : 'meses'}\n⏰ *Vencimiento:* ${fechaVenc}`;
+          window.electronAPI.whatsappEnviarMensaje(entrada.vendedor_whatsapp, msgVendedor).catch(() => {});
+        }
+      } else showToast('Error al guardar crédito: ' + data.error, 'error');
     } catch { showToast('Error de conexión', 'error'); }
   }
   cerrarCreditoModal();
