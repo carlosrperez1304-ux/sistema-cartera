@@ -1576,7 +1576,7 @@ export default function App() {
         // Buscar contacto del cliente
         const clienteObj = clientes.find(c => c.nombre === entrada.cliente);
         if (clienteObj?.contacto && window.electronAPI?.whatsappEnviarMensaje) {
-          const msgCliente = `Estimado ${entrada.cliente}, le informamos que se ha generado un crédito a su nombre.\n\n📋 *Orden:* ${entrada.numeroOrden}\n💰 *Monto:* ${monto}\n📅 *Plazo:* ${entrada.plazoMeses} ${entrada.plazoMeses === '1' ? 'mes' : 'meses'}\n⏰ *Vencimiento:* ${fechaVenc}\n\nPor favor mantenga sus pagos al día. Gracias.`;
+          const msgCliente = `Estimado ${entrada.cliente}, le informamos que se ha generado un crédito a su nombre.\n\n📋 *Orden:* ${entrada.numeroOrden}\n💰 *Monto:* ${monto}\n📅 *Plazo:* ${entrada.plazoMeses} ${entrada.plazoMeses === '1' ? 'mes' : 'meses'}\n⏰ *Vencimiento:* ${fechaVenc}`;
           window.electronAPI.whatsappEnviarMensaje(clienteObj.contacto, msgCliente).catch(() => {});
         }
         // Notificar al vendedor
