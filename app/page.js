@@ -4800,7 +4800,7 @@ export default function App() {
             <div className="table-container">
               {creditos.length === 0 ? <div className="empty-state"><p>No hay créditos registrados</p></div> : (
                 <table>
-                  <thead><tr><th>ID</th><th>Nº Orden</th><th>Cliente</th><th>Monto</th><th>Saldo Pend.</th><th>Proceso</th><th>Fecha Inicio</th><th>Plazo</th><th>Vencimiento</th><th>Días Restantes</th><th>Estado</th><th>Acciones</th></tr></thead>
+                  <thead><tr><th>ID</th><th>Nº Orden</th><th>Cliente</th><th>Monto</th><th>Saldo Pend.</th><th>Vendedor</th><th>Fecha Inicio</th><th>Plazo</th><th>Vencimiento</th><th>Días Restantes</th><th>Estado</th><th>Acciones</th></tr></thead>
                   <tbody>
                     {creditos.filter(c => c.cliente.toLowerCase().includes(searchTerm.toLowerCase()) || c.numeroOrden.toLowerCase().includes(searchTerm.toLowerCase()) || c.id.toString().includes(searchTerm)).map(credito => {
                       const diasRestantes = getDiasRestantes(credito.fechaVencimiento);
@@ -4818,12 +4818,14 @@ export default function App() {
                           </td>
                           <td>{(() => { const s = calcularSaldosCredito(credito.monto, credito.abonos || []); const pct = s.total > 0 ? Math.min((s.abonado / s.total) * 100, 100) : 0; return <div style={{ minWidth: '110px' }}><div style={{ fontWeight: 700, color: s.pendiente > 0 ? '#f59e0b' : '#059669', marginBottom: '0.25rem' }}>${s.pendiente.toFixed(2)}</div>{s.total > 0 && <div className="progress-bar-wrap"><div className="progress-bar-fill" style={{ width: `${pct}%`, background: pct >= 100 ? '#059669' : '#635bff' }}></div></div>}{s.abonado > 0 && <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{pct.toFixed(0)}% pagado</div>}</div>; })()}</td>
                           <td>
-                            <div className="proceso-icons">
-                              <button className={`proceso-icon cotizado ${credito.fechaCotizacion ? 'done' : ''}`} onClick={() => { const a = { ...credito }; if (!a.fechaCotizacion) a.fechaCotizacion = new Date().toISOString().split('T')[0]; else { a.fechaCotizacion = ''; a.fechaNotificacionC = ''; a.fechaPagoC = ''; a.fechaFacturacionC = ''; } actualizarCredito(a); }}><ClipboardList size={13}/></button>
-                              <button className={`proceso-icon notificado ${credito.fechaNotificacionC ? 'done' : ''}`} disabled={!credito.fechaCotizacion} style={{ opacity: !credito.fechaCotizacion ? 0.3 : 1 }} onClick={() => { if (!credito.fechaCotizacion) return; const a = { ...credito }; if (!a.fechaNotificacionC) a.fechaNotificacionC = new Date().toISOString().split('T')[0]; else { a.fechaNotificacionC = ''; a.fechaPagoC = ''; a.fechaFacturacionC = ''; } actualizarCredito(a); }}><Mail size={13}/></button>
-                              <button className={`proceso-icon pagado ${credito.fechaPagoC ? 'done' : ''}`} disabled={!credito.fechaNotificacionC} style={{ opacity: !credito.fechaNotificacionC ? 0.3 : 1 }} onClick={() => { if (!credito.fechaNotificacionC) return; if (!credito.fechaPagoC) { abrirPagoCreditoModal(credito); return; } const a = { ...credito }; a.fechaPagoC = ''; a.fechaFacturacionC = ''; a.abonos = []; a.estado = 'Activo'; actualizarCredito(a); }}><DollarSign size={13}/></button>
-                              <button className={`proceso-icon facturado ${credito.fechaFacturacionC ? 'done' : ''}`} disabled={!credito.fechaPagoC} style={{ opacity: !credito.fechaPagoC ? 0.3 : 1 }} onClick={() => { if (!credito.fechaPagoC) return; const a = { ...credito }; if (!a.fechaFacturacionC) a.fechaFacturacionC = new Date().toISOString().split('T')[0]; else a.fechaFacturacionC = ''; actualizarCredito(a); }}><DollarSign size={13}/></button>
-                            </div>
+                            {credito.vendedor ? (
+                              <div>
+                                <div style={{ fontSize:'12px', fontWeight:600, color:'var(--text)' }}>{credito.vendedor}</div>
+                                {credito.vendedor_whatsapp && (
+                                  <button onClick={() => window.electronAPI?.whatsappEnviarMensaje(credito.vendedor_whatsapp, `Hola ${credito.vendedor}, el crédito de ${credito.cliente} (Orden: ${credito.numeroOrden}) está ${credito.estado}.`)} style={{ fontSize:'10px', padding:'2px 6px', borderRadius:'4px', border:'none', background:'#25D366', color:'white', cursor:'pointer', marginTop:'2px' }}>📱 Notificar</button>
+                                )}
+                              </div>
+                            ) : <span style={{ color:'var(--text-muted)', fontSize:'12px' }}>—</span>}
                           </td>
                           <td>{new Date(credito.fechaInicio).toLocaleDateString('es-DO')}</td>
                           <td>{credito.plazoMeses} {credito.plazoMeses === '1' ? 'mes' : 'meses'}</td>
