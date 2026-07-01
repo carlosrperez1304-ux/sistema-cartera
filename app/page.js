@@ -5735,7 +5735,7 @@ export default function App() {
                       {clientesFiltradosAuto.map((cliente, index) => (
                         <div key={cliente.id} className={`autocomplete-item ${index === selectedAutoIndex ? 'selected' : ''}`} onClick={() => seleccionarClienteAutocomplete(cliente)} onMouseEnter={() => setSelectedAutoIndex(index)}>
                           <span className="cliente-nombre">{cliente.nombre}</span>
-                          <span className="cliente-id">ID: {cliente.id}</span>
+                          <span className="cliente-id">ID: {cliente.id}{cliente.contacto ? ` · 📱 ${cliente.contacto}` : ''}</span>
                         </div>
                       ))}
                     </div>
