@@ -206,6 +206,9 @@ export default function App() {
   };
 
   const [clientes, setClientes] = useState([]);
+  const [vendedores, setVendedores] = useState([]);
+  const [nuevoVendedorNombre, setNuevoVendedorNombre] = useState('');
+  const [nuevoVendedorWhatsapp, setNuevoVendedorWhatsapp] = useState('');
   const [creditos, setCreditos] = useState([]);
   const [historialMeses, setHistorialMeses] = useState({});
   const [hydrated, setHydrated] = useState(false);
@@ -388,6 +391,7 @@ export default function App() {
     // Carga inicial de datos
     cargarClientes();
     cargarCreditos();
+    fetch('/api/vendedores').then(r => r.ok ? r.json() : []).then(setVendedores).catch(() => {});
     cargarNotasDashboard();
     cargarTodosDocumentos();
     if (['contabilidad', 'supervisor_cobro', 'supervisor_contabilidad', 'admin'].includes(session?.user?.rol)) {
@@ -6666,6 +6670,11 @@ export default function App() {
                 </button>
               )}
               {esAdmin && (
+                <button className={`settings-nav-item ${settingsSection === 'vendedores' ? 'active' : ''}`} onClick={() => setSettingsSection('vendedores')}>
+                  Vendedores
+                </button>
+              )}
+              {esAdmin && (
                 <button className={`settings-nav-item ${settingsSection === 'activaciones' ? 'active' : ''}`} onClick={async () => { setSettingsSection('activaciones'); setLoadingActivaciones(true); const r = await fetch('/api/activaciones/admin'); if (r.ok) setActivaciones(await r.json()); setLoadingActivaciones(false); }}>
                   <Monitor size={14}/>
                   Licencias App
@@ -7054,12 +7063,47 @@ export default function App() {
                   </div>
                 ))}
               </>)}
+              {settingsSection === 'vendedores' && esAdmin && (<>
+                <div className="settings-content-header">
+                  <div className="settings-content-title">Vendedores</div>
+                  <button className="settings-close-btn" onClick={() => setShowSettingsPanel(false)}>×</button>
+                </div>
+                <div style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'10px', padding:'1rem', marginBottom:'1rem' }}>
+                  <div style={{ fontWeight:700, fontSize:'0.85rem', marginBottom:'0.65rem' }}>Agregar vendedor</div>
+                  <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
+                    <input value={nuevoVendedorNombre} onChange={e => setNuevoVendedorNombre(e.target.value)} placeholder="Nombre" style={{ flex:2, minWidth:'120px', padding:'0.5rem 0.75rem', border:'1px solid var(--border)', borderRadius:'7px', fontSize:'0.83rem', background:'var(--surface)', color:'var(--text)' }} />
+                    <input value={nuevoVendedorWhatsapp} onChange={e => setNuevoVendedorWhatsapp(e.target.value)} placeholder="WhatsApp (ej: 8091234567)" style={{ flex:2, minWidth:'140px', padding:'0.5rem 0.75rem', border:'1px solid var(--border)', borderRadius:'7px', fontSize:'0.83rem', background:'var(--surface)', color:'var(--text)' }} />
+                    <button className="btn btn-primary" onClick={async () => {
+                      if (!nuevoVendedorNombre.trim()) return showToast('Escribe el nombre', 'error');
+                      const r = await fetch('/api/vendedores', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ nombre: nuevoVendedorNombre.trim(), whatsapp: nuevoVendedorWhatsapp.trim() }) });
+                      if (r.ok) { const d = await r.json(); setVendedores(prev => [...prev, d]); setNuevoVendedorNombre(''); setNuevoVendedorWhatsapp(''); showToast('Vendedor agregado', 'success'); }
+                      else showToast('Error agregando vendedor', 'error');
+                    }}>+ Agregar</button>
+                  </div>
+                </div>
+                <div style={{ display:'flex', flexDirection:'column', gap:'0.5rem' }}>
+                  {vendedores.length === 0 && <div style={{ color:'var(--text-muted)', fontSize:'0.85rem', textAlign:'center', padding:'1rem' }}>No hay vendedores registrados</div>}
+                  {vendedores.map(v => (
+                    <div key={v.id} style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'8px', padding:'0.75rem 1rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                      <div>
+                        <div style={{ fontWeight:600, fontSize:'0.9rem', color:'var(--text)' }}>{v.nombre}</div>
+                        <div style={{ fontSize:'0.78rem', color:'var(--text-muted)' }}>{v.whatsapp || 'Sin WhatsApp'}</div>
+                      </div>
+                      <button onClick={async () => {
+                        if (!confirm(`¿Eliminar a ${v.nombre}?`)) return;
+                        const r = await fetch(`/api/vendedores?id=${v.id}`, { method:'DELETE' });
+                        if (r.ok) { setVendedores(prev => prev.filter(x => x.id !== v.id)); showToast('Vendedor eliminado', 'success'); }
+                      }} style={{ padding:'0.3rem 0.6rem', borderRadius:'6px', border:'1px solid var(--border)', background:'none', cursor:'pointer', color:'#dc2626', fontSize:'0.8rem' }}>Eliminar</button>
+                    </div>
+                  ))}
+                </div>
+              </>)}
             </div>
           </div>
         </div>
       )}
 
-      {/*  Modal Gestión de Usuarios  */}
+      {/*  Modal Gestión de Usuarios  */}}
       {showUsuariosModal && esAdmin && (
         <div className="modal show" onClick={e => { if (e.target === e.currentTarget) { setShowUsuariosModal(false); setUsuarioEditando(null); setUsuarioForm({ username:'', nombre:'', pass:'', rol:'viewer' }); } }}>
           <div className="modal-content" style={{ maxWidth: '620px' }}>
