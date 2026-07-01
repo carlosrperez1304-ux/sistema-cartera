@@ -166,7 +166,7 @@ function iniciarWatcher(carpeta) {
 
                     // Actualizar monto en Supabase
                     if (montoNum > 0) {
-                      await fetch(`${PROD_URL}/api/watcher?accion=actualizar-monto&id=${cliente.id}&monto=${montoNum}&secret=paytrack-watcher-2026`, { method: 'POST' }).catch(() => {});
+                      await fetch(`${PROD_URL}/api/watcher?accion=actualizar-monto&id=${cliente.id}&monto=${montoNum}&tipo=${cliente._tipo || 'cliente'}&secret=paytrack-watcher-2026`, { method: 'POST' }).catch(() => {});
                       log.info('[watcher] Monto actualizado en Supabase:', montoNum);
                     }
 
