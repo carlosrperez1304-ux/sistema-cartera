@@ -130,7 +130,9 @@ function iniciarWatcher(carpeta) {
               const res = await fetch(`${PROD_URL}/api/watcher?nombre=${encodeURIComponent(nombreCliente)}&secret=paytrack-watcher-2026`);
                 if (res.ok) {
                   const cliente = await res.json();
-                  if (cliente?.contacto) {
+                  if (!cliente) { log.warn('[watcher] No se encontró cliente ni subgrupo para:', nombreCliente); return; }
+                  if (!cliente.contacto) { log.warn('[watcher] Sin contacto para:', cliente.nombre); return; }
+                  if (cliente.contacto) {
                     const hora = new Date().getHours();
                     const saludo = hora >= 5 && hora < 12 ? 'Buenos días' : hora >= 12 && hora < 19 ? 'Buenas tardes' : 'Buenas noches';
 
