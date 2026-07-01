@@ -27,6 +27,8 @@ export async function PUT(req, { params }) {
     fecha_pago_c:     body.fechaPagoC       || null,
     estado:           body.estado           || 'Activo',
     comentario:       body.comentario       || null,
+    vendedor:          body.vendedor          || null,
+    vendedor_whatsapp: body.vendedor_whatsapp || null,
     historial:        body.historial        || [],
     updated_at:       new Date().toISOString(),
   }).eq('id', id);

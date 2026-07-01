@@ -4824,7 +4824,7 @@ export default function App() {
                               <div>
                                 <div style={{ fontSize:'12px', fontWeight:600, color:'var(--text)' }}>{credito.vendedor}</div>
                                 {credito.vendedor_whatsapp && (
-                                  <button onClick={() => window.electronAPI?.whatsappEnviarMensaje(credito.vendedor_whatsapp, `Hola ${credito.vendedor}, el crédito de ${credito.cliente} (Orden: ${credito.numeroOrden}) está ${credito.estado}.`)} style={{ fontSize:'10px', padding:'2px 6px', borderRadius:'4px', border:'none', background:'#25D366', color:'white', cursor:'pointer', marginTop:'2px' }}>📱 Notificar</button>
+                                  <button onClick={() => window.electronAPI?.whatsappEnviarMensaje(credito.vendedor_whatsapp, `Hola ${credito.vendedor}, le informamos que el crédito de *${credito.cliente}* (Orden: ${credito.numeroOrden}) está *${credito.estado}*.\n💰 Monto: $${parseFloat(credito.monto||0).toLocaleString('en-US',{minimumFractionDigits:2})}\n📅 Vencimiento: ${new Date(credito.fechaVencimiento).toLocaleDateString('es-DO')}`)} style={{ fontSize:'10px', padding:'2px 6px', borderRadius:'4px', border:'none', background:'#25D366', color:'white', cursor:'pointer', marginTop:'2px' }}>📱 Notificar</button>
                                 )}
                               </div>
                             ) : <span style={{ color:'var(--text-muted)', fontSize:'12px' }}>—</span>}
