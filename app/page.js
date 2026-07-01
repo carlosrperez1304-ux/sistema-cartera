@@ -7069,6 +7069,11 @@ export default function App() {
                     </div>
                   </div>
                 ))}
+
+            </div>
+          </div>
+        </div>
+      )}
               {settingsSection === 'vendedores' && (<>
                 <div className="settings-content-header">
                   <div className="settings-content-title">Vendedores</div>
@@ -7104,11 +7109,6 @@ export default function App() {
                   ))}
                 </div>
               </>)}
-              </>)}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/*  Modal Gestión de Usuarios  */}
       {showUsuariosModal && esAdmin && (
