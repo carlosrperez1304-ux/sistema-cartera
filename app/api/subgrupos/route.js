@@ -4,6 +4,17 @@ export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const cliente_id = searchParams.get('cliente_id');
   const empresa_id = searchParams.get('empresa_id');
+  const buscar = searchParams.get('buscar');
+
+  if (buscar) {
+    const { data, error } = await db()
+      .from('subgrupos_cliente')
+      .select('id, nombre, cliente_id, contacto, monto, estado')
+      .ilike('nombre', '%' + buscar + '%')
+      .limit(10);
+    if (error) return Response.json([]);
+    return Response.json(data);
+  }
 
   let query = db().from('subgrupos_cliente').select('*').order('created_at', { ascending: true });
 

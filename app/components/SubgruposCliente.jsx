@@ -2,6 +2,32 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight, Plus, Trash2, MessageCircle, FileUp, X, Check } from 'lucide-react';
 
+function EditableMonto({ sg, onSave }) {
+  const [editando, setEditando] = useState(false);
+  const [valor, setValor] = useState(sg.monto || 0);
+  if (editando) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <input
+          type="number"
+          value={valor}
+          onChange={e => setValor(e.target.value)}
+          autoFocus
+          style={{ width: '80px', padding: '2px 6px', fontSize: '12px', borderRadius: '5px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
+          onKeyDown={e => { if (e.key === 'Enter') { onSave(parseFloat(valor) || 0); setEditando(false); } if (e.key === 'Escape') setEditando(false); }}
+        />
+        <button onClick={() => { onSave(parseFloat(valor) || 0); setEditando(false); }} style={{ padding: '2px 5px', fontSize: '10px', borderRadius: '4px', background: '#16a34a', color: 'white', border: 'none', cursor: 'pointer' }}>✓</button>
+        <button onClick={() => setEditando(false)} style={{ padding: '2px 5px', fontSize: '10px', borderRadius: '4px', background: 'none', border: '1px solid var(--border)', cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
+      </div>
+    );
+  }
+  return (
+    <div onClick={() => setEditando(true)} style={{ fontSize: '12px', fontFamily: 'monospace', color: 'var(--text)', cursor: 'pointer', borderBottom: '1px dashed var(--border)' }} title="Clic para editar monto">
+      ${parseFloat(sg.monto || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+    </div>
+  );
+}
+
 function EditableNombre({ sg, onSave }) {
   const [editando, setEditando] = useState(false);
   const [valor, setValor] = useState(sg.nombre || '');
@@ -83,6 +109,18 @@ export default function SubgruposCliente({ cliente, empresaActual, showToast }) 
     window.electronAPI.on('pdf-enviado-whatsapp', handler);
     return () => window.electronAPI.off?.('pdf-enviado-whatsapp', handler);
   }, [expandido]);
+
+  useEffect(() => {
+    if (!expandido) return;
+    import('../../../lib/supabase-browser.js').then(({ getSupabaseBrowser }) => {
+      const sb = getSupabaseBrowser(); if (!sb) return;
+      const channel = sb.channel(`subgrupos_${cliente.id}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'subgrupos_cliente', filter: `cliente_id=eq.${cliente.id}` },
+          () => cargarSubgrupos()
+        ).subscribe();
+      return () => sb.removeChannel(channel);
+    });
+  }, [expandido, cliente.id]);
 
   async function cargarSubgrupos() {
     setCargando(true);
@@ -207,9 +245,11 @@ export default function SubgruposCliente({ cliente, empresaActual, showToast }) 
                   setSubgrupos(prev => prev.map(s => s.id === sg.id ? data : s));
                 }} />
               </div>
-              <div style={{ fontSize: '12px', fontFamily: 'monospace', color: 'var(--text)' }}>
-                ${parseFloat(sg.monto || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-              </div>
+              <EditableMonto sg={sg} onSave={async (monto) => {
+                  const res = await fetch('/api/subgrupos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: sg.id, monto }) });
+                  const data = await res.json();
+                  setSubgrupos(prev => prev.map(s => s.id === sg.id ? data : s));
+                }} />
               <select
                 value={sg.estado}
                 onChange={e => cambiarEstado(sg, e.target.value)}
