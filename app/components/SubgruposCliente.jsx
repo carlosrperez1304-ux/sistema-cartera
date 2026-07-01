@@ -2,6 +2,32 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight, Plus, Trash2, MessageCircle, FileUp, X, Check } from 'lucide-react';
 
+function EditableNombre({ sg, onSave }) {
+  const [editando, setEditando] = useState(false);
+  const [valor, setValor] = useState(sg.nombre || '');
+  if (editando) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <input
+          value={valor}
+          onChange={e => setValor(e.target.value)}
+          placeholder="Nombre del subgrupo"
+          autoFocus
+          style={{ width: '160px', padding: '2px 6px', fontSize: '12px', fontWeight: 600, borderRadius: '5px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' }}
+          onKeyDown={e => { if (e.key === 'Enter') { onSave(valor); setEditando(false); } if (e.key === 'Escape') setEditando(false); }}
+        />
+        <button onClick={() => { onSave(valor); setEditando(false); }} style={{ padding: '2px 5px', fontSize: '10px', borderRadius: '4px', background: '#16a34a', color: 'white', border: 'none', cursor: 'pointer' }}>✓</button>
+        <button onClick={() => setEditando(false)} style={{ padding: '2px 5px', fontSize: '10px', borderRadius: '4px', background: 'none', border: '1px solid var(--border)', cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
+      </div>
+    );
+  }
+  return (
+    <div onClick={() => setEditando(true)} style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text)', cursor: 'pointer', borderBottom: '1px dashed var(--border)' }} title="Clic para editar nombre">
+      {sg.nombre}
+    </div>
+  );
+}
+
 function EditableContacto({ sg, onSave }) {
   const [editando, setEditando] = useState(false);
   const [valor, setValor] = useState(sg.contacto || '');
@@ -170,7 +196,11 @@ export default function SubgruposCliente({ cliente, empresaActual, showToast }) 
           {!cargando && subgrupos.map(sg => (
             <div key={sg.id} style={{ display: 'grid', gridTemplateColumns: '1fr 100px 80px 80px', gap: '8px', padding: '8px 12px', borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
               <div>
-                <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text)' }}>{sg.nombre}</div>
+                <EditableNombre sg={sg} onSave={async (nombre) => {
+                  const res = await fetch('/api/subgrupos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: sg.id, nombre }) });
+                  const data = await res.json();
+                  setSubgrupos(prev => prev.map(s => s.id === sg.id ? data : s));
+                }} />
                 <EditableContacto sg={sg} onSave={async (contacto) => {
                   const res = await fetch('/api/subgrupos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: sg.id, contacto }) });
                   const data = await res.json();
