@@ -5765,7 +5765,7 @@ export default function App() {
                   <div style={{ padding: '0.75rem 1rem', background: 'rgba(14,165,233,0.07)', border: '1px solid rgba(14,165,233,0.2)', borderRadius: '9px', fontSize: '0.85rem', fontWeight: 600, color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Clock size={14} style={{ color: '#0ea5e9' }}/>
                     Plazo calculado:
-                    <span style={{ color: '#0ea5e9', fontWeight: 800, fontSize: '1rem' }}>{creditoFormData.plazoMeses || '0'} {creditoFormData.plazoMeses === '1' ? 'mes' : 'meses'}</span>
+                    <span style={{ color: '#0ea5e9', fontWeight: 800, fontSize: '1rem' }}>{creditoFormData.plazoMeses?.endsWith('d') ? `${creditoFormData.plazoMeses.replace('d','')} días` : `${creditoFormData.plazoMeses || '0'} ${creditoFormData.plazoMeses === '1' ? 'mes' : 'meses'}`}</span>
                   </div>
                 )}
 
