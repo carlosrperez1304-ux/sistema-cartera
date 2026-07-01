@@ -7103,7 +7103,7 @@ export default function App() {
         </div>
       )}
 
-      {/*  Modal Gestión de Usuarios  */}}
+      {/*  Modal Gestión de Usuarios  */}
       {showUsuariosModal && esAdmin && (
         <div className="modal show" onClick={e => { if (e.target === e.currentTarget) { setShowUsuariosModal(false); setUsuarioEditando(null); setUsuarioForm({ username:'', nombre:'', pass:'', rol:'viewer' }); } }}>
           <div className="modal-content" style={{ maxWidth: '620px' }}>
