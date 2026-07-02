@@ -21,12 +21,12 @@ export default function CreditoCard({ credito, clientes, editingCreditoMontoId, 
     const clienteObj = clientes.find(c => c.nombre === credito.cliente);
     if (clienteObj?.contacto && window.electronAPI?.whatsappEnviarMensaje) {
       const msgCliente = esVencido
-        ? "Estimado " + credito.cliente + ", le informamos que su crédito (Orden: " + credito.numeroOrden + ") por " + monto + " venció el " + fechaVenc + ", hace " + dAbs + " días. Por favor realice su pago lo más pronto posible."
-        : "Estimado " + credito.cliente + ", le recordamos que su crédito (Orden: " + credito.numeroOrden + ") por " + monto + " vence en " + dAbs + " días, el " + fechaVenc + ". Por favor realice su pago a tiempo.";
+        ? "🚨 *Aviso de Crédito Vencido*\n\nEstimado " + credito.cliente + ", le informamos que su crédito se encuentra vencido.\n\n📋 *Orden:* " + credito.numeroOrden + "\n💰 *Monto:* " + monto + "\n📅 *Venció el:* " + fechaVenc + "\n⚠️ *Días vencido:* " + dAbs + "\n\nPor favor realice su pago lo más pronto posible."
+        : "⚠️ *Recordatorio de Crédito*\n\nEstimado " + credito.cliente + ", le recordamos que su crédito está próximo a vencer.\n\n📋 *Orden:* " + credito.numeroOrden + "\n💰 *Monto:* " + monto + "\n📅 *Vencimiento:* " + fechaVenc + "\n⏳ *Días restantes:* " + dAbs + "\n\nPor favor realice su pago a tiempo.";
       await window.electronAPI.whatsappEnviarMensaje(clienteObj.contacto, msgCliente).catch(()=>{});
     }
     if (credito.vendedor_whatsapp && window.electronAPI?.whatsappEnviarMensaje) {
-      const msgVendedor = "Estimado " + credito.vendedor + ", le informamos que el crédito del cliente *" + credito.cliente + "* (Orden: " + credito.numeroOrden + ") por " + monto + " se encuentra *" + (esVencido ? 'VENCIDO' : 'POR VENCER') + "*.\n📅 Fecha de vencimiento: " + fechaVenc + "\n" + (esVencido ? "⚠️ Días vencido: " + dAbs : "⏳ Días restantes: " + dAbs);
+      const msgVendedor = (esVencido ? "🚨 *Crédito Vencido*" : "⚠️ *Crédito por Vencer*") + "\n\nEstimado " + credito.vendedor + ", le informamos sobre el siguiente crédito:\n\n👤 *Cliente:* " + credito.cliente + "\n📋 *Orden:* " + credito.numeroOrden + "\n💰 *Monto:* " + monto + "\n📅 *Vencimiento:* " + fechaVenc + "\n" + (esVencido ? "⚠️ *Días vencido:* " + dAbs : "⏳ *Días restantes:* " + dAbs);
       await window.electronAPI.whatsappEnviarMensaje(credito.vendedor_whatsapp, msgVendedor).catch(()=>{});
     }
   };
