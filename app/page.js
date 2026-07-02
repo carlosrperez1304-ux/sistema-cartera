@@ -4852,10 +4852,6 @@ export default function App() {
                       <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '20px', fontWeight: 500, background: estadoBg, color: estadoText, flexShrink: 0 }}>{credito.estado}</span>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flexShrink: 0 }}>
                           <td>{(() => { const s = calcularSaldosCredito(credito.monto, credito.abonos || []); const pct = s.total > 0 ? Math.min((s.abonado / s.total) * 100, 100) : 0; return <div style={{ minWidth: '110px' }}><div style={{ fontWeight: 700, color: s.pendiente > 0 ? '#f59e0b' : '#059669', marginBottom: '0.25rem' }}>${s.pendiente.toFixed(2)}</div>{s.total > 0 && <div className="progress-bar-wrap"><div className="progress-bar-fill" style={{ width: `${pct}%`, background: pct >= 100 ? '#059669' : '#635bff' }}></div></div>}{s.abonado > 0 && <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{pct.toFixed(0)}% pagado</div>}</div>; })()}</td>
-                          <td>
-                            {credito.vendedor ? (
-                              <div>
-                                <div style={{ fontSize:'12px', fontWeight:600, color:'var(--text)' }}>{credito.vendedor}</div>
                                 {credito.vendedor_whatsapp && (
                                   <button onClick={async () => {
                                     const diasR = Math.round((new Date(credito.fechaVencimiento) - new Date()) / (1000*60*60*24));
