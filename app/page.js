@@ -207,6 +207,9 @@ export default function App() {
   };
 
   const [clientes, setClientes] = useState([]);
+  const [vendedores, setVendedores] = useState([]);
+  const [nuevoVendedorNombre, setNuevoVendedorNombre] = useState('');
+  const [nuevoVendedorWhatsapp, setNuevoVendedorWhatsapp] = useState('');
   const [creditos, setCreditos] = useState([]);
   const [historialMeses, setHistorialMeses] = useState({});
   const [hydrated, setHydrated] = useState(false);
@@ -389,6 +392,7 @@ export default function App() {
     // Carga inicial de datos
     cargarClientes();
     cargarCreditos();
+    fetch('/api/vendedores').then(r => r.ok ? r.json() : []).then(setVendedores).catch(() => {});
     cargarNotasDashboard();
     cargarTodosDocumentos();
     if (['contabilidad', 'supervisor_cobro', 'supervisor_contabilidad', 'admin'].includes(session?.user?.rol)) {
@@ -5708,11 +5712,11 @@ export default function App() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div style={{ margin: 0 }}>
                     <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Fecha de Inicio *</label>
-                    <input type="date" value={creditoFormData.fechaInicio} onChange={(e) => { const nd = { ...creditoFormData, fechaInicio: e.target.value }; if (nd.fechaVencimiento) { const i = new Date(e.target.value); const f = new Date(nd.fechaVencimiento); nd.plazoMeses = Math.max(1, ((f.getFullYear() - i.getFullYear()) * 12) + (f.getMonth() - i.getMonth())).toString(); } setCreditoFormData(nd); }} required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+                    <input type="date" value={creditoFormData.fechaInicio} onChange={(e) => { const nd = { ...creditoFormData, fechaInicio: e.target.value }; if (nd.fechaVencimiento) { const i = new Date(e.target.value); const f = new Date(nd.fechaVencimiento); const dias = Math.round((f-i)/(1000*60*60*24)); nd.plazoMeses = dias < 30 ? dias+'d' : String(Math.floor(dias/30)); } setCreditoFormData(nd); }} required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
                   </div>
                   <div style={{ margin: 0 }}>
                     <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Fecha de Vencimiento *</label>
-                    <input type="date" value={creditoFormData.fechaVencimiento} onChange={(e) => { const nd = { ...creditoFormData, fechaVencimiento: e.target.value }; if (nd.fechaInicio) { const i = new Date(nd.fechaInicio); const f = new Date(e.target.value); nd.plazoMeses = Math.max(1, ((f.getFullYear() - i.getFullYear()) * 12) + (f.getMonth() - i.getMonth())).toString(); } setCreditoFormData(nd); }} required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+                    <input type="date" value={creditoFormData.fechaVencimiento} onChange={(e) => { const nd = { ...creditoFormData, fechaVencimiento: e.target.value }; if (nd.fechaInicio) { const i = new Date(nd.fechaInicio); const f = new Date(e.target.value); const dias = Math.round((f-i)/(1000*60*60*24)); nd.plazoMeses = dias < 30 ? dias+'d' : String(Math.floor(dias/30)); } setCreditoFormData(nd); }} required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
                   </div>
                 </div>
 
@@ -5721,7 +5725,7 @@ export default function App() {
                   <div style={{ padding: '0.75rem 1rem', background: 'rgba(14,165,233,0.07)', border: '1px solid rgba(14,165,233,0.2)', borderRadius: '9px', fontSize: '0.85rem', fontWeight: 600, color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Clock size={14} style={{ color: '#0ea5e9' }}/>
                     Plazo calculado:
-                    <span style={{ color: '#0ea5e9', fontWeight: 800, fontSize: '1rem' }}>{creditoFormData.plazoMeses || '0'} {creditoFormData.plazoMeses === '1' ? 'mes' : 'meses'}</span>
+                    <span style={{ color: '#0ea5e9', fontWeight: 800, fontSize: '1rem' }}>{String(creditoFormData.plazoMeses||'').endsWith('d') ? creditoFormData.plazoMeses.replace('d','') + ' días' : (creditoFormData.plazoMeses || '0') + ' ' + (creditoFormData.plazoMeses === '1' ? 'mes' : 'meses')}</span>
                   </div>
                 )}
 
@@ -5729,13 +5733,11 @@ export default function App() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div style={{ margin: 0 }}>
                     <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Vendedor</label>
-                    <input type="text" value={creditoFormData.vendedor || ''} onChange={(e) => setCreditoFormData({ ...creditoFormData, vendedor: e.target.value })} placeholder="Nombre del vendedor" style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+                    <select value={creditoFormData.vendedor || ''} onChange={(e) => { const v = vendedores.find(v => v.nombre === e.target.value); setCreditoFormData({ ...creditoFormData, vendedor: e.target.value, vendedor_whatsapp: v?.whatsapp || '' }); }} style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', background: '#fff', boxSizing: 'border-box' }}>
+                      <option value=''>Sin vendedor asignado</option>
+                      {vendedores.map(v => <option key={v.id} value={v.nombre}>{v.nombre}{v.whatsapp ? ' · ' + v.whatsapp : ''}</option>)}
+                    </select>
                   </div>
-                  <div style={{ margin: 0 }}>
-                    <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>WhatsApp Vendedor</label>
-                    <input type="text" value={creditoFormData.vendedor_whatsapp || ''} onChange={(e) => setCreditoFormData({ ...creditoFormData, vendedor_whatsapp: e.target.value })} placeholder="Ej: 8091234567" style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
-                  </div>
-                </div>
 
                 {/* Comentario */}
                 <div style={{ margin: 0 }}>
