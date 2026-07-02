@@ -39,7 +39,7 @@ export default function CreditoCard({ credito, clientes, editingCreditoMontoId, 
         <div style={{ fontSize:'12px', color:'var(--text-secondary)', marginBottom:'6px' }}>Orden: {credito.numeroOrden} · {credito.vendedor ? 'Vendedor: ' + credito.vendedor : 'Sin vendedor'}</div>
         <div style={{ display:'flex', gap:'14px', flexWrap:'wrap' }}>
           <span style={{ fontSize:'11px', color:'var(--text-muted)' }}>Inicio: {new Date(credito.fechaInicio).toLocaleDateString('es-DO')}</span>
-          <span style={{ fontSize:'11px', color:'var(--text-muted)' }}>Plazo: {String(credito.plazoMeses||'').endsWith('d') ? String(credito.plazoMeses).replace('d','') + ' días' : credito.plazoMeses + ' ' + (String(credito.plazoMeses) === '1' ? 'mes' : 'meses')}</span>
+          <span style={{ fontSize:'11px', color:'var(--text-muted)' }}>Plazo: {(() => { const p = String(credito.plazoMeses||''); if (p.endsWith('d')) return p.replace('d','') + ' días'; const diasReales = credito.fechaInicio && credito.fechaVencimiento ? Math.round((new Date(credito.fechaVencimiento) - new Date(credito.fechaInicio))/(1000*60*60*24)) : null; if (diasReales !== null && diasReales < 30) return diasReales + ' días'; return credito.plazoMeses + ' ' + (String(credito.plazoMeses)==='1' ? 'mes' : 'meses'); })()}</span>
           <span style={{ fontSize:'11px', color:'var(--text-muted)' }}>Vence: {new Date(credito.fechaVencimiento).toLocaleDateString('es-DO')}</span>
           {credito.estado !== 'Pagado' && <span style={{ fontSize:'11px', fontWeight:500, color:estadoText }}>{vencido ? diasAbs + ' días vencido' : diasAbs + ' días restantes'}</span>}
         </div>
