@@ -5739,6 +5739,7 @@ export default function App() {
                     </select>
                   </div>
 
+                </div>
                 {/* Comentario */}
                 <div style={{ margin: 0 }}>
                   <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Comentario</label>
