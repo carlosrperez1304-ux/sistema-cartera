@@ -4795,79 +4795,51 @@ export default function App() {
               {tienePermiso('crear_creditos') && <button className="btn btn-primary" onClick={() => abrirCreditoModal()}><Plus size={13}/> Nuevo Crédito</button>}
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '0.5rem 0' }}>
+            <div className="table-container">
               {creditos.length === 0 ? <div className="empty-state"><p>No hay créditos registrados</p></div> : (
-                creditos.filter(c => c.cliente.toLowerCase().includes(searchTerm.toLowerCase()) || c.numeroOrden.toLowerCase().includes(searchTerm.toLowerCase()) || c.id.toString().includes(searchTerm)).map(credito => {
-                  const diasRestantes = getDiasRestantes(credito.fechaVencimiento);
-                  const vencido = diasRestantes < 0;
-                  const diasAbs = Math.abs(diasRestantes);
-                  const s = calcularSaldosCredito(credito.monto, credito.abonos || []);
-                  const pct = s.total > 0 ? Math.min((s.abonado / s.total) * 100, 100) : 0;
-                  const initials = credito.cliente.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
-                  const estadoColor = (credito.estado === 'Vencido' || vencido) ? '#E24B4A' : credito.estado === 'Pagado' ? '#639922' : credito.estado === 'Por Vencer' ? '#BA7517' : '#378ADD';
-                  const estadoBg = (credito.estado === 'Vencido' || vencido) ? '#FCEBEB' : credito.estado === 'Pagado' ? '#EAF3DE' : credito.estado === 'Por Vencer' ? '#FAEEDA' : '#E6F1FB';
-                  const estadoText = (credito.estado === 'Vencido' || vencido) ? '#A32D2D' : credito.estado === 'Pagado' ? '#3B6D11' : credito.estado === 'Por Vencer' ? '#854F0B' : '#185FA5';
-                  return (
-                    <div key={credito.id} style={{ background: 'var(--surface-2)', border: '0.5px solid var(--border)', borderRadius: '12px', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '14px', borderLeft: `4px solid ${estadoColor}` }}>
-                      <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: estadoBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 500, color: estadoText, flexShrink: 0 }}>{initials}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '2px' }}>{credito.cliente}</div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px' }}>Orden: {credito.numeroOrden} · {credito.vendedor ? `Vendedor: ${credito.vendedor}` : 'Sin vendedor'}</div>
-                        <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Inicio: {new Date(credito.fechaInicio).toLocaleDateString('es-DO')}</span>
-                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Plazo: {credito.plazoMeses?.endsWith('d') ? `${credito.plazoMeses.replace('d','')} días` : `${credito.plazoMeses} ${credito.plazoMeses === '1' ? 'mes' : 'meses'}`}</span>
-                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Vence: {new Date(credito.fechaVencimiento).toLocaleDateString('es-DO')}</span>
-                          {credito.estado !== 'Pagado' && <span style={{ fontSize: '11px', fontWeight: 500, color: estadoText }}>{vencido ? `${diasAbs} días vencido` : `${diasAbs} días restantes`}</span>}
-                        </div>
-                        {s.total > 0 && <div style={{ marginTop: '6px' }}><div style={{ height: '3px', background: 'var(--border)', borderRadius: '2px', overflow: 'hidden' }}><div style={{ height: '100%', width: `${pct}%`, background: pct >= 100 ? '#639922' : '#378ADD', borderRadius: '2px' }}></div></div></div>}
-                      </div>
-                      <div style={{ textAlign: 'right', marginRight: '10px', flexShrink: 0 }}>
-                        <div style={{ fontSize: '16px', fontWeight: 500, color: 'var(--text-primary)' }}>
-                          {editingCreditoMontoId === credito.id ? (
-                            <input type="text" inputMode="decimal" value={tempCreditoMonto} onChange={(e) => setTempCreditoMonto(e.target.value)} onBlur={() => guardarCreditoMontoInline(credito.id)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); guardarCreditoMontoInline(credito.id); } else if (e.key === 'Escape') cancelarEdicionCreditoMonto(); }} autoFocus style={{ width: '100px', padding: '0.3rem', border: '2px solid #0ea5e9', borderRadius: '6px', fontWeight: 700, textAlign: 'right' }} />
-                          ) : (
-                            <span onClick={() => iniciarEdicionCreditoMonto(credito)} style={{ cursor: 'pointer' }} title="Click para editar">${parseFloat(credito.monto || 0).toLocaleString()}</span>
-                          )}
-                        </div>
-                        <div style={{ fontSize: '11px', color: s.pendiente > 0 ? '#BA7517' : '#639922', marginTop: '2px' }}>Saldo: ${s.pendiente.toFixed(2)}</div>
-                      </div>
-                      <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '20px', fontWeight: 500, background: estadoBg, color: estadoText, flexShrink: 0 }}>{credito.estado}</span>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flexShrink: 0 }}>
-                        {credito.vendedor_whatsapp && (
-                          <button onClick={async () => {
-                            const diasR = Math.round((new Date(credito.fechaVencimiento) - new Date()) / (1000*60*60*24));
-                            const monto = `$${parseFloat(credito.monto||0).toLocaleString('en-US',{minimumFractionDigits:2})}`;
-                            const fechaVenc = new Date(credito.fechaVencimiento).toLocaleDateString('es-DO');
-                            const esVencido = diasR < 0;
-                            const dAbs = Math.abs(diasR);
-                            const clienteObj = clientes.find(c => c.nombre === credito.cliente);
-                            if (clienteObj?.contacto && window.electronAPI?.whatsappEnviarMensaje) {
-                              const msgCliente = esVencido
-                                ? `Estimado ${credito.cliente}, le informamos que su crédito (Orden: ${credito.numeroOrden}) por ${monto} venció el ${fechaVenc}, hace ${dAbs} días. Por favor realice su pago lo más pronto posible.`
-                                : `Estimado ${credito.cliente}, le recordamos que su crédito (Orden: ${credito.numeroOrden}) por ${monto} vence en ${dAbs} días, el ${fechaVenc}. Por favor realice su pago a tiempo.`;
-                              await window.electronAPI.whatsappEnviarMensaje(clienteObj.contacto, msgCliente).catch(()=>{});
-                            }
-                            if (window.electronAPI?.whatsappEnviarMensaje) {
-                              const msgVendedor = `Estimado ${credito.vendedor}, le informamos que el crédito del cliente *${credito.cliente}* (Orden: ${credito.numeroOrden}) por ${monto} se encuentra *${esVencido ? 'VENCIDO' : 'POR VENCER'}*.\n📅 Fecha de vencimiento: ${fechaVenc}\n${esVencido ? `⚠️ Días vencido: ${dAbs}` : `⏳ Días restantes: ${dAbs}`}`;
-                              await window.electronAPI.whatsappEnviarMensaje(credito.vendedor_whatsapp, msgVendedor).catch(()=>{});
-                            }
-                          }} style={{ fontSize:'11px', padding:'4px 10px', borderRadius:'6px', border:'none', background:'#25D366', color:'white', cursor:'pointer', display:'flex', alignItems:'center', gap:'4px' }}>
-                            <Send size={11}/> Notificar
-                          </button>
-                        )}
-                        <button onClick={() => abrirCreditoModal(credito)} style={{ fontSize:'11px', padding:'4px 10px', borderRadius:'6px', border:'0.5px solid var(--border-strong)', background:'none', color:'var(--text-secondary)', cursor:'pointer', display:'flex', alignItems:'center', gap:'4px' }}>
-                          <Pencil size={11}/> Editar
-                        </button>
-                        {credito.estado !== 'Pagado' && <button onClick={() => { const a = { ...credito, estado: 'Pagado', historial: [...(credito.historial || []), { fecha: new Date().toISOString(), accion: 'Marcado como Pagado' }] }; actualizarCredito(a); }} style={{ fontSize:'11px', padding:'4px 10px', borderRadius:'6px', border:'none', background:'var(--bg-success)', color:'var(--text-success)', cursor:'pointer', display:'flex', alignItems:'center', gap:'4px' }}>
-                          <CheckCircle size={11}/> Pagado
-                        </button>}
-                        <button onClick={() => eliminarCredito(credito.id)} style={{ fontSize:'11px', padding:'4px 10px', borderRadius:'6px', border:'none', background:'var(--bg-danger)', color:'var(--text-danger)', cursor:'pointer', display:'flex', alignItems:'center', gap:'4px' }}>
-                          <Trash2 size={11}/>
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })
+                <table>
+                  <thead><tr><th>ID</th><th>Nº Orden</th><th>Cliente</th><th>Monto</th><th>Saldo Pend.</th><th>Proceso</th><th>Fecha Inicio</th><th>Plazo</th><th>Vencimiento</th><th>Días Restantes</th><th>Estado</th><th>Acciones</th></tr></thead>
+                  <tbody>
+                    {creditos.filter(c => c.cliente.toLowerCase().includes(searchTerm.toLowerCase()) || c.numeroOrden.toLowerCase().includes(searchTerm.toLowerCase()) || c.id.toString().includes(searchTerm)).map(credito => {
+                      const diasRestantes = getDiasRestantes(credito.fechaVencimiento);
+                      return (
+                        <tr key={credito.id}>
+                          <td><strong>{credito.id}</strong></td>
+                          <td><strong>{credito.numeroOrden}</strong></td>
+                          <td>{credito.cliente}</td>
+                          <td>
+                            {editingCreditoMontoId === credito.id ? (
+                              <input type="text" inputMode="decimal" value={tempCreditoMonto} onChange={(e) => setTempCreditoMonto(e.target.value)} onBlur={() => guardarCreditoMontoInline(credito.id)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); guardarCreditoMontoInline(credito.id); } else if (e.key === 'Escape') cancelarEdicionCreditoMonto(); }} autoFocus style={{ width: '100%', padding: '0.5rem', border: '2px solid #0ea5e9', borderRadius: '6px', fontWeight: 700 }} />
+                            ) : (
+                              <span onClick={() => iniciarEdicionCreditoMonto(credito)} style={{ cursor: 'pointer', padding: '0.5rem', borderRadius: '6px', display: 'inline-block', fontWeight: 700 }} title="Click para editar">${parseFloat(credito.monto || 0).toLocaleString()}</span>
+                            )}
+                          </td>
+                          <td>{(() => { const s = calcularSaldosCredito(credito.monto, credito.abonos || []); const pct = s.total > 0 ? Math.min((s.abonado / s.total) * 100, 100) : 0; return <div style={{ minWidth: '110px' }}><div style={{ fontWeight: 700, color: s.pendiente > 0 ? '#f59e0b' : '#059669', marginBottom: '0.25rem' }}>${s.pendiente.toFixed(2)}</div>{s.total > 0 && <div className="progress-bar-wrap"><div className="progress-bar-fill" style={{ width: `${pct}%`, background: pct >= 100 ? '#059669' : '#635bff' }}></div></div>}{s.abonado > 0 && <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{pct.toFixed(0)}% pagado</div>}</div>; })()}</td>
+                          <td>
+                            <div className="proceso-icons">
+                              <button className={`proceso-icon cotizado ${credito.fechaCotizacion ? 'done' : ''}`} onClick={() => { const a = { ...credito }; if (!a.fechaCotizacion) a.fechaCotizacion = new Date().toISOString().split('T')[0]; else { a.fechaCotizacion = ''; a.fechaNotificacionC = ''; a.fechaPagoC = ''; a.fechaFacturacionC = ''; } actualizarCredito(a); }}><ClipboardList size={13}/></button>
+                              <button className={`proceso-icon notificado ${credito.fechaNotificacionC ? 'done' : ''}`} disabled={!credito.fechaCotizacion} style={{ opacity: !credito.fechaCotizacion ? 0.3 : 1 }} onClick={() => { if (!credito.fechaCotizacion) return; const a = { ...credito }; if (!a.fechaNotificacionC) a.fechaNotificacionC = new Date().toISOString().split('T')[0]; else { a.fechaNotificacionC = ''; a.fechaPagoC = ''; a.fechaFacturacionC = ''; } actualizarCredito(a); }}><Mail size={13}/></button>
+                              <button className={`proceso-icon pagado ${credito.fechaPagoC ? 'done' : ''}`} disabled={!credito.fechaNotificacionC} style={{ opacity: !credito.fechaNotificacionC ? 0.3 : 1 }} onClick={() => { if (!credito.fechaNotificacionC) return; if (!credito.fechaPagoC) { abrirPagoCreditoModal(credito); return; } const a = { ...credito }; a.fechaPagoC = ''; a.fechaFacturacionC = ''; a.abonos = []; a.estado = 'Activo'; actualizarCredito(a); }}><DollarSign size={13}/></button>
+                              <button className={`proceso-icon facturado ${credito.fechaFacturacionC ? 'done' : ''}`} disabled={!credito.fechaPagoC} style={{ opacity: !credito.fechaPagoC ? 0.3 : 1 }} onClick={() => { if (!credito.fechaPagoC) return; const a = { ...credito }; if (!a.fechaFacturacionC) a.fechaFacturacionC = new Date().toISOString().split('T')[0]; else a.fechaFacturacionC = ''; actualizarCredito(a); }}><DollarSign size={13}/></button>
+                            </div>
+                          </td>
+                          <td>{new Date(credito.fechaInicio).toLocaleDateString('es-DO')}</td>
+                          <td>{credito.plazoMeses} {credito.plazoMeses === '1' ? 'mes' : 'meses'}</td>
+                          <td>{new Date(credito.fechaVencimiento).toLocaleDateString('es-DO')}</td>
+                          <td>{credito.estado !== 'Pagado' && <span className={`dias-restantes ${diasRestantes < 0 ? 'critico' : diasRestantes <= 3 ? 'critico' : diasRestantes <= 7 ? 'advertencia' : ''}`}>{diasRestantes < 0 ? `${Math.abs(diasRestantes)} días vencido` : `${diasRestantes} días`}</span>}</td>
+                          <td><span className={`badge badge-${(credito.estado||'').toLowerCase().replace(/ /g, '-')}`}>{credito.estado}</span></td>
+                          <td>
+                            <div className="action-btns">
+                              {credito.estado !== 'Pagado' && <button className="btn-icon" onClick={() => { const a = { ...credito, estado: 'Pagado', historial: [...(credito.historial || []), { fecha: new Date().toISOString(), accion: 'Marcado como Pagado' }] }; actualizarCredito(a); }} title="Marcar Pagado"><CheckCircle size={13}/></button>}
+                              <button className="btn-icon" onClick={() => abrirCreditoModal(credito)} title="Editar"><Pencil size={13}/></button>
+                              <button className="btn-icon" onClick={() => eliminarCredito(credito.id)} title="Eliminar"><Trash2 size={13}/></button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               )}
             </div>
           </div>
