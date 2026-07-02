@@ -206,9 +206,6 @@ export default function App() {
   };
 
   const [clientes, setClientes] = useState([]);
-  const [vendedores, setVendedores] = useState([]);
-  const [nuevoVendedorNombre, setNuevoVendedorNombre] = useState('');
-  const [nuevoVendedorWhatsapp, setNuevoVendedorWhatsapp] = useState('');
   const [creditos, setCreditos] = useState([]);
   const [historialMeses, setHistorialMeses] = useState({});
   const [hydrated, setHydrated] = useState(false);
@@ -391,7 +388,6 @@ export default function App() {
     // Carga inicial de datos
     cargarClientes();
     cargarCreditos();
-    fetch('/api/vendedores').then(r => r.ok ? r.json() : []).then(setVendedores).catch(() => {});
     cargarNotasDashboard();
     cargarTodosDocumentos();
     if (['contabilidad', 'supervisor_cobro', 'supervisor_contabilidad', 'admin'].includes(session?.user?.rol)) {
@@ -1569,22 +1565,8 @@ export default function App() {
     try {
       const r = await fetch('/api/creditos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(entrada) });
       const data = await r.json();
-      if (r.ok) {
-        setCreditos(prev => [...prev, data]);
-        const monto = `$${parseFloat(entrada.monto||0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-        const fechaVenc = new Date(entrada.fechaVencimiento).toLocaleDateString('es-DO');
-        // Buscar contacto del cliente
-        const clienteObj = clientes.find(c => c.nombre === entrada.cliente);
-        if (clienteObj?.contacto && window.electronAPI?.whatsappEnviarMensaje) {
-          const msgCliente = `Estimado ${entrada.cliente}, le informamos que se ha generado un crédito a su nombre.\n\n📋 *Orden:* ${entrada.numeroOrden}\n💰 *Monto:* ${monto}\n📅 *Plazo:* ${entrada.plazoMeses} ${entrada.plazoMeses === '1' ? 'mes' : 'meses'}\n⏰ *Vencimiento:* ${fechaVenc}`;
-          window.electronAPI.whatsappEnviarMensaje(clienteObj.contacto, msgCliente).catch(() => {});
-        }
-        // Notificar al vendedor
-        if (entrada.vendedor_whatsapp && window.electronAPI?.whatsappEnviarMensaje) {
-          const msgVendedor = `Hola ${entrada.vendedor}, se ha creado un nuevo crédito.\n\n👤 *Cliente:* ${entrada.cliente}\n📋 *Orden:* ${entrada.numeroOrden}\n💰 *Monto:* ${monto}\n📅 *Plazo:* ${entrada.plazoMeses} ${entrada.plazoMeses === '1' ? 'mes' : 'meses'}\n⏰ *Vencimiento:* ${fechaVenc}`;
-          window.electronAPI.whatsappEnviarMensaje(entrada.vendedor_whatsapp, msgVendedor).catch(() => {});
-        }
-      } else showToast('Error al guardar crédito: ' + data.error, 'error');
+      if (r.ok) setCreditos(prev => [...prev, data]);
+      else showToast('Error al guardar crédito: ' + data.error, 'error');
     } catch { showToast('Error de conexión', 'error'); }
   }
   cerrarCreditoModal();
@@ -4822,9 +4804,9 @@ export default function App() {
                   const s = calcularSaldosCredito(credito.monto, credito.abonos || []);
                   const pct = s.total > 0 ? Math.min((s.abonado / s.total) * 100, 100) : 0;
                   const initials = credito.cliente.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
-                  const estadoColor = credito.estado === 'Vencido' || vencido ? '#E24B4A' : credito.estado === 'Pagado' ? '#639922' : credito.estado === 'Por Vencer' ? '#BA7517' : '#378ADD';
-                  const estadoBg = credito.estado === 'Vencido' || vencido ? '#FCEBEB' : credito.estado === 'Pagado' ? '#EAF3DE' : credito.estado === 'Por Vencer' ? '#FAEEDA' : '#E6F1FB';
-                  const estadoText = credito.estado === 'Vencido' || vencido ? '#A32D2D' : credito.estado === 'Pagado' ? '#3B6D11' : credito.estado === 'Por Vencer' ? '#854F0B' : '#185FA5';
+                  const estadoColor = (credito.estado === 'Vencido' || vencido) ? '#E24B4A' : credito.estado === 'Pagado' ? '#639922' : credito.estado === 'Por Vencer' ? '#BA7517' : '#378ADD';
+                  const estadoBg = (credito.estado === 'Vencido' || vencido) ? '#FCEBEB' : credito.estado === 'Pagado' ? '#EAF3DE' : credito.estado === 'Por Vencer' ? '#FAEEDA' : '#E6F1FB';
+                  const estadoText = (credito.estado === 'Vencido' || vencido) ? '#A32D2D' : credito.estado === 'Pagado' ? '#3B6D11' : credito.estado === 'Por Vencer' ? '#854F0B' : '#185FA5';
                   return (
                     <div key={credito.id} style={{ background: 'var(--surface-2)', border: '0.5px solid var(--border)', borderRadius: '12px', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '14px', borderLeft: `4px solid ${estadoColor}` }}>
                       <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: estadoBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 500, color: estadoText, flexShrink: 0 }}>{initials}</div>
@@ -4851,46 +4833,22 @@ export default function App() {
                       </div>
                       <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '20px', fontWeight: 500, background: estadoBg, color: estadoText, flexShrink: 0 }}>{credito.estado}</span>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flexShrink: 0 }}>
-                          <td>{(() => { const s = calcularSaldosCredito(credito.monto, credito.abonos || []); const pct = s.total > 0 ? Math.min((s.abonado / s.total) * 100, 100) : 0; return <div style={{ minWidth: '110px' }}><div style={{ fontWeight: 700, color: s.pendiente > 0 ? '#f59e0b' : '#059669', marginBottom: '0.25rem' }}>${s.pendiente.toFixed(2)}</div>{s.total > 0 && <div className="progress-bar-wrap"><div className="progress-bar-fill" style={{ width: `${pct}%`, background: pct >= 100 ? '#059669' : '#635bff' }}></div></div>}{s.abonado > 0 && <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{pct.toFixed(0)}% pagado</div>}</div>; })()}</td>
-                                {credito.vendedor_whatsapp && (
-                                  <button onClick={async () => {
-                                    const diasR = Math.round((new Date(credito.fechaVencimiento) - new Date()) / (1000*60*60*24));
-                                    const monto = `$${parseFloat(credito.monto||0).toLocaleString('en-US',{minimumFractionDigits:2})}`;
-                                    const fechaVenc = new Date(credito.fechaVencimiento).toLocaleDateString('es-DO');
-                                    const vencido = diasR < 0;
-                                    const diasAbs = Math.abs(diasR);
-                                    const clienteObj = clientes.find(c => c.nombre === credito.cliente);
-                                    if (clienteObj?.contacto && window.electronAPI?.whatsappEnviarMensaje) {
-                                      const msgCliente = vencido
-                                        ? `Estimado ${credito.cliente}, le informamos que su crédito (Orden: ${credito.numeroOrden}) por ${monto} venció el ${fechaVenc}, hace ${diasAbs} días. Por favor realice su pago lo más pronto posible.`
-                                        : `Estimado ${credito.cliente}, le recordamos que su crédito (Orden: ${credito.numeroOrden}) por ${monto} vence en ${diasAbs} días, el ${fechaVenc}. Por favor realice su pago a tiempo.`;
-                                      await window.electronAPI.whatsappEnviarMensaje(clienteObj.contacto, msgCliente).catch(()=>{});
-                                    }
-                                    if (credito.vendedor_whatsapp && window.electronAPI?.whatsappEnviarMensaje) {
-                                      const msgVendedor = `Estimado ${credito.vendedor}, le informamos que el crédito del cliente *${credito.cliente}* (Orden: ${credito.numeroOrden}) por ${monto} se encuentra *${vencido ? 'VENCIDO' : 'POR VENCER'}*.\n📅 Fecha de vencimiento: ${fechaVenc}\n${vencido ? `⚠️ Días vencido: ${diasAbs}` : `⏳ Días restantes: ${diasAbs}`}`;
-                                      await window.electronAPI.whatsappEnviarMensaje(credito.vendedor_whatsapp, msgVendedor).catch(()=>{});
-                                    }
-                                  }} style={{ fontSize:'10px', padding:'2px 6px', borderRadius:'4px', border:'none', background:'#25D366', color:'white', cursor:'pointer', marginTop:'2px' }}>📱 Notificar</button>
-                                )}
-                              </div>
                         {credito.vendedor_whatsapp && (
                           <button onClick={async () => {
                             const diasR = Math.round((new Date(credito.fechaVencimiento) - new Date()) / (1000*60*60*24));
                             const monto = `$${parseFloat(credito.monto||0).toLocaleString('en-US',{minimumFractionDigits:2})}`;
                             const fechaVenc = new Date(credito.fechaVencimiento).toLocaleDateString('es-DO');
-                            const vencido = diasR < 0;
-                            const diasAbs = Math.abs(diasR);
+                            const esVencido = diasR < 0;
+                            const dAbs = Math.abs(diasR);
                             const clienteObj = clientes.find(c => c.nombre === credito.cliente);
                             if (clienteObj?.contacto && window.electronAPI?.whatsappEnviarMensaje) {
-                              const msgCliente = vencido
-                                ? `Estimado ${credito.cliente}, le informamos que su crédito (Orden: ${credito.numeroOrden}) por ${monto} venció el ${fechaVenc}, hace ${diasAbs} días. Por favor realice su pago lo más pronto posible.`
-                                : `Estimado ${credito.cliente}, le recordamos que su crédito (Orden: ${credito.numeroOrden}) por ${monto} vence en ${diasAbs} días, el ${fechaVenc}. Por favor realice su pago a tiempo.`;
+                              const msgCliente = esVencido
+                                ? `Estimado ${credito.cliente}, le informamos que su crédito (Orden: ${credito.numeroOrden}) por ${monto} venció el ${fechaVenc}, hace ${dAbs} días. Por favor realice su pago lo más pronto posible.`
+                                : `Estimado ${credito.cliente}, le recordamos que su crédito (Orden: ${credito.numeroOrden}) por ${monto} vence en ${dAbs} días, el ${fechaVenc}. Por favor realice su pago a tiempo.`;
                               await window.electronAPI.whatsappEnviarMensaje(clienteObj.contacto, msgCliente).catch(()=>{});
                             }
-                            if (credito.vendedor_whatsapp && window.electronAPI?.whatsappEnviarMensaje) {
-                              const msgVendedor = `Estimado ${credito.vendedor}, le informamos que el crédito del cliente *${credito.cliente}* (Orden: ${credito.numeroOrden}) por ${monto} se encuentra *${vencido ? 'VENCIDO' : 'POR VENCER'}*.
-📅 Fecha de vencimiento: ${fechaVenc}
-${vencido ? `⚠️ Días vencido: ${diasAbs}` : `⏳ Días restantes: ${diasAbs}`}`;
+                            if (window.electronAPI?.whatsappEnviarMensaje) {
+                              const msgVendedor = `Estimado ${credito.vendedor}, le informamos que el crédito del cliente *${credito.cliente}* (Orden: ${credito.numeroOrden}) por ${monto} se encuentra *${esVencido ? 'VENCIDO' : 'POR VENCER'}*.\n📅 Fecha de vencimiento: ${fechaVenc}\n${esVencido ? `⚠️ Días vencido: ${dAbs}` : `⏳ Días restantes: ${dAbs}`}`;
                               await window.electronAPI.whatsappEnviarMensaje(credito.vendedor_whatsapp, msgVendedor).catch(()=>{});
                             }
                           }} style={{ fontSize:'11px', padding:'4px 10px', borderRadius:'6px', border:'none', background:'#25D366', color:'white', cursor:'pointer', display:'flex', alignItems:'center', gap:'4px' }}>
@@ -5785,7 +5743,7 @@ ${vencido ? `⚠️ Días vencido: ${diasAbs}` : `⏳ Días restantes: ${diasAbs
                       {clientesFiltradosAuto.map((cliente, index) => (
                         <div key={cliente.id} className={`autocomplete-item ${index === selectedAutoIndex ? 'selected' : ''}`} onClick={() => seleccionarClienteAutocomplete(cliente)} onMouseEnter={() => setSelectedAutoIndex(index)}>
                           <span className="cliente-nombre">{cliente.nombre}</span>
-                          <span className="cliente-id">ID: {cliente.id}{cliente.contacto ? ` · 📱 ${cliente.contacto}` : ''}</span>
+                          <span className="cliente-id">ID: {cliente.id}</span>
                         </div>
                       ))}
                     </div>
@@ -5802,11 +5760,11 @@ ${vencido ? `⚠️ Días vencido: ${diasAbs}` : `⏳ Días restantes: ${diasAbs
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div style={{ margin: 0 }}>
                     <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Fecha de Inicio *</label>
-                    <input type="date" value={creditoFormData.fechaInicio} onChange={(e) => { const nd = { ...creditoFormData, fechaInicio: e.target.value }; if (nd.fechaVencimiento) { const i = new Date(e.target.value); const f = new Date(nd.fechaVencimiento); const dias = Math.round((f - i) / (1000*60*60*24)); const meses = Math.floor(dias / 30); nd.plazoMeses = dias < 30 ? `${dias}d` : meses.toString(); } setCreditoFormData(nd); }} required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+                    <input type="date" value={creditoFormData.fechaInicio} onChange={(e) => { const nd = { ...creditoFormData, fechaInicio: e.target.value }; if (nd.fechaVencimiento) { const i = new Date(e.target.value); const f = new Date(nd.fechaVencimiento); nd.plazoMeses = Math.max(1, ((f.getFullYear() - i.getFullYear()) * 12) + (f.getMonth() - i.getMonth())).toString(); } setCreditoFormData(nd); }} required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
                   </div>
                   <div style={{ margin: 0 }}>
                     <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Fecha de Vencimiento *</label>
-                    <input type="date" value={creditoFormData.fechaVencimiento} onChange={(e) => { const nd = { ...creditoFormData, fechaVencimiento: e.target.value }; if (nd.fechaInicio) { const i = new Date(nd.fechaInicio); const f = new Date(e.target.value); const dias = Math.round((f - i) / (1000*60*60*24)); const meses = Math.floor(dias / 30); nd.plazoMeses = dias < 30 ? `${dias}d` : meses.toString(); } setCreditoFormData(nd); }} required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+                    <input type="date" value={creditoFormData.fechaVencimiento} onChange={(e) => { const nd = { ...creditoFormData, fechaVencimiento: e.target.value }; if (nd.fechaInicio) { const i = new Date(nd.fechaInicio); const f = new Date(e.target.value); nd.plazoMeses = Math.max(1, ((f.getFullYear() - i.getFullYear()) * 12) + (f.getMonth() - i.getMonth())).toString(); } setCreditoFormData(nd); }} required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
                   </div>
                 </div>
 
@@ -5815,7 +5773,7 @@ ${vencido ? `⚠️ Días vencido: ${diasAbs}` : `⏳ Días restantes: ${diasAbs
                   <div style={{ padding: '0.75rem 1rem', background: 'rgba(14,165,233,0.07)', border: '1px solid rgba(14,165,233,0.2)', borderRadius: '9px', fontSize: '0.85rem', fontWeight: 600, color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Clock size={14} style={{ color: '#0ea5e9' }}/>
                     Plazo calculado:
-                    <span style={{ color: '#0ea5e9', fontWeight: 800, fontSize: '1rem' }}>{creditoFormData.plazoMeses?.endsWith('d') ? `${creditoFormData.plazoMeses.replace('d','')} días` : `${creditoFormData.plazoMeses || '0'} ${creditoFormData.plazoMeses === '1' ? 'mes' : 'meses'}`}</span>
+                    <span style={{ color: '#0ea5e9', fontWeight: 800, fontSize: '1rem' }}>{creditoFormData.plazoMeses || '0'} {creditoFormData.plazoMeses === '1' ? 'mes' : 'meses'}</span>
                   </div>
                 )}
 
@@ -5833,14 +5791,6 @@ ${vencido ? `⚠️ Días vencido: ${diasAbs}` : `⏳ Días restantes: ${diasAbs
 
                 {/* Comentario */}
                 <div style={{ margin: 0 }}>
-                  <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Vendedor</label>
-                  <select value={creditoFormData.vendedor || ''} onChange={(e) => {
-                    const v = vendedores.find(v => v.nombre === e.target.value);
-                    setCreditoFormData({ ...creditoFormData, vendedor: e.target.value, vendedor_whatsapp: v?.whatsapp || '' });
-                  }} style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', background: '#fff', boxSizing: 'border-box', marginBottom: '1rem' }}>
-                    <option value=''>Sin vendedor asignado</option>
-                    {vendedores.map(v => <option key={v.id} value={v.nombre}>{v.nombre}{v.whatsapp ? ` · ${v.whatsapp}` : ''}</option>)}
-                  </select>
                   <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Comentario</label>
                   <textarea value={creditoFormData.comentario} onChange={(e) => setCreditoFormData({ ...creditoFormData, comentario: e.target.value })} style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box', resize: 'vertical', minHeight: '70px', fontFamily: 'inherit' }} />
                 </div>
@@ -6744,11 +6694,6 @@ ${vencido ? `⚠️ Días vencido: ${diasAbs}` : `⏳ Días restantes: ${diasAbs
                 </button>
               )}
               {esAdmin && (
-                <button className={`settings-nav-item ${settingsSection === 'vendedores' ? 'active' : ''}`} onClick={() => setSettingsSection('vendedores')}>
-                  Vendedores
-                </button>
-              )}
-              {esAdmin && (
                 <button className={`settings-nav-item ${settingsSection === 'activaciones' ? 'active' : ''}`} onClick={async () => { setSettingsSection('activaciones'); setLoadingActivaciones(true); const r = await fetch('/api/activaciones/admin'); if (r.ok) setActivaciones(await r.json()); setLoadingActivaciones(false); }}>
                   <Monitor size={14}/>
                   Licencias App
@@ -7136,41 +7081,6 @@ ${vencido ? `⚠️ Días vencido: ${diasAbs}` : `⏳ Días restantes: ${diasAbs
                     </div>
                   </div>
                 ))}
-              </>)}
-              {settingsSection === 'vendedores' && esAdmin && (<>
-                <div className="settings-content-header">
-                  <div className="settings-content-title">Vendedores</div>
-                  <button className="settings-close-btn" onClick={() => setShowSettingsPanel(false)}>×</button>
-                </div>
-                <div style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'10px', padding:'1rem', marginBottom:'1rem' }}>
-                  <div style={{ fontWeight:700, fontSize:'0.85rem', marginBottom:'0.65rem' }}>Agregar vendedor</div>
-                  <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
-                    <input value={nuevoVendedorNombre} onChange={e => setNuevoVendedorNombre(e.target.value)} placeholder="Nombre" style={{ flex:2, minWidth:'120px', padding:'0.5rem 0.75rem', border:'1px solid var(--border)', borderRadius:'7px', fontSize:'0.83rem', background:'var(--surface)', color:'var(--text)' }} />
-                    <input value={nuevoVendedorWhatsapp} onChange={e => setNuevoVendedorWhatsapp(e.target.value)} placeholder="WhatsApp (ej: 8091234567)" style={{ flex:2, minWidth:'140px', padding:'0.5rem 0.75rem', border:'1px solid var(--border)', borderRadius:'7px', fontSize:'0.83rem', background:'var(--surface)', color:'var(--text)' }} />
-                    <button className="btn btn-primary" onClick={async () => {
-                      if (!nuevoVendedorNombre.trim()) return showToast('Escribe el nombre', 'error');
-                      const r = await fetch('/api/vendedores', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ nombre: nuevoVendedorNombre.trim(), whatsapp: nuevoVendedorWhatsapp.trim() }) });
-                      if (r.ok) { const d = await r.json(); setVendedores(prev => [...prev, d]); setNuevoVendedorNombre(''); setNuevoVendedorWhatsapp(''); showToast('Vendedor agregado', 'success'); }
-                      else showToast('Error agregando vendedor', 'error');
-                    }}>+ Agregar</button>
-                  </div>
-                </div>
-                <div style={{ display:'flex', flexDirection:'column', gap:'0.5rem' }}>
-                  {vendedores.length === 0 && <div style={{ color:'var(--text-muted)', fontSize:'0.85rem', textAlign:'center', padding:'1rem' }}>No hay vendedores registrados</div>}
-                  {vendedores.map(v => (
-                    <div key={v.id} style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'8px', padding:'0.75rem 1rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                      <div>
-                        <div style={{ fontWeight:600, fontSize:'0.9rem', color:'var(--text)' }}>{v.nombre}</div>
-                        <div style={{ fontSize:'0.78rem', color:'var(--text-muted)' }}>{v.whatsapp || 'Sin WhatsApp'}</div>
-                      </div>
-                      <button onClick={async () => {
-                        if (!confirm(`¿Eliminar a ${v.nombre}?`)) return;
-                        const r = await fetch(`/api/vendedores?id=${v.id}`, { method:'DELETE' });
-                        if (r.ok) { setVendedores(prev => prev.filter(x => x.id !== v.id)); showToast('Vendedor eliminado', 'success'); }
-                      }} style={{ padding:'0.3rem 0.6rem', borderRadius:'6px', border:'1px solid var(--border)', background:'none', cursor:'pointer', color:'#dc2626', fontSize:'0.8rem' }}>Eliminar</button>
-                    </div>
-                  ))}
-                </div>
               </>)}
             </div>
           </div>
