@@ -7,7 +7,7 @@ export default function CreditoCard({ credito, clientes, editingCreditoMontoId, 
   const diasAbs = Math.abs(diasRestantes);
   const s = calcularSaldosCredito(credito.monto, credito.abonos || []);
   const pct = s.total > 0 ? Math.min((s.abonado / s.total) * 100, 100) : 0;
-  const initials = credito.cliente.split(' ').slice(0,2).map(w => w[0]).join('').toUpperCase();
+  const initials = (credito.cliente || '??').split(' ').slice(0,2).map(w => w[0] || '').join('').toUpperCase() || '??';
   const estadoColor = (credito.estado === 'Vencido' || vencido) ? '#E24B4A' : credito.estado === 'Pagado' ? '#639922' : credito.estado === 'Por Vencer' ? '#BA7517' : '#378ADD';
   const estadoBg   = (credito.estado === 'Vencido' || vencido) ? '#FCEBEB' : credito.estado === 'Pagado' ? '#EAF3DE' : credito.estado === 'Por Vencer' ? '#FAEEDA' : '#E6F1FB';
   const estadoText = (credito.estado === 'Vencido' || vencido) ? '#A32D2D' : credito.estado === 'Pagado' ? '#3B6D11' : credito.estado === 'Por Vencer' ? '#854F0B' : '#185FA5';
