@@ -4838,7 +4838,24 @@ export default function App() {
                               <div>
                                 <div style={{ fontSize:'12px', fontWeight:600, color:'var(--text)' }}>{credito.vendedor}</div>
                                 {credito.vendedor_whatsapp && (
-                                  <button onClick={() => window.electronAPI?.whatsappEnviarMensaje(credito.vendedor_whatsapp, `Hola ${credito.vendedor}, le informamos que el crédito de *${credito.cliente}* (Orden: ${credito.numeroOrden}) está *${credito.estado}*.\n💰 Monto: $${parseFloat(credito.monto||0).toLocaleString('en-US',{minimumFractionDigits:2})}\n📅 Vencimiento: ${new Date(credito.fechaVencimiento).toLocaleDateString('es-DO')}`)} style={{ fontSize:'10px', padding:'2px 6px', borderRadius:'4px', border:'none', background:'#25D366', color:'white', cursor:'pointer', marginTop:'2px' }}>📱 Notificar</button>
+                                  <button onClick={async () => {
+                                    const diasR = Math.round((new Date(credito.fechaVencimiento) - new Date()) / (1000*60*60*24));
+                                    const monto = `$${parseFloat(credito.monto||0).toLocaleString('en-US',{minimumFractionDigits:2})}`;
+                                    const fechaVenc = new Date(credito.fechaVencimiento).toLocaleDateString('es-DO');
+                                    const vencido = diasR < 0;
+                                    const diasAbs = Math.abs(diasR);
+                                    const clienteObj = clientes.find(c => c.nombre === credito.cliente);
+                                    if (clienteObj?.contacto && window.electronAPI?.whatsappEnviarMensaje) {
+                                      const msgCliente = vencido
+                                        ? `Estimado ${credito.cliente}, le informamos que su crédito (Orden: ${credito.numeroOrden}) por ${monto} venció el ${fechaVenc}, hace ${diasAbs} días. Por favor realice su pago lo más pronto posible.`
+                                        : `Estimado ${credito.cliente}, le recordamos que su crédito (Orden: ${credito.numeroOrden}) por ${monto} vence en ${diasAbs} días, el ${fechaVenc}. Por favor realice su pago a tiempo.`;
+                                      await window.electronAPI.whatsappEnviarMensaje(clienteObj.contacto, msgCliente).catch(()=>{});
+                                    }
+                                    if (credito.vendedor_whatsapp && window.electronAPI?.whatsappEnviarMensaje) {
+                                      const msgVendedor = `Estimado ${credito.vendedor}, le informamos que el crédito del cliente *${credito.cliente}* (Orden: ${credito.numeroOrden}) por ${monto} se encuentra *${vencido ? 'VENCIDO' : 'POR VENCER'}*.\n📅 Fecha de vencimiento: ${fechaVenc}\n${vencido ? `⚠️ Días vencido: ${diasAbs}` : `⏳ Días restantes: ${diasAbs}`}`;
+                                      await window.electronAPI.whatsappEnviarMensaje(credito.vendedor_whatsapp, msgVendedor).catch(()=>{});
+                                    }
+                                  }} style={{ fontSize:'10px', padding:'2px 6px', borderRadius:'4px', border:'none', background:'#25D366', color:'white', cursor:'pointer', marginTop:'2px' }}>📱 Notificar</button>
                                 )}
                               </div>
                             ) : <span style={{ color:'var(--text-muted)', fontSize:'12px' }}>—</span>}
@@ -5752,11 +5769,11 @@ export default function App() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div style={{ margin: 0 }}>
                     <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Fecha de Inicio *</label>
-                    <input type="date" value={creditoFormData.fechaInicio} onChange={(e) => { const nd = { ...creditoFormData, fechaInicio: e.target.value }; if (nd.fechaVencimiento) { const i = new Date(e.target.value); const f = new Date(nd.fechaVencimiento); const dias = Math.round((f - i) / (1000*60*60*24)); const meses = ((f.getFullYear() - i.getFullYear()) * 12) + (f.getMonth() - i.getMonth()); nd.plazoMeses = dias < 30 ? `${dias}d` : meses.toString(); } setCreditoFormData(nd); }} required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+                    <input type="date" value={creditoFormData.fechaInicio} onChange={(e) => { const nd = { ...creditoFormData, fechaInicio: e.target.value }; if (nd.fechaVencimiento) { const i = new Date(e.target.value); const f = new Date(nd.fechaVencimiento); const dias = Math.round((f - i) / (1000*60*60*24)); const meses = Math.floor(dias / 30); nd.plazoMeses = dias < 30 ? `${dias}d` : meses.toString(); } setCreditoFormData(nd); }} required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
                   </div>
                   <div style={{ margin: 0 }}>
                     <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Fecha de Vencimiento *</label>
-                    <input type="date" value={creditoFormData.fechaVencimiento} onChange={(e) => { const nd = { ...creditoFormData, fechaVencimiento: e.target.value }; if (nd.fechaInicio) { const i = new Date(nd.fechaInicio); const f = new Date(e.target.value); const dias = Math.round((f - i) / (1000*60*60*24)); const meses = ((f.getFullYear() - i.getFullYear()) * 12) + (f.getMonth() - i.getMonth()); nd.plazoMeses = dias < 30 ? `${dias}d` : meses.toString(); } setCreditoFormData(nd); }} required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+                    <input type="date" value={creditoFormData.fechaVencimiento} onChange={(e) => { const nd = { ...creditoFormData, fechaVencimiento: e.target.value }; if (nd.fechaInicio) { const i = new Date(nd.fechaInicio); const f = new Date(e.target.value); const dias = Math.round((f - i) / (1000*60*60*24)); const meses = Math.floor(dias / 30); nd.plazoMeses = dias < 30 ? `${dias}d` : meses.toString(); } setCreditoFormData(nd); }} required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
                   </div>
                 </div>
 
