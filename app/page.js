@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import TabTickets from './components/TabTickets';
 import TabGrupos from './components/TabGrupos';
 import TabRecordatorio from './components/TabRecordatorio';
+import CreditoCard from './components/CreditoCard';
 import SubgruposCliente from './components/SubgruposCliente';
 import { getSupabaseBrowser } from '../lib/supabase-browser.js';
 import * as XLSX from 'xlsx';
@@ -4795,51 +4796,26 @@ export default function App() {
               {tienePermiso('crear_creditos') && <button className="btn btn-primary" onClick={() => abrirCreditoModal()}><Plus size={13}/> Nuevo Crédito</button>}
             </div>
 
-            <div className="table-container">
+            <div style={{ display:'flex', flexDirection:'column', gap:'10px', padding:'0.5rem 0' }}>
               {creditos.length === 0 ? <div className="empty-state"><p>No hay créditos registrados</p></div> : (
-                <table>
-                  <thead><tr><th>ID</th><th>Nº Orden</th><th>Cliente</th><th>Monto</th><th>Saldo Pend.</th><th>Proceso</th><th>Fecha Inicio</th><th>Plazo</th><th>Vencimiento</th><th>Días Restantes</th><th>Estado</th><th>Acciones</th></tr></thead>
-                  <tbody>
-                    {creditos.filter(c => c.cliente.toLowerCase().includes(searchTerm.toLowerCase()) || c.numeroOrden.toLowerCase().includes(searchTerm.toLowerCase()) || c.id.toString().includes(searchTerm)).map(credito => {
-                      const diasRestantes = getDiasRestantes(credito.fechaVencimiento);
-                      return (
-                        <tr key={credito.id}>
-                          <td><strong>{credito.id}</strong></td>
-                          <td><strong>{credito.numeroOrden}</strong></td>
-                          <td>{credito.cliente}</td>
-                          <td>
-                            {editingCreditoMontoId === credito.id ? (
-                              <input type="text" inputMode="decimal" value={tempCreditoMonto} onChange={(e) => setTempCreditoMonto(e.target.value)} onBlur={() => guardarCreditoMontoInline(credito.id)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); guardarCreditoMontoInline(credito.id); } else if (e.key === 'Escape') cancelarEdicionCreditoMonto(); }} autoFocus style={{ width: '100%', padding: '0.5rem', border: '2px solid #0ea5e9', borderRadius: '6px', fontWeight: 700 }} />
-                            ) : (
-                              <span onClick={() => iniciarEdicionCreditoMonto(credito)} style={{ cursor: 'pointer', padding: '0.5rem', borderRadius: '6px', display: 'inline-block', fontWeight: 700 }} title="Click para editar">${parseFloat(credito.monto || 0).toLocaleString()}</span>
-                            )}
-                          </td>
-                          <td>{(() => { const s = calcularSaldosCredito(credito.monto, credito.abonos || []); const pct = s.total > 0 ? Math.min((s.abonado / s.total) * 100, 100) : 0; return <div style={{ minWidth: '110px' }}><div style={{ fontWeight: 700, color: s.pendiente > 0 ? '#f59e0b' : '#059669', marginBottom: '0.25rem' }}>${s.pendiente.toFixed(2)}</div>{s.total > 0 && <div className="progress-bar-wrap"><div className="progress-bar-fill" style={{ width: `${pct}%`, background: pct >= 100 ? '#059669' : '#635bff' }}></div></div>}{s.abonado > 0 && <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{pct.toFixed(0)}% pagado</div>}</div>; })()}</td>
-                          <td>
-                            <div className="proceso-icons">
-                              <button className={`proceso-icon cotizado ${credito.fechaCotizacion ? 'done' : ''}`} onClick={() => { const a = { ...credito }; if (!a.fechaCotizacion) a.fechaCotizacion = new Date().toISOString().split('T')[0]; else { a.fechaCotizacion = ''; a.fechaNotificacionC = ''; a.fechaPagoC = ''; a.fechaFacturacionC = ''; } actualizarCredito(a); }}><ClipboardList size={13}/></button>
-                              <button className={`proceso-icon notificado ${credito.fechaNotificacionC ? 'done' : ''}`} disabled={!credito.fechaCotizacion} style={{ opacity: !credito.fechaCotizacion ? 0.3 : 1 }} onClick={() => { if (!credito.fechaCotizacion) return; const a = { ...credito }; if (!a.fechaNotificacionC) a.fechaNotificacionC = new Date().toISOString().split('T')[0]; else { a.fechaNotificacionC = ''; a.fechaPagoC = ''; a.fechaFacturacionC = ''; } actualizarCredito(a); }}><Mail size={13}/></button>
-                              <button className={`proceso-icon pagado ${credito.fechaPagoC ? 'done' : ''}`} disabled={!credito.fechaNotificacionC} style={{ opacity: !credito.fechaNotificacionC ? 0.3 : 1 }} onClick={() => { if (!credito.fechaNotificacionC) return; if (!credito.fechaPagoC) { abrirPagoCreditoModal(credito); return; } const a = { ...credito }; a.fechaPagoC = ''; a.fechaFacturacionC = ''; a.abonos = []; a.estado = 'Activo'; actualizarCredito(a); }}><DollarSign size={13}/></button>
-                              <button className={`proceso-icon facturado ${credito.fechaFacturacionC ? 'done' : ''}`} disabled={!credito.fechaPagoC} style={{ opacity: !credito.fechaPagoC ? 0.3 : 1 }} onClick={() => { if (!credito.fechaPagoC) return; const a = { ...credito }; if (!a.fechaFacturacionC) a.fechaFacturacionC = new Date().toISOString().split('T')[0]; else a.fechaFacturacionC = ''; actualizarCredito(a); }}><DollarSign size={13}/></button>
-                            </div>
-                          </td>
-                          <td>{new Date(credito.fechaInicio).toLocaleDateString('es-DO')}</td>
-                          <td>{credito.plazoMeses} {credito.plazoMeses === '1' ? 'mes' : 'meses'}</td>
-                          <td>{new Date(credito.fechaVencimiento).toLocaleDateString('es-DO')}</td>
-                          <td>{credito.estado !== 'Pagado' && <span className={`dias-restantes ${diasRestantes < 0 ? 'critico' : diasRestantes <= 3 ? 'critico' : diasRestantes <= 7 ? 'advertencia' : ''}`}>{diasRestantes < 0 ? `${Math.abs(diasRestantes)} días vencido` : `${diasRestantes} días`}</span>}</td>
-                          <td><span className={`badge badge-${(credito.estado||'').toLowerCase().replace(/ /g, '-')}`}>{credito.estado}</span></td>
-                          <td>
-                            <div className="action-btns">
-                              {credito.estado !== 'Pagado' && <button className="btn-icon" onClick={() => { const a = { ...credito, estado: 'Pagado', historial: [...(credito.historial || []), { fecha: new Date().toISOString(), accion: 'Marcado como Pagado' }] }; actualizarCredito(a); }} title="Marcar Pagado"><CheckCircle size={13}/></button>}
-                              <button className="btn-icon" onClick={() => abrirCreditoModal(credito)} title="Editar"><Pencil size={13}/></button>
-                              <button className="btn-icon" onClick={() => eliminarCredito(credito.id)} title="Eliminar"><Trash2 size={13}/></button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                creditos.filter(c => c.cliente.toLowerCase().includes(searchTerm.toLowerCase()) || c.numeroOrden.toLowerCase().includes(searchTerm.toLowerCase()) || c.id.toString().includes(searchTerm)).map(credito => (
+                  <CreditoCard
+                    key={credito.id}
+                    credito={credito}
+                    clientes={clientes}
+                    editingCreditoMontoId={editingCreditoMontoId}
+                    tempCreditoMonto={tempCreditoMonto}
+                    setTempCreditoMonto={setTempCreditoMonto}
+                    guardarCreditoMontoInline={guardarCreditoMontoInline}
+                    cancelarEdicionCreditoMonto={cancelarEdicionCreditoMonto}
+                    iniciarEdicionCreditoMonto={iniciarEdicionCreditoMonto}
+                    calcularSaldosCredito={calcularSaldosCredito}
+                    getDiasRestantes={getDiasRestantes}
+                    abrirCreditoModal={abrirCreditoModal}
+                    eliminarCredito={eliminarCredito}
+                    actualizarCredito={actualizarCredito}
+                  />
+                ))
               )}
             </div>
           </div>
