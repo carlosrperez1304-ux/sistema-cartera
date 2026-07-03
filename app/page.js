@@ -19,9 +19,9 @@ export default function App() {
   });
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginError, setLoginError] = useState('');
-  const [recordarme, setRecordarme] = useState(() => localStorage.getItem('recordarme') === 'true');
-  const [username, setUsername] = useState(() => localStorage.getItem('savedUsername') || '');
-  const [password, setPassword] = useState(() => localStorage.getItem('savedPassword') || '');
+  const [recordarme, setRecordarme] = useState(() => typeof window !== 'undefined' && localStorage.getItem('recordarme') === 'true');
+  const [username, setUsername] = useState(() => typeof window !== 'undefined' ? localStorage.getItem('savedUsername') || '' : '');
+  const [password, setPassword] = useState(() => typeof window !== 'undefined' ? localStorage.getItem('savedPassword') || '' : '');
   const [currentUser, setCurrentUser] = useState('');
 
   useEffect(() => {
