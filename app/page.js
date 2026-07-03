@@ -3971,15 +3971,6 @@ export default function App() {
             })()}
 
             {/*  PROYECCIÓN DE COBROS  */}
-            {(() => {
-              const mCotizado = estadisticas.montoCotizado || 0;
-              const mNotificado = estadisticas.montoNotificado || 0;
-              const mPagado = estadisticas.montoPagado || 0;
-              const proyec30 = mPagado + mNotificado * 0.6 + mCotizado * 0.2;
-              const proyec60 = mPagado + mNotificado * 0.8 + mCotizado * 0.5;
-              const proyec90 = mPagado + mNotificado * 0.95 + mCotizado * 0.75;
-              const fmt = v => v >= 1000000 ? `$${(v/1000000).toFixed(2)}M` : v >= 1000 ? `$${(v/1000).toFixed(1)}K` : `$${Math.round(v).toLocaleString('en-US')}`;
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.2rem', marginBottom: '1rem' }}>
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.2rem', marginBottom: '1rem' }}>
               <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '0.5rem' }}>Notificaciones rapidas</div>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Proximamente: busca un cliente y envia mensajes directamente desde aqui.</p>
