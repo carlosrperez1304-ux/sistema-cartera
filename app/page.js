@@ -5,6 +5,7 @@ import TabGrupos from './components/TabGrupos';
 import TabRecordatorio from './components/TabRecordatorio';
 import CreditoCard from './components/CreditoCard';
 import CentroNotificaciones from './components/CentroNotificaciones';
+import AgendaTareas from './components/AgendaTareas';
 import SubgruposCliente from './components/SubgruposCliente';
 import { getSupabaseBrowser } from '../lib/supabase-browser.js';
 import * as XLSX from 'xlsx';
@@ -4196,6 +4197,7 @@ export default function App() {
 
           {/* TAB AGENDA DEL DÍA */}
           <div className={`tab-content ${activeTab === 'agenda' ? 'active' : ''}`}>
+            <AgendaTareas currentUser={currentUser} />
             {(() => {
               const hoy = new Date(); hoy.setHours(23,59,59,999);
               const seguimientoHoy = clientes.filter(c => tieneProximoSeguimiento(c.id));
