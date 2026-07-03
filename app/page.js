@@ -220,6 +220,10 @@ export default function App() {
   const [vendedores, setVendedores] = useState([]);
   const [nuevoVendedorNombre, setNuevoVendedorNombre] = useState('');
   const [nuevoVendedorWhatsapp, setNuevoVendedorWhatsapp] = useState('');
+  const [notifBuscar, setNotifBuscar] = useState('');
+  const [notifCliente, setNotifCliente] = useState(null);
+  const [notifDeuda, setNotifDeuda] = useState(null);
+  const [notifPlantilla, setNotifPlantilla] = useState(0);
   const [creditos, setCreditos] = useState([]);
   const [historialMeses, setHistorialMeses] = useState({});
   const [hydrated, setHydrated] = useState(false);
@@ -3975,58 +3979,105 @@ export default function App() {
               const proyec60 = mPagado + mNotificado * 0.8 + mCotizado * 0.5;
               const proyec90 = mPagado + mNotificado * 0.95 + mCotizado * 0.75;
               const fmt = v => v >= 1000000 ? `$${(v/1000000).toFixed(2)}M` : v >= 1000 ? `$${(v/1000).toFixed(1)}K` : `$${Math.round(v).toLocaleString('en-US')}`;
-              const maxVal = Math.max(proyec90, 1);
-              return (
-                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.2rem', marginBottom: '1rem' }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '1rem' }}>Proyección de Cobros</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                    {[{ label: '30 días', val: proyec30, color: '#0284c7' }, { label: '60 días', val: proyec60, color: '#7c3aed' }, { label: '90 días', val: proyec90, color: '#059669' }].map(p => (
-                      <div key={p.label} style={{ background: 'var(--surface2)', borderRadius: '10px', padding: '0.85rem', textAlign: 'center' }}>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.3rem' }}>{p.label}</div>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 800, color: p.color, fontFamily: 'var(--mono)' }}>{fmt(p.val)}</div>
-                        <div style={{ marginTop: '0.4rem', height: '6px', background: 'var(--border)', borderRadius: '3px' }}>
-                          <div style={{ height: '100%', width: `${(p.val / maxVal) * 100}%`, background: p.color, borderRadius: '3px', transition: 'width 0.6s ease' }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                    Estimado basado en pipeline actual · Pagado actual: <strong>{fmt(mPagado)}</strong> · Notificado: <strong>{fmt(mNotificado)}</strong> · Cotizado: <strong>{fmt(mCotizado)}</strong>
-                  </div>
-                </div>
-              );
-            })()}
-
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.2rem' }}>
-              <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '1rem' }}>Accesos rápidos</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.5rem' }}>
-                {[
-                  { label: 'Nuevo Cliente', icon: <UserPlus size={14}/>, action: () => { setActiveTab('cartera'); abrirModal(); }, primary: true, show: tienePermiso('crear_clientes') },
-                  { label: 'Nuevo Crédito', icon: <CreditCard size={14}/>, action: () => setActiveTab('credito'), primary: true, show: tienePermiso('crear_creditos') },
-                  { label: 'Agenda del Día', icon: <Calendar size={14}/>, action: () => setActiveTab('agenda'), show: true },
-                  { label: 'Carga Masiva PDF', icon: <FileText size={14}/>, action: () => { abrirCargaMasiva(); }, show: tienePermiso('subir_documentos') },
-                  { label: 'Plantillas WA', icon: <MessageSquare size={14}/>, action: () => setShowPlantillasModal(true), show: true },
-                  { label: 'Importar Excel', icon: <Upload size={14}/>, action: () => setShowImportModal(true), show: tienePermiso('crear_clientes') },
-                  { label: 'Exportar PDF', icon: <Download size={14}/>, action: exportarPDF, show: tienePermiso('ver_reportes_pdf') },
-                  { label: 'Backup', icon: <Download size={14}/>, action: backupJSON, show: esAdmin },
-                ].filter(a => a.show).map((a, i) => (
-                  <button key={i} onClick={a.action} style={{ display:'flex', alignItems:'center', gap:'0.5rem', padding:'0.6rem 0.9rem', background: a.primary ? 'var(--brand)' : 'var(--surface-2)', border: a.primary ? 'none' : '1px solid var(--border)', borderRadius:'9px', color: a.primary ? 'white' : 'var(--text)', fontSize:'0.82rem', fontWeight:600, cursor:'pointer', transition:'all 0.15s', textAlign:'left' }}
-                    onMouseEnter={e => e.currentTarget.style.opacity='0.85'}
-                    onMouseLeave={e => e.currentTarget.style.opacity='1'}>
-                    {a.icon}{a.label}
-                  </button>
-                ))}
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.2rem', marginBottom: '1rem' }}>
+              <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '1rem', display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                <MessageSquare size={16}/> Centro de Notificaciones
               </div>
-              <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--surface2)', borderRadius: '9px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                <strong>Atajos de teclado:</strong> &nbsp;
-                <kbd style={{ background: 'white', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid var(--border2)', marginRight: '0.5rem' }}>N</kbd> Nuevo cliente &nbsp;
-                <kbd style={{ background: 'white', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid var(--border2)', marginRight: '0.5rem' }}>F</kbd> Buscar &nbsp;
-                <kbd style={{ background: 'white', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid var(--border2)', marginRight: '0.5rem' }}>C</kbd> Cartera &nbsp;
-                <kbd style={{ background: 'white', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid var(--border2)', marginRight: '0.5rem' }}>R</kbd> Crédito &nbsp;
-                <kbd style={{ background: 'white', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid var(--border2)' }}>D</kbd> Modo oscuro
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Buscar cliente</div>
+                  <div style={{ position: 'relative', marginBottom: '10px' }}>
+                    <input type="text" placeholder="Nombre del cliente..." value={notifBuscar} onChange={e => { setNotifBuscar(e.target.value); setNotifCliente(null); setNotifDeuda(null); }} style={{ width: '100%', padding: '8px 12px', border: '0.5px solid var(--border-strong)', borderRadius: '8px', fontSize: '13px', background: 'var(--surface-2)', color: 'var(--text)', boxSizing: 'border-box' }} />
+                    {notifBuscar.length > 1 && !notifCliente && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface-2)', border: '0.5px solid var(--border)', borderRadius: '8px', zIndex: 10, maxHeight: '160px', overflowY: 'auto' }}>
+                        {clientes.filter(c => c.nombre.toLowerCase().includes(notifBuscar.toLowerCase())).slice(0, 6).map(c => (
+                          <div key={c.id} onClick={() => { setNotifCliente(c); setNotifBuscar(c.nombre); setNotifDeuda(null); setNotifPlantilla(0); }} style={{ padding: '8px 12px', fontSize: '13px', cursor: 'pointer', borderBottom: '0.5px solid var(--border)', color: 'var(--text)' }} onMouseEnter={e => e.currentTarget.style.background='var(--surface-1)'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                            {c.nombre} {c.contacto && <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>· {c.contacto}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {notifCliente && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', background: 'var(--surface-2)', borderRadius: '8px', border: '0.5px solid var(--border)', marginBottom: '10px' }}>
+                      <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: '#E6F1FB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 500, color: '#185FA5', flexShrink: 0 }}>{notifCliente.nombre.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase()}</div>
+                      <div>
+                        <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text)' }}>{notifCliente.nombre}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{notifCliente.contacto || 'Sin contacto'}</div>
+                      </div>
+                    </div>
+                  )}
+                  {notifCliente && (() => {
+                    const creditosCliente = creditos.filter(cr => cr.cliente === notifCliente.nombre);
+                    const servicios = clientes.filter(c => c.nombre === notifCliente.nombre);
+                    const deudas = [
+                      ...creditosCliente.map(cr => ({ tipo: 'credito', label: `Crédito #${cr.numeroOrden}`, monto: parseFloat(cr.monto||0), fecha: cr.fechaVencimiento, dias: getDiasRestantes(cr.fechaVencimiento), data: cr })),
+                      ...(notifCliente.monto && parseFloat(notifCliente.monto) > 0 ? [{ tipo: 'servicio', label: 'Servicio mensual', monto: parseFloat(notifCliente.monto||0), fecha: null, dias: null, data: notifCliente }] : []),
+                    ];
+                    if (deudas.length === 0) return <div style={{ fontSize: '12px', color: 'var(--text-muted)', padding: '8px' }}>Sin deudas activas</div>;
+                    return (
+                      <div>
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>Deudas del cliente</div>
+                        {deudas.map((d, i) => (
+                          <div key={i} onClick={() => setNotifDeuda(d)} style={{ padding: '8px 12px', borderRadius: '8px', border: `0.5px solid ${notifDeuda === d ? '#378ADD' : 'var(--border)'}`, background: notifDeuda === d ? '#E6F1FB' : 'transparent', cursor: 'pointer', marginBottom: '6px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text)' }}>{d.label}</span>
+                              <span style={{ fontSize: '12px', fontWeight: 500, color: '#E24B4A' }}>${d.monto.toLocaleString('en-US', {minimumFractionDigits:2})}</span>
+                            </div>
+                            {d.fecha && <div style={{ fontSize: '11px', color: d.dias < 0 ? '#E24B4A' : 'var(--text-muted)', marginTop: '2px' }}>Vence: {new Date(d.fecha).toLocaleDateString('es-DO')} · {d.dias < 0 ? `${Math.abs(d.dias)} días vencido` : `${d.dias} días restantes`}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Plantilla</div>
+                  {[{label:'Recordatorio de vencimiento', icon:'⚠️'},{label:'Crédito vencido', icon:'🚨'},{label:'Confirmación de pago', icon:'✅'}].map((p,i) => (
+                    <div key={i} onClick={() => setNotifPlantilla(i)} style={{ padding: '8px 12px', borderRadius: '8px', border: `0.5px solid ${notifPlantilla===i ? '#378ADD':'var(--border)'}`, background: notifPlantilla===i ? '#E6F1FB':'transparent', cursor:'pointer', marginBottom:'6px', display:'flex', alignItems:'center', gap:'8px' }}>
+                      <span>{p.icon}</span>
+                      <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text)' }}>{p.label}</span>
+                    </div>
+                  ))}
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '10px 0 6px' }}>Vista previa</div>
+                  <div style={{ background: '#e5ddd5', borderRadius: '8px', padding: '10px', marginBottom: '10px', minHeight: '80px' }}>
+                    <div style={{ background: 'white', borderRadius: '0 8px 8px 8px', padding: '8px 10px', fontSize: '12px', color: '#111', lineHeight: 1.5 }}>
+                      {notifCliente && notifDeuda ? (() => {
+                        const nombre = notifCliente.nombre;
+                        const monto = '$' + notifDeuda.monto.toLocaleString('en-US',{minimumFractionDigits:2});
+                        const fecha = notifDeuda.fecha ? new Date(notifDeuda.fecha).toLocaleDateString('es-DO') : '';
+                        const dias = notifDeuda.dias;
+                        if (notifPlantilla === 0) return <span>⚠️ <b>Recordatorio</b><br/>Estimado <b>{nombre}</b>, su crédito por <b>{monto}</b> vence en <b>{Math.abs(dias)} días</b>, el <b>{fecha}</b>. Por favor realice su pago a tiempo.</span>;
+                        if (notifPlantilla === 1) return <span>🚨 <b>Crédito vencido</b><br/>Estimado <b>{nombre}</b>, su crédito por <b>{monto}</b> venció el <b>{fecha}</b>. Por favor realice su pago lo más pronto posible.</span>;
+                        return <span>✅ <b>Pago confirmado</b><br/>Estimado <b>{nombre}</b>, confirmamos su pago por <b>{monto}</b>. Gracias por su puntualidad.</span>;
+                      })() : <span style={{ color: '#999', fontSize: '11px' }}>Selecciona un cliente y una deuda para ver la vista previa</span>}
+                    </div>
+                  </div>
+                  <button onClick={() => {
+                    if (!notifCliente || !notifDeuda) return;
+                    const nombre = notifCliente.nombre;
+                    const monto = '$' + notifDeuda.monto.toLocaleString('en-US',{minimumFractionDigits:2});
+                    const fecha = notifDeuda.fecha ? new Date(notifDeuda.fecha).toLocaleDateString('es-DO') : '';
+                    const dias = notifDeuda.dias;
+                    let msg = '';
+                    if (notifPlantilla === 0) msg = `⚠️ *Recordatorio*
+
+Estimado ${nombre}, su crédito por ${monto} vence en ${Math.abs(dias)} días, el ${fecha}. Por favor realice su pago a tiempo.`;
+                    else if (notifPlantilla === 1) msg = `🚨 *Crédito vencido*
+
+Estimado ${nombre}, su crédito por ${monto} venció el ${fecha}. Por favor realice su pago lo más pronto posible.`;
+                    else msg = `✅ *Pago confirmado*
+
+Estimado ${nombre}, confirmamos su pago por ${monto}. Gracias por su puntualidad.`;
+                    if (window.electronAPI?.whatsappEnviarMensaje && notifCliente.contacto) {
+                      window.electronAPI.whatsappEnviarMensaje(notifCliente.contacto, msg).then(() => showToast('Mensaje enviado', 'success')).catch(() => showToast('Error al enviar', 'error'));
+                    } else showToast('Sin contacto o WhatsApp no conectado', 'error');
+                  }} disabled={!notifCliente || !notifDeuda} style={{ width: '100%', background: (!notifCliente || !notifDeuda) ? 'var(--border)' : '#25D366', color: 'white', border: 'none', borderRadius: '8px', padding: '9px', fontSize: '13px', fontWeight: 500, cursor: (!notifCliente || !notifDeuda) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                    <MessageSquare size={14}/> Enviar por WhatsApp
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
 
           {/* TAB CALENDARIO */}
           <div className={`tab-content ${activeTab === 'calendario' ? 'active' : ''}`}>
