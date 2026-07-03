@@ -4060,15 +4060,9 @@ export default function App() {
                     const fecha = notifDeuda.fecha ? new Date(notifDeuda.fecha).toLocaleDateString('es-DO') : '';
                     const dias = notifDeuda.dias;
                     let msg = '';
-                    if (notifPlantilla === 0) msg = `⚠️ *Recordatorio*
-
-Estimado ${nombre}, su crédito por ${monto} vence en ${Math.abs(dias)} días, el ${fecha}. Por favor realice su pago a tiempo.`;
-                    else if (notifPlantilla === 1) msg = `🚨 *Crédito vencido*
-
-Estimado ${nombre}, su crédito por ${monto} venció el ${fecha}. Por favor realice su pago lo más pronto posible.`;
-                    else msg = `✅ *Pago confirmado*
-
-Estimado ${nombre}, confirmamos su pago por ${monto}. Gracias por su puntualidad.`;
+                    if (notifPlantilla === 0) msg = '⚠️ *Recordatorio*\n\nEstimado ' + nombre + ', su crédito por ' + monto + ' vence en ' + Math.abs(dias) + ' días, el ' + fecha + '. Por favor realice su pago a tiempo.';
+                    else if (notifPlantilla === 1) msg = '🚨 *Crédito vencido*\n\nEstimado ' + nombre + ', su crédito por ' + monto + ' venció el ' + fecha + '. Por favor realice su pago lo más pronto posible.';
+                    else msg = '✅ *Pago confirmado*\n\nEstimado ' + nombre + ', confirmamos su pago por ' + monto + '. Gracias por su puntualidad.';
                     if (window.electronAPI?.whatsappEnviarMensaje && notifCliente.contacto) {
                       window.electronAPI.whatsappEnviarMensaje(notifCliente.contacto, msg).then(() => showToast('Mensaje enviado', 'success')).catch(() => showToast('Error al enviar', 'error'));
                     } else showToast('Sin contacto o WhatsApp no conectado', 'error');
