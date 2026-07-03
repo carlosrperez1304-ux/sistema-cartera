@@ -219,6 +219,7 @@ export default function App() {
 
   const [clientes, setClientes] = useState([]);
   const [vendedores, setVendedores] = useState([]);
+  const [notifInit, setNotifInit] = useState(null);
   const [nuevoVendedorNombre, setNuevoVendedorNombre] = useState('');
   const [nuevoVendedorWhatsapp, setNuevoVendedorWhatsapp] = useState('');
   const [creditos, setCreditos] = useState([]);
@@ -4029,7 +4030,7 @@ export default function App() {
             </div>
           </div>
 
-            <CentroNotificaciones clientes={clientes} creditos={creditos} showToast={showToast} />
+            <CentroNotificaciones clientes={clientes} creditos={creditos} showToast={showToast} notifInit={notifInit} setNotifInit={setNotifInit} />
           {/* TAB CALENDARIO */}
           <div className={`tab-content ${activeTab === 'calendario' ? 'active' : ''}`}>
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.5rem' }}>
@@ -4809,7 +4810,7 @@ export default function App() {
           </div>
 
           <div className={`tab-content ${activeTab === 'credito' ? 'active' : ''}`}>
-            {creditosVencidos.length > 0 && <div className="alert-box danger"><h3><AlertTriangle size={14} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Créditos Vencidos ({creditosVencidos.length})</h3>{creditosVencidos.map(credito => <div key={credito.id} className="alert-item"><div><strong>{credito.cliente}</strong> - Orden: {credito.numeroOrden}<div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Vencido: {new Date(credito.fechaVencimiento).toLocaleDateString('es-DO')}</div></div><span className="dias-restantes critico">{Math.abs(getDiasRestantes(credito.fechaVencimiento))} días vencido</span></div>)}</div>}
+            {creditosVencidos.length > 0 && <div className="alert-box danger"><h3><AlertTriangle size={14} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Créditos Vencidos ({creditosVencidos.length})</h3>{creditosVencidos.map(credito => <div key={credito.id} className="alert-item" onClick={() => { const c = clientes.find(x => x.nombre === credito.cliente); if (c) setNotifInit({ cliente: c, deuda: { label: 'Credito #' + credito.numeroOrden, monto: parseFloat(credito.monto||0), fecha: credito.fechaVencimiento, dias: getDiasRestantes(credito.fechaVencimiento) }, plantilla: 1 }); }} style={{ cursor: 'pointer' }}><div><strong>{credito.cliente}</strong> - Orden: {credito.numeroOrden}<div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Vencido: {new Date(credito.fechaVencimiento).toLocaleDateString('es-DO')}</div></div><span className="dias-restantes critico">{Math.abs(getDiasRestantes(credito.fechaVencimiento))} días vencido</span></div>)}</div>}
             {creditosAlerta.length > 0 && <div className="alert-box"><h3><Clock size={14} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Créditos por Vencer ({creditosAlerta.length})</h3>{creditosAlerta.map(credito => { const dias = getDiasRestantes(credito.fechaVencimiento); return <div key={credito.id} className="alert-item"><div><strong>{credito.cliente}</strong> - Orden: {credito.numeroOrden}<div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Vence: {new Date(credito.fechaVencimiento).toLocaleDateString('es-DO')}</div></div><span className={`dias-restantes ${dias <= 3 ? 'critico' : 'advertencia'}`}>{dias} {dias === 1 ? 'día' : 'días'}</span></div>; })}</div>}
 
             <div className="dashboard">

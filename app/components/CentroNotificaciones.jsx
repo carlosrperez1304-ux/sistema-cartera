@@ -1,13 +1,24 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MessageSquare } from 'lucide-react';
 
-export default function CentroNotificaciones({ clientes, creditos, showToast }) {
+export default function CentroNotificaciones({ clientes, creditos, showToast, notifInit, setNotifInit }) {
   const [abierto, setAbierto] = useState(false);
   const [buscar, setBuscar] = useState('');
   const [cliente, setCliente] = useState(null);
   const [deuda, setDeuda] = useState(null);
   const [plantilla, setPlantilla] = useState(0);
+
+  useEffect(() => {
+    if (notifInit) {
+      setCliente(notifInit.cliente);
+      setBuscar(notifInit.cliente.nombre);
+      setDeuda(notifInit.deuda);
+      setPlantilla(notifInit.plantilla ?? 1);
+      setAbierto(true);
+      setNotifInit(null);
+    }
+  }, [notifInit]);
 
   const clientesFiltrados = buscar.length > 1
     ? clientes.filter(c => c.nombre.toLowerCase().includes(buscar.toLowerCase())).slice(0, 6)
