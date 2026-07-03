@@ -3244,16 +3244,33 @@ export default function App() {
             </div>
             {showBusquedaGlobal && busquedaGlobal.length > 1 && (() => {
               const term = busquedaGlobal.toLowerCase();
-              const resultados = clientes.filter(c => (c.nombre || '').toLowerCase().includes(term) || (c.codigo || '').toLowerCase().includes(term)).slice(0, 6);
+              const resultados = clientes.filter(c => (c.nombre || '').toLowerCase().includes(term) || (c.codigoCliente || '').toString().includes(term) || (c.contacto || '').includes(term)).slice(0, 7);
               return (
-                <div style={{ position:'absolute', top:'calc(100% + 6px)', left:0, right:0, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'10px', boxShadow:'0 8px 24px rgba(0,0,0,0.25)', zIndex:9999, overflow:'hidden' }}>
-                  {resultados.length === 0 ? <div style={{ padding:'0.75rem 1rem', fontSize:'0.8rem', color:'var(--text-muted)' }}>Sin resultados</div> : resultados.map(c => (
-                    <div key={c.id} onMouseDown={() => { setBusquedaGlobal(''); setShowBusquedaGlobal(false); setActiveTab('cartera'); setTimeout(() => { setSearchTerm(c.nombre || ''); setPaginaActual(1); }, 100); }} style={{ display:'flex', alignItems:'center', gap:'0.6rem', padding:'0.55rem 0.9rem', cursor:'pointer', borderBottom:'1px solid var(--border)' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-2)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                      <div style={{ width:'28px', height:'28px', borderRadius:'50%', background:'var(--brand)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:'0.75rem', flexShrink:0 }}>{(c.nombre || '?').charAt(0).toUpperCase()}</div>
-                      <div><div style={{ fontWeight:600, fontSize:'0.82rem', color:'var(--text)' }}>{c.nombre}</div>{c.codigo && <div style={{ fontSize:'0.7rem', color:'var(--text-muted)' }}>{c.codigo}</div>}</div>
-                      <div style={{ marginLeft:'auto', fontSize:'0.7rem', fontWeight:600, color: c.estado === 'Vencido' ? '#ef4444' : 'var(--text-muted)' }}>{c.estado}</div>
-                    </div>
-                  ))}
+                <div style={{ position:'absolute', top:'calc(100% + 6px)', left:0, right:0, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'10px', boxShadow:'0 8px 24px rgba(0,0,0,0.25)', zIndex:9999, overflow:'hidden', minWidth:'340px' }}>
+                  {resultados.length === 0 ? <div style={{ padding:'0.75rem 1rem', fontSize:'0.8rem', color:'var(--text-muted)' }}>Sin resultados para "{busquedaGlobal}"</div> : resultados.map(c => {
+                    const creditosCliente = creditos.filter(cr => cr.cliente === c.nombre);
+                    const tieneCredito = creditosCliente.length > 0;
+                    const creditoVencido = creditosCliente.some(cr => cr.estado === 'Vencido' || getDiasRestantes(cr.fechaVencimiento) < 0);
+                    const monto = parseFloat(c.monto || 0);
+                    const estadoColor = c.estado === 'Pagado' || c.estado === 'Facturado' ? '#639922' : c.estado === 'Vencido' ? '#E24B4A' : c.estado === 'Notificado' ? '#BA7517' : 'var(--text-muted)';
+                    return (
+                      <div key={c.id} onMouseDown={() => { setBusquedaGlobal(''); setShowBusquedaGlobal(false); setActiveTab('cartera'); setTimeout(() => { setSearchTerm(c.nombre || ''); setPaginaActual(1); }, 100); }} style={{ display:'flex', alignItems:'center', gap:'0.6rem', padding:'0.6rem 0.9rem', cursor:'pointer', borderBottom:'1px solid var(--border)' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-2)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                        <div style={{ width:'32px', height:'32px', borderRadius:'50%', background:'#E6F1FB', color:'#185FA5', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:'0.75rem', flexShrink:0 }}>{(c.nombre || '?').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase()}</div>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontWeight:600, fontSize:'0.82rem', color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{c.nombre}</div>
+                          <div style={{ fontSize:'0.7rem', color:'var(--text-muted)', display:'flex', gap:'6px', flexWrap:'wrap' }}>
+                            {c.codigoCliente && <span>Cod: {c.codigoCliente}</span>}
+                            {c.contacto && <span>{c.contacto}</span>}
+                          </div>
+                        </div>
+                        <div style={{ textAlign:'right', flexShrink:0 }}>
+                          <div style={{ fontSize:'0.7rem', fontWeight:600, color: estadoColor }}>{c.estado}</div>
+                          {monto > 0 && <div style={{ fontSize:'0.7rem', color:'var(--text-muted)' }}>${monto.toLocaleString('en-US')}</div>}
+                          {tieneCredito && <div style={{ fontSize:'0.68rem', color: creditoVencido ? '#E24B4A' : '#378ADD', fontWeight:600 }}>{creditoVencido ? 'Credito vencido' : creditosCliente.length + ' credito(s)'}</div>}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })()}
