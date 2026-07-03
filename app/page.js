@@ -4789,7 +4789,7 @@ export default function App() {
 
           {/* TAB RECORDATORIO */}
           <div className={`tab-content ${activeTab === 'recordatorio' ? 'active' : ''}`}>
-            <TabRecordatorio clientes={clientes} showToast={showToast} empresaActual={empresaActual} diaVencimiento={diaVencimiento} setDiaVencimiento={setDiaVencimiento} mensajeRecordatorio={mensajeRecordatorio} setMensajeRecordatorio={setMensajeRecordatorio} />
+            <TabRecordatorio clientes={clientes} showToast={showToast} empresaActual={empresaActual} diaVencimiento={diaVencimiento} setDiaVencimiento={setDiaVencimiento} mensajeRecordatorio={mensajeRecordatorio} setMensajeRecordatorio={setMensajeRecordatorio} currentUser={currentUser} puedeVerTodo={puedeVerTodo} />
           </div>
 
           <div className={`tab-content ${activeTab === 'credito' ? 'active' : ''}`}>
