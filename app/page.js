@@ -19,8 +19,9 @@ export default function App() {
   });
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginError, setLoginError] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [recordarme, setRecordarme] = useState(() => localStorage.getItem('recordarme') === 'true');
+  const [username, setUsername] = useState(() => localStorage.getItem('savedUsername') || '');
+  const [password, setPassword] = useState(() => localStorage.getItem('savedPassword') || '');
   const [currentUser, setCurrentUser] = useState('');
 
   useEffect(() => {
@@ -189,6 +190,15 @@ export default function App() {
         setCurrentUser(username.trim().toUpperCase());
         localStorage.setItem('isLoggedIn', 'true');
         localStorage.setItem('currentUser', username.trim().toUpperCase());
+        if (recordarme) {
+          localStorage.setItem('savedUsername', username.trim());
+          localStorage.setItem('savedPassword', password);
+          localStorage.setItem('recordarme', 'true');
+        } else {
+          localStorage.removeItem('savedUsername');
+          localStorage.removeItem('savedPassword');
+          localStorage.setItem('recordarme', 'false');
+        }
         cargarUsuarios();
       } else {
         setLoginError((result?.error || 'Usuario o contraseña incorrectos'));
@@ -3110,6 +3120,10 @@ export default function App() {
                 <label style={{ display:'block', fontSize:'11px', fontWeight:700, color:'#5f5e5a', marginBottom:'5px', textTransform:'uppercase', letterSpacing:'0.05em' }}>Contraseña</label>
                 <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" style={{ width:'100%', padding:'10px 12px', border:'1px solid #e0dfd8', borderRadius:'8px', fontSize:'13px', background:'white', color:'#1a1915', boxSizing:'border-box' }}/>
               </div>
+              <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'16px' }}>
+                <input type="checkbox" id="recordarme" checked={recordarme} onChange={e => setRecordarme(e.target.checked)} style={{ cursor:'pointer', width:'14px', height:'14px' }} />
+                <label htmlFor="recordarme" style={{ fontSize:'12px', color:'#5f5e5a', cursor:'pointer' }}>Recordar usuario y contraseña</label>
+              </div>
               {loginError && <div style={{ background:'#fef2f2', border:'1px solid #fca5a5', borderRadius:'8px', padding:'10px 12px', fontSize:'13px', color:'#dc2626', marginBottom:'16px' }}>{loginError}</div>}
               <button type="button" onClick={handleLogin} style={{ width:'100%', padding:'11px', background:'#1a1915', color:'white', border:'none', borderRadius:'8px', fontSize:'14px', fontWeight:700, cursor:'pointer' }}>Iniciar sesión</button>
               <p style={{ textAlign:'center', fontSize:'11px', color:'#b4b2a9', margin:'18px 0 0' }}>PayTrack · 7LABS © 2026</p>
@@ -3209,7 +3223,7 @@ export default function App() {
             ...(tienePermiso('ver_creditos') ? [{ tab:'credito', label:'Crédito' }] : []),
             { tab:'agenda', label:'Agenda' },
             { tab:'documentos', label:'Documentos' },
-            { tab:'grupos', label:'Grupos' },
+            ...(esAdmin || currentUser === 'GSANCHEZ' ? [{ tab:'grupos', label:'Grupos' }] : []),
           ].map(item => (
             <button key={item.tab} onClick={() => setActiveTab(item.tab)} style={{ padding:'5px 14px', borderRadius:'16px', fontSize:'12px', fontWeight: activeTab === item.tab ? 600 : 400, background: activeTab === item.tab ? 'var(--text)' : 'transparent', color: activeTab === item.tab ? 'var(--bg)' : 'var(--text-muted)', border:'none', cursor:'pointer', transition:'all 0.15s', whiteSpace:'nowrap' }}>
               {item.label}
@@ -4783,9 +4797,9 @@ export default function App() {
             <TabTickets currentUser={currentUser} session={session} empresaActual={empresaActual} clientes={clientes} showToast={showToast} />
           </div>
 
-          <div className={`tab-content ${activeTab === 'grupos' ? 'active' : ''}`}>
+          {(esAdmin || currentUser === 'GSANCHEZ') && <div className={`tab-content ${activeTab === 'grupos' ? 'active' : ''}`}>
             <TabGrupos clientes={clientes} session={session} currentUser={currentUser} empresaActual={empresaActual} showToast={showToast} />
-          </div>
+          </div>}
 
           {/* TAB RECORDATORIO */}
           <div className={`tab-content ${activeTab === 'recordatorio' ? 'active' : ''}`}>
