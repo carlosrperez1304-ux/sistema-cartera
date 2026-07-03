@@ -20,6 +20,12 @@ export default function CentroNotificaciones({ clientes, creditos, showToast }) 
       fecha: cr.fechaVencimiento,
       dias: Math.round((new Date(cr.fechaVencimiento) - new Date()) / (1000*60*60*24)),
     })),
+    ...(parseFloat(cliente.monto || 0) > 0 ? [{
+      label: 'Servicio mensual',
+      monto: parseFloat(cliente.monto || 0),
+      fecha: null,
+      dias: null,
+    }] : []),
   ] : [];
 
   const plantillas = [
