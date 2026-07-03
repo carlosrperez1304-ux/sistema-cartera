@@ -41,8 +41,10 @@ export default function CentroNotificaciones({ clientes, creditos, showToast }) 
     const monto = '$' + deuda.monto.toLocaleString('en-US', { minimumFractionDigits: 2 });
     const fecha = deuda.fecha ? new Date(deuda.fecha).toLocaleDateString('es-DO') : '';
     const dias = deuda.dias !== null ? Math.abs(deuda.dias) : 0;
-    if (plantilla === 0) return '⚠️ *Recordatorio*' + nl + nl + 'Estimado ' + nombre + ', su credito por ' + monto + ' vence en ' + dias + ' dias, el ' + fecha + '. Por favor realice su pago a tiempo.';
-    if (plantilla === 1) return '🚨 *Credito vencido*' + nl + nl + 'Estimado ' + nombre + ', su credito por ' + monto + ' vencio el ' + fecha + '. Por favor realice su pago lo mas pronto posible.';
+    const tipo = deuda.label.startsWith('Credito') ? 'credito' : 'servicio';
+    const concepto = tipo === 'credito' ? 'su credito' : 'su servicio mensual';
+    if (plantilla === 0) return '⚠️ *Recordatorio*' + nl + nl + 'Estimado ' + nombre + ', le recordamos que ' + concepto + ' por ' + monto + (fecha ? ' vence en ' + dias + ' dias, el ' + fecha : '') + '. Por favor realice su pago a tiempo.';
+    if (plantilla === 1) return '🚨 *Aviso de pago pendiente*' + nl + nl + 'Estimado ' + nombre + ', le informamos que ' + concepto + ' por ' + monto + (fecha ? ' vencio el ' + fecha : '') + '. Por favor realice su pago lo mas pronto posible.';
     return '✅ *Pago confirmado*' + nl + nl + 'Estimado ' + nombre + ', confirmamos su pago por ' + monto + '. Gracias por su puntualidad.';
   };
 
