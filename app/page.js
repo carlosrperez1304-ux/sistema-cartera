@@ -3992,7 +3992,7 @@ export default function App() {
                       <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface-2)', border: '0.5px solid var(--border)', borderRadius: '8px', zIndex: 10, maxHeight: '160px', overflowY: 'auto' }}>
                         {clientes.filter(c => c.nombre.toLowerCase().includes(notifBuscar.toLowerCase())).slice(0, 6).map(c => (
                           <div key={c.id} onClick={() => { setNotifCliente(c); setNotifBuscar(c.nombre); setNotifDeuda(null); setNotifPlantilla(0); }} style={{ padding: '8px 12px', fontSize: '13px', cursor: 'pointer', borderBottom: '0.5px solid var(--border)', color: 'var(--text)' }} onMouseEnter={e => e.currentTarget.style.background='var(--surface-1)'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                            {c.nombre} {c.contacto && <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>· {c.contacto}</span>}
+                            {c.nombre} {c.contacto && <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>- {c.contacto}</span>}
                           </div>
                         ))}
                       </div>
@@ -4024,7 +4024,7 @@ export default function App() {
                               <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text)' }}>{d.label}</span>
                               <span style={{ fontSize: '12px', fontWeight: 500, color: '#E24B4A' }}>${d.monto.toLocaleString('en-US', {minimumFractionDigits:2})}</span>
                             </div>
-                            {d.fecha && <div style={{ fontSize: '11px', color: d.dias < 0 ? '#E24B4A' : 'var(--text-muted)', marginTop: '2px' }}>Vence: {new Date(d.fecha).toLocaleDateString('es-DO')} · {d.dias < 0 ? `${Math.abs(d.dias)} días vencido` : `${d.dias} días restantes`}</div>}
+                            {d.fecha && <div style={{ fontSize: '11px', color: d.dias < 0 ? '#E24B4A' : 'var(--text-muted)', marginTop: '2px' }}>Vence: {new Date(d.fecha).toLocaleDateString('es-DO')} - {d.dias < 0 ? (Math.abs(d.dias) + ' dias vencido') : (d.dias + ' dias restantes')}</div>}
                           </div>
                         ))}
                       </div>
