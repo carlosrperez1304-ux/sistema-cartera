@@ -3970,7 +3970,6 @@ export default function App() {
               );
             })()}
 
-            {/*  PROYECCIÓN DE COBROS  */}
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.2rem', marginBottom: '1rem' }}>
               <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '0.5rem' }}>Notificaciones rapidas</div>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Proximamente: busca un cliente y envia mensajes directamente desde aqui.</p>
