@@ -3239,7 +3239,7 @@ export default function App() {
           <div style={{ position:'relative' }}>
             <div style={{ display:'flex', alignItems:'center', gap:'0.4rem', background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'10px', padding:'0.3rem 0.75rem', minWidth:'200px' }}>
               <Search size={13} style={{ color:'var(--text-muted)', flexShrink:0 }}/>
-              <input type="text" value={busquedaGlobal} onChange={e => { setBusquedaGlobal(e.target.value); setShowBusquedaGlobal(true); }} onBlur={() => setTimeout(() => setShowBusquedaGlobal(false), 180)} placeholder="Buscar cliente..." style={{ border:'none', background:'transparent', outline:'none', fontSize:'0.82rem', color:'var(--text)', width:'100%' }}/>
+              <input type="text" value={busquedaGlobal} onChange={e => { setBusquedaGlobal(e.target.value); setShowBusquedaGlobal(true); }} onBlur={() => setTimeout(() => setShowBusquedaGlobal(false), 300)} placeholder="Buscar cliente..." style={{ border:'none', background:'transparent', outline:'none', fontSize:'0.82rem', color:'var(--text)', width:'100%' }}/>
               {busquedaGlobal && <button onClick={() => { setBusquedaGlobal(''); setShowBusquedaGlobal(false); }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0, lineHeight:1 }}>×</button>}
             </div>
             {showBusquedaGlobal && busquedaGlobal.length > 1 && (() => {
@@ -3345,7 +3345,7 @@ export default function App() {
                 type="text"
                 value={busquedaGlobal}
                 onChange={e => { setBusquedaGlobal(e.target.value); setShowBusquedaGlobal(true); }}
-                onBlur={() => setTimeout(() => setShowBusquedaGlobal(false), 180)}
+                onBlur={() => setTimeout(() => setShowBusquedaGlobal(false), 300)}
                 placeholder="Buscar cliente..."
                 style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.82rem', color: 'var(--text)', width: '100%' }}
               />
@@ -5823,90 +5823,6 @@ export default function App() {
               </form>
             </div>
           </div>
-
-          {/* Búsqueda Global */}
-          {showBusquedaGlobal && (
-            <div className="global-search-overlay" onClick={e => { if (e.target === e.currentTarget) { setShowBusquedaGlobal(false); setBusquedaGlobal(''); }}}>
-              <div className="global-search-box">
-
-                {/* Input */}
-                <div className="global-search-input-row">
-                  <Search size={18} className="global-search-icon"/>
-                  <input
-                    autoFocus
-                    type="text"
-                    className="global-search-input"
-                    placeholder="Buscar cliente, crédito, contacto..."
-                    value={busquedaGlobal}
-                    onChange={e => setBusquedaGlobal(e.target.value)}
-                  />
-                  <button className="global-search-close" onClick={() => { setShowBusquedaGlobal(false); setBusquedaGlobal(''); }}>
-                    <X size={14}/>
-                  </button>
-                </div>
-
-                {/* Results */}
-                <div className="global-search-body">
-                  {busquedaGlobal.length > 1 ? (() => {
-                    const term = busquedaGlobal.toLowerCase();
-                    const resClientes = clientes.filter(c => c.nombre.toLowerCase().includes(term) || c.id.toString().includes(term) || (c.contacto||'').includes(term));
-                    const resCreditos = creditos.filter(c => c.cliente.toLowerCase().includes(term) || c.numeroOrden.toLowerCase().includes(term));
-                    if (resClientes.length === 0 && resCreditos.length === 0) {
-                      return (
-                        <div className="global-search-empty">
-                          <Search size={30}/>
-                          <p>Sin resultados para <strong>"{busquedaGlobal}"</strong></p>
-                        </div>
-                      );
-                    }
-                    return (
-                      <>
-                        {resClientes.length > 0 && (
-                          <div className="global-search-section">
-                            <div className="global-search-section-label"><Users size={11}/> Cartera · {resClientes.length}</div>
-                            {resClientes.map(c => (
-                              <div key={c.id} className="global-search-result" onClick={() => { setActiveTab('cartera'); setSearchTerm(c.nombre); setShowBusquedaGlobal(false); setBusquedaGlobal(''); }}>
-                                <div className="global-search-result-info">
-                                  <span className="global-search-result-name">{c.nombre}</span>
-                                  <span className="global-search-result-sub">#{c.id}</span>
-                                </div>
-                                <span className={`badge badge-${(c.estado||'').toLowerCase().replace(/ /g,'-')}`}>{c.estado}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {resCreditos.length > 0 && (
-                          <div className="global-search-section">
-                            <div className="global-search-section-label"><CreditCard size={11}/> Créditos · {resCreditos.length}</div>
-                            {resCreditos.map(c => (
-                              <div key={c.id} className="global-search-result" onClick={() => { setActiveTab('credito'); setShowBusquedaGlobal(false); setBusquedaGlobal(''); }}>
-                                <div className="global-search-result-info">
-                                  <span className="global-search-result-name">{c.cliente}</span>
-                                  <span className="global-search-result-sub">Orden {c.numeroOrden}</span>
-                                </div>
-                                <span className={`badge badge-${(c.estado||'').toLowerCase().replace(/ /g,'-')}`}>{c.estado}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </>
-                    );
-                  })() : (
-                    <div className="global-search-hint">
-                      Escribe al menos 2 caracteres para buscar
-                    </div>
-                  )}
-                </div>
-
-                {/* Footer */}
-                <div className="global-search-footer">
-                  <span><kbd>ESC</kbd> cerrar</span>
-                  <span><kbd>F</kbd> abrir</span>
-                </div>
-
-              </div>
-            </div>
-          )}
 
           {/* Modal WhatsApp */}
           {showWhatsappModal && whatsappCliente && (
