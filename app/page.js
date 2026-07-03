@@ -4,6 +4,7 @@ import TabTickets from './components/TabTickets';
 import TabGrupos from './components/TabGrupos';
 import TabRecordatorio from './components/TabRecordatorio';
 import CreditoCard from './components/CreditoCard';
+import CentroNotificaciones from './components/CentroNotificaciones';
 import SubgruposCliente from './components/SubgruposCliente';
 import { getSupabaseBrowser } from '../lib/supabase-browser.js';
 import * as XLSX from 'xlsx';
