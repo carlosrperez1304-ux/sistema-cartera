@@ -4079,6 +4079,7 @@ Estimado ${nombre}, confirmamos su pago por ${monto}. Gracias por su puntualidad
               </div>
             </div>
 
+          </div>
           {/* TAB CALENDARIO */}
           <div className={`tab-content ${activeTab === 'calendario' ? 'active' : ''}`}>
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.5rem' }}>
