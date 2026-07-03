@@ -4717,7 +4717,7 @@ export default function App() {
                                   <MoreVertical size={15}/>
                                 </button>
                                 {menuAbierto === cliente.id && (
-                                  <div data-menu style={{ position: 'fixed', right: menuPos.right + 'px', ...(menuAbiertoDir === 'up' ? { bottom: window.innerHeight - menuPos.top + 'px', top: 'auto' } : { top: menuPos.top + 'px', bottom: 'auto' }), background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 99999, minWidth: '200px', maxHeight: '60vh', overflowY: 'auto' }}>
+                                  <div data-menu style={{ position: 'fixed', right: menuPos.right + 'px', ...(menuAbiertoDir === 'up' ? { bottom: (window.innerHeight - menuPos.top + 4) + 'px', top: 'auto' } : { top: menuPos.top + 'px', bottom: 'auto' }), background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 99999, minWidth: '200px', maxHeight: '60vh', overflowY: 'auto' }}>
                                     {cliente.contacto && (
                                       <button onClick={() => { abrirWhatsappModal(cliente); setMenuAbierto(null); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 1rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#16a34a', fontWeight: 600, borderBottom: '1px solid #f1f5f9' }}>
                                         <Phone size={15}/>
