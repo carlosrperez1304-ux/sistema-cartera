@@ -542,6 +542,7 @@ export default function App() {
   const [duplicadosAlerta, setDuplicadosAlerta] = useState([]);
   const [menuAbierto, setMenuAbierto] = useState(null);
   const [menuAbiertoDir, setMenuAbiertoDir] = useState('down');
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const [mostrarArchivados, setMostrarArchivados] = useState(false);
   const [isElectron, setIsElectron] = useState(false);
   const [isMiniMode, setIsMiniMode] = useState(false);
@@ -4710,13 +4711,13 @@ export default function App() {
                             <td style={{ width:'100px', textAlign:'center', position: 'relative' }}>
                               <div style={{ position: 'relative', display: 'inline-block' }}>
                                 <button
-                                  onClick={(e) => { const rect = e.currentTarget.getBoundingClientRect(); const spaceBelow = window.innerHeight - rect.bottom; setMenuAbiertoDir(spaceBelow < 240 ? 'up' : 'down'); setMenuAbierto(prev => prev === cliente.id ? null : cliente.id); }}
+                                  onClick={(e) => { const rect = e.currentTarget.getBoundingClientRect(); const spaceBelow = window.innerHeight - rect.bottom; const dir = spaceBelow < 240 ? 'up' : 'down'; setMenuAbiertoDir(dir); setMenuPos({ top: dir === 'down' ? rect.bottom + 4 : rect.top - 4, right: window.innerWidth - rect.right }); setMenuAbierto(prev => prev === cliente.id ? null : cliente.id); e.stopPropagation(); }}
                                   title="Opciones"
                                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.4rem 0.55rem', borderRadius: '7px', border: '1.5px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', color: '#1e2d4a' }}>
                                   <MoreVertical size={15}/>
                                 </button>
                                 {menuAbierto === cliente.id && (
-                                  <div data-menu style={{ position: 'absolute', right: 0, ...(menuAbiertoDir === 'up' ? { bottom: '110%', top: 'auto' } : { top: '110%', bottom: 'auto' }), background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 9999, minWidth: '200px', maxHeight: '60vh', overflowY: 'auto' }}>
+                                  <div data-menu style={{ position: 'fixed', right: menuPos.right + 'px', ...(menuAbiertoDir === 'up' ? { bottom: window.innerHeight - menuPos.top + 'px', top: 'auto' } : { top: menuPos.top + 'px', bottom: 'auto' }), background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 99999, minWidth: '200px', maxHeight: '60vh', overflowY: 'auto' }}>
                                     {cliente.contacto && (
                                       <button onClick={() => { abrirWhatsappModal(cliente); setMenuAbierto(null); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 1rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#16a34a', fontWeight: 600, borderBottom: '1px solid #f1f5f9' }}>
                                         <Phone size={15}/>
