@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { MessageSquare } from 'lucide-react';
 
 export default function CentroNotificaciones({ clientes, creditos, showToast }) {
+  const [abierto, setAbierto] = useState(false);
   const [buscar, setBuscar] = useState('');
   const [cliente, setCliente] = useState(null);
   const [deuda, setDeuda] = useState(null);
@@ -52,10 +53,11 @@ export default function CentroNotificaciones({ clientes, creditos, showToast }) 
 
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.2rem', marginBottom: '1rem' }}>
-      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+      <div onClick={() => setAbierto(!abierto)} style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: abierto ? '1rem' : 0, display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', userSelect: 'none' }}>
         <MessageSquare size={16} /> Centro de Notificaciones
+        <span style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--text-muted)' }}>{abierto ? '▲' : '▼'}</span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+      {abierto && <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
         <div>
           <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>Buscar cliente</div>
           <div style={{ position: 'relative', marginBottom: '10px' }}>
@@ -119,7 +121,7 @@ export default function CentroNotificaciones({ clientes, creditos, showToast }) 
             <MessageSquare size={14} /> Enviar por WhatsApp
           </button>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }
