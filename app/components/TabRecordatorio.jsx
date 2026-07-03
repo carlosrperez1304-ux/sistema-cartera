@@ -60,12 +60,7 @@ function ColaEnvio({ titulo, clientes, empresaActual, showToast, tipo, diaVencim
       // Cargar subgrupos con estado Notificado
       const resSg = await fetch(`/api/subgrupos?empresa_id=${empresa_id}`);
       const todosSubgrupos = resSg.ok ? await resSg.json() : [];
-      console.log('[Recordatorio] currentUser:', currentUser, 'puedeVerTodo:', puedeVerTodo);
-      const subgruposPendientes = todosSubgrupos.filter(sg => {
-        const clientePadre = clientes.find(c => c.id === sg.cliente_id);
-        if (!puedeVerTodo && clientePadre && clientePadre.creadoPor !== currentUser) return false;
-        return true;
-      }).filter(sg =>
+      const subgruposPendientes = todosSubgrupos.filter(sg =>
         sg.estado === estadoFiltro &&
         sg.contacto &&
         !yaEnviadosStr.includes(`sg_${sg.id}`)
