@@ -3967,69 +3967,8 @@ export default function App() {
               );
             })()}
 
-            {/*  PROYECCIÓN DE COBROS  */}
-            {(() => {
-              const mCotizado = estadisticas.montoCotizado || 0;
-              const mNotificado = estadisticas.montoNotificado || 0;
-              const mPagado = estadisticas.montoPagado || 0;
-              const proyec30 = mPagado + mNotificado * 0.6 + mCotizado * 0.2;
-              const proyec60 = mPagado + mNotificado * 0.8 + mCotizado * 0.5;
-              const proyec90 = mPagado + mNotificado * 0.95 + mCotizado * 0.75;
-              const fmt = v => v >= 1000000 ? `$${(v/1000000).toFixed(2)}M` : v >= 1000 ? `$${(v/1000).toFixed(1)}K` : `$${Math.round(v).toLocaleString('en-US')}`;
-              const maxVal = Math.max(proyec90, 1);
-              return (
-                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.2rem', marginBottom: '1rem' }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '1rem' }}>Proyección de Cobros</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                    {[{ label: '30 días', val: proyec30, color: '#0284c7' }, { label: '60 días', val: proyec60, color: '#7c3aed' }, { label: '90 días', val: proyec90, color: '#059669' }].map(p => (
-                      <div key={p.label} style={{ background: 'var(--surface2)', borderRadius: '10px', padding: '0.85rem', textAlign: 'center' }}>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.3rem' }}>{p.label}</div>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 800, color: p.color, fontFamily: 'var(--mono)' }}>{fmt(p.val)}</div>
-                        <div style={{ marginTop: '0.4rem', height: '6px', background: 'var(--border)', borderRadius: '3px' }}>
-                          <div style={{ height: '100%', width: `${(p.val / maxVal) * 100}%`, background: p.color, borderRadius: '3px', transition: 'width 0.6s ease' }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                    Estimado basado en pipeline actual · Pagado actual: <strong>{fmt(mPagado)}</strong> · Notificado: <strong>{fmt(mNotificado)}</strong> · Cotizado: <strong>{fmt(mCotizado)}</strong>
-                  </div>
-                </div>
-              );
-            })()}
-
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.2rem' }}>
-              <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--navy)', marginBottom: '1rem' }}>Accesos rápidos</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.5rem' }}>
-                {[
-                  { label: 'Nuevo Cliente', icon: <UserPlus size={14}/>, action: () => { setActiveTab('cartera'); abrirModal(); }, primary: true, show: tienePermiso('crear_clientes') },
-                  { label: 'Nuevo Crédito', icon: <CreditCard size={14}/>, action: () => setActiveTab('credito'), primary: true, show: tienePermiso('crear_creditos') },
-                  { label: 'Agenda del Día', icon: <Calendar size={14}/>, action: () => setActiveTab('agenda'), show: true },
-                  { label: 'Carga Masiva PDF', icon: <FileText size={14}/>, action: () => { abrirCargaMasiva(); }, show: tienePermiso('subir_documentos') },
-                  { label: 'Plantillas WA', icon: <MessageSquare size={14}/>, action: () => setShowPlantillasModal(true), show: true },
-                  { label: 'Importar Excel', icon: <Upload size={14}/>, action: () => setShowImportModal(true), show: tienePermiso('crear_clientes') },
-                  { label: 'Exportar PDF', icon: <Download size={14}/>, action: exportarPDF, show: tienePermiso('ver_reportes_pdf') },
-                  { label: 'Backup', icon: <Download size={14}/>, action: backupJSON, show: esAdmin },
-                ].filter(a => a.show).map((a, i) => (
-                  <button key={i} onClick={a.action} style={{ display:'flex', alignItems:'center', gap:'0.5rem', padding:'0.6rem 0.9rem', background: a.primary ? 'var(--brand)' : 'var(--surface-2)', border: a.primary ? 'none' : '1px solid var(--border)', borderRadius:'9px', color: a.primary ? 'white' : 'var(--text)', fontSize:'0.82rem', fontWeight:600, cursor:'pointer', transition:'all 0.15s', textAlign:'left' }}
-                    onMouseEnter={e => e.currentTarget.style.opacity='0.85'}
-                    onMouseLeave={e => e.currentTarget.style.opacity='1'}>
-                    {a.icon}{a.label}
-                  </button>
-                ))}
-              </div>
-              <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--surface2)', borderRadius: '9px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                <strong>Atajos de teclado:</strong> &nbsp;
-                <kbd style={{ background: 'white', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid var(--border2)', marginRight: '0.5rem' }}>N</kbd> Nuevo cliente &nbsp;
-                <kbd style={{ background: 'white', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid var(--border2)', marginRight: '0.5rem' }}>F</kbd> Buscar &nbsp;
-                <kbd style={{ background: 'white', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid var(--border2)', marginRight: '0.5rem' }}>C</kbd> Cartera &nbsp;
-                <kbd style={{ background: 'white', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid var(--border2)', marginRight: '0.5rem' }}>R</kbd> Crédito &nbsp;
-                <kbd style={{ background: 'white', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid var(--border2)' }}>D</kbd> Modo oscuro
-              </div>
-            </div>
-          </div>
-
-          {/* TAB CALENDARIO */}
+            <CentroNotificaciones clientes={clientes} creditos={creditos} showToast={showToast} />
+                    {/* TAB CALENDARIO */}
           <div className={`tab-content ${activeTab === 'calendario' ? 'active' : ''}`}>
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.5rem' }}>
               <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--navy)', marginBottom: '1.25rem' }}><Clock size={14} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Vencimientos de Créditos</div>
