@@ -5,6 +5,7 @@ import { Upload, Send, Settings, X, Trash2, DollarSign, Clock, FileText } from '
 function parsearReporte(texto) {
   const lineas = texto.trim().split('\n');
   const grupos = {};
+  const gruposDetalle = {};
   let tauCant = 0, posCant = 0, tauPrecioDetectado = 535, posPrecioDetectado = 862;
 
   lineas.forEach(linea => {
@@ -22,18 +23,21 @@ function parsearReporte(texto) {
     const precio = parseFloat(precioRaw.replace(/[$,]/g, '')) || 0;
     if (!nombre || monto === 0) return;
     grupos[nombre] = (grupos[nombre] || 0) + monto;
+    if (!gruposDetalle[nombre]) gruposDetalle[nombre] = { tau: 0, pos: 0 };
 
     // Detectar si es TAU o POS por el precio
     if (precio > 0 && precio < 700) {
       tauCant += cantidad;
       tauPrecioDetectado = precio;
+      gruposDetalle[nombre].tau += cantidad;
     } else if (precio >= 700) {
       posCant += cantidad;
       posPrecioDetectado = precio;
+      gruposDetalle[nombre].pos += cantidad;
     }
   });
 
-  return { grupos, tauCant, posCant, tauPrecio: tauPrecioDetectado, posPrecio: posPrecioDetectado };
+  return { grupos, gruposDetalle, tauCant, posCant, tauPrecio: tauPrecioDetectado, posPrecio: posPrecioDetectado };
 }
 
 function getSaludo() {
@@ -62,6 +66,7 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
   const [modalVincular, setModalVincular] = useState(null);
   const [selGruposVincular, setSelGruposVincular] = useState([]);
   const [selNombreVincular, setSelNombreVincular] = useState('');
+  const [gruposExpandidos, setGruposExpandidos] = useState({});
   const [editandoNota, setEditandoNota] = useState(null);
   const [notaTemp, setNotaTemp] = useState('');
   const [factura, setFactura] = useState(null);
@@ -144,6 +149,18 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
       setFactura(data);
     }
     if (showToast) showToast('Factura guardada', 'success');
+  };
+
+  const actualizarTauPos = async (grupo, tau, pos) => {
+    const nuevoTau = Math.max(0, tau);
+    const nuevoPos = Math.max(0, pos);
+    const nuevoMonto = nuevoTau * Number(tauPrecio) + nuevoPos * Number(posPrecio);
+    await fetch('/api/grupos-blueline', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: grupo.id, tau_cantidad: nuevoTau, pos_cantidad: nuevoPos, monto_total: nuevoMonto })
+    });
+    await cargar();
   };
 
   const marcarPagado = async (grupo) => {
@@ -247,14 +264,15 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
     if (!texto.trim()) return;
     setProcesando(true);
     setTimeout(() => {
-      const { grupos: parsed, tauCant, posCant, tauPrecio: tauP, posPrecio: posP } = parsearReporte(texto);
+      const { grupos: parsed, gruposDetalle, tauCant, posCant, tauPrecio: tauP, posPrecio: posP } = parsearReporte(texto);
       setTauCantidad(tauCant);
       setPosCantidad(posCant);
       setTauPrecio(tauP);
       setPosPrecio(posP);
       const items = Object.entries(parsed).map(([nombre, monto]) => {
         const existe = grupos.find(g => g.nombre.toLowerCase().trim() === nombre.toLowerCase().trim());
-        return { nombre, monto, existe: !!existe, grupoId: existe?.id };
+        const detalle = gruposDetalle[nombre] || { tau: 0, pos: 0 };
+        return { nombre, monto, existe: !!existe, grupoId: existe?.id, tau: detalle.tau, pos: detalle.pos };
       }).sort((a, b) => b.monto - a.monto);
       setResultado(items);
       setProcesando(false);
@@ -274,14 +292,14 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
           const r = await fetch('/api/grupos-blueline', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: item.grupoId, monto_total: item.monto, deuda_pendiente: nuevaDeuda, estado: 'PENDIENTE' })
+            body: JSON.stringify({ id: item.grupoId, monto_total: item.monto, deuda_pendiente: nuevaDeuda, estado: 'PENDIENTE', tau_cantidad: item.tau, pos_cantidad: item.pos })
           });
           if (r.ok) actualizados++;
         } else {
           const r = await fetch('/api/grupos-blueline', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nombre: item.nombre, monto_total: item.monto, monto_pagado: 0, deuda_pendiente: item.monto, estado: 'PENDIENTE', empresa_id: empresaId, numero: grupos.length + creados + 1, historial: [] })
+            body: JSON.stringify({ nombre: item.nombre, monto_total: item.monto, monto_pagado: 0, deuda_pendiente: item.monto, estado: 'PENDIENTE', empresa_id: empresaId, numero: grupos.length + creados + 1, historial: [], tau_cantidad: item.tau, pos_cantidad: item.pos })
           });
           if (r.ok) creados++;
         }
@@ -338,11 +356,15 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
   const FilaGrupo = ({ g, i }) => {
     const vinculoDeEste = vinculos.find(v => v.ids.includes(g.id));
     return (
+    <>
     <tr key={g.id} onClick={() => setGrupoSeleccionado(g)}
       style={{ borderBottom:'1px solid #f5f4ef', background: g.suspendido ? '#fff1f2' : g.estado === 'PAGADO' ? '#f0fdf4' : (g.monto_total||0) === 0 ? '#fffbeb' : i%2===0 ? '#fff' : '#fdfcf8', cursor:'pointer' }}
       onMouseOver={e => e.currentTarget.style.opacity = '0.85'}
       onMouseOut={e => e.currentTarget.style.opacity = '1'}>
-      <td style={{ padding:'10px 14px', color:'#9a998f', fontFamily:'monospace', fontSize:'12px' }}>{g.numero || i+1}</td>
+      <td style={{ padding:'10px 14px', color:'#9a998f', fontFamily:'monospace', fontSize:'12px' }} onClick={e => { e.stopPropagation(); setGruposExpandidos(prev => ({ ...prev, [g.id]: !prev[g.id] })); }}>
+        <span style={{ cursor:'pointer', marginRight:'4px' }}>{gruposExpandidos[g.id] ? '▼' : '▶'}</span>
+        {g.numero || i+1}
+      </td>
       <td style={{ padding:'10px 14px' }}>
         <div style={{ fontWeight:600, color: g.suspendido ? '#dc2626' : g.estado === 'PAGADO' ? '#16a34a' : '#1a1915' }}>{g.nombre}{vinculoDeEste && <span style={{ fontSize:'10px', background:'#E6F1FB', color:'#185FA5', borderRadius:'10px', padding:'1px 6px', marginLeft:'6px', fontWeight:500 }}>vinculado: {vinculoDeEste.nombre}</span>}</div>
         {g.notas && <div style={{ fontSize:'11px', color:'#9a998f', marginTop:'2px' }}>{g.notas}</div>}
@@ -373,6 +395,32 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
         </div>
       </td>
     </tr>
+    {gruposExpandidos[g.id] && (
+      <tr>
+        <td colSpan={9} style={{ padding:'10px 20px', background:'#fafaf8', borderBottom:'1px solid #f5f4ef' }}>
+          <div style={{ display:'flex', gap:'16px', alignItems:'center', flexWrap:'wrap' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:'6px', background:'#fff', border:'1px solid #e0dfd8', borderRadius:'8px', padding:'6px 10px' }}>
+              <div>
+                <div style={{ fontSize:'9px', fontWeight:700, color:'#9a998f', textTransform:'uppercase' }}>TAU</div>
+                <input type="number" min="0" defaultValue={g.tau_cantidad || 0} onBlur={e => actualizarTauPos(g, Number(e.target.value), g.pos_cantidad || 0)} style={{ width:'50px', border:'none', fontSize:'13px', fontWeight:600, textAlign:'center', outline:'none' }} />
+                <div style={{ fontSize:'10px', color:'#9a998f' }}>× RD${tauPrecio}</div>
+              </div>
+              <div style={{ fontSize:'12px', color:'#378ADD', fontWeight:600, marginLeft:'6px' }}>= RD$ {((g.tau_cantidad||0)*Number(tauPrecio)).toLocaleString('en-US')}</div>
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:'6px', background:'#fff', border:'1px solid #e0dfd8', borderRadius:'8px', padding:'6px 10px' }}>
+              <div>
+                <div style={{ fontSize:'9px', fontWeight:700, color:'#9a998f', textTransform:'uppercase' }}>POS</div>
+                <input type="number" min="0" defaultValue={g.pos_cantidad || 0} onBlur={e => actualizarTauPos(g, g.tau_cantidad || 0, Number(e.target.value))} style={{ width:'50px', border:'none', fontSize:'13px', fontWeight:600, textAlign:'center', outline:'none' }} />
+                <div style={{ fontSize:'10px', color:'#9a998f' }}>× RD${posPrecio}</div>
+              </div>
+              <div style={{ fontSize:'12px', color:'#378ADD', fontWeight:600, marginLeft:'6px' }}>= RD$ {((g.pos_cantidad||0)*Number(posPrecio)).toLocaleString('en-US')}</div>
+            </div>
+            <div style={{ fontSize:'13px', fontWeight:700, color:'#1a1915' }}>Total: RD$ {(g.monto_total||0).toLocaleString('en-US')}</div>
+          </div>
+        </td>
+      </tr>
+    )}
+    </>
   );
   };
 
