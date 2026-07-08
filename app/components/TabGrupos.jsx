@@ -2,6 +2,50 @@
 import { useState, useEffect } from 'react';
 import { Upload, Send, Settings, X, Trash2, DollarSign, Clock, FileText } from 'lucide-react';
 
+function DetalleTauPos({ g, tauPrecio, posPrecio, onGuardar }) {
+  const [tau, setTau] = useState(g.tau_cantidad || 0);
+  const [pos, setPos] = useState(g.pos_cantidad || 0);
+
+  useEffect(() => {
+    setTau(g.tau_cantidad || 0);
+    setPos(g.pos_cantidad || 0);
+  }, [g.id, g.tau_cantidad, g.pos_cantidad]);
+
+  const guardar = (nuevoTau, nuevoPos) => {
+    onGuardar(g, nuevoTau, nuevoPos);
+  };
+
+  const totalPreview = tau * Number(tauPrecio) + pos * Number(posPrecio);
+
+  return (
+    <div style={{ display:'flex', gap:'16px', alignItems:'center', flexWrap:'wrap' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:'6px', background:'#fff', border:'1px solid #e0dfd8', borderRadius:'8px', padding:'6px 10px' }}>
+        <div>
+          <div style={{ fontSize:'9px', fontWeight:700, color:'#9a998f', textTransform:'uppercase' }}>TAU</div>
+          <input type="number" min="0" value={tau}
+            onChange={e => { const v = Math.max(0, Number(e.target.value)); setTau(v); guardar(v, pos); }}
+            onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }}
+            style={{ width:'50px', border:'none', fontSize:'13px', fontWeight:600, textAlign:'center', outline:'none' }} />
+          <div style={{ fontSize:'10px', color:'#9a998f' }}>× RD${tauPrecio}</div>
+        </div>
+        <div style={{ fontSize:'12px', color:'#378ADD', fontWeight:600, marginLeft:'6px' }}>= RD$ {(tau*Number(tauPrecio)).toLocaleString('en-US')}</div>
+      </div>
+      <div style={{ display:'flex', alignItems:'center', gap:'6px', background:'#fff', border:'1px solid #e0dfd8', borderRadius:'8px', padding:'6px 10px' }}>
+        <div>
+          <div style={{ fontSize:'9px', fontWeight:700, color:'#9a998f', textTransform:'uppercase' }}>POS</div>
+          <input type="number" min="0" value={pos}
+            onChange={e => { const v = Math.max(0, Number(e.target.value)); setPos(v); guardar(tau, v); }}
+            onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }}
+            style={{ width:'50px', border:'none', fontSize:'13px', fontWeight:600, textAlign:'center', outline:'none' }} />
+          <div style={{ fontSize:'10px', color:'#9a998f' }}>× RD${posPrecio}</div>
+        </div>
+        <div style={{ fontSize:'12px', color:'#378ADD', fontWeight:600, marginLeft:'6px' }}>= RD$ {(pos*Number(posPrecio)).toLocaleString('en-US')}</div>
+      </div>
+      <div style={{ fontSize:'13px', fontWeight:700, color:'#1a1915' }}>Total: RD$ {totalPreview.toLocaleString('en-US')}</div>
+    </div>
+  );
+}
+
 function parsearReporte(texto) {
   const lineas = texto.trim().split('\n');
   const grupos = {};
@@ -398,25 +442,7 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
     {gruposExpandidos[g.id] && (
       <tr>
         <td colSpan={9} style={{ padding:'10px 20px', background:'#fafaf8', borderBottom:'1px solid #f5f4ef' }}>
-          <div style={{ display:'flex', gap:'16px', alignItems:'center', flexWrap:'wrap' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:'6px', background:'#fff', border:'1px solid #e0dfd8', borderRadius:'8px', padding:'6px 10px' }}>
-              <div>
-                <div style={{ fontSize:'9px', fontWeight:700, color:'#9a998f', textTransform:'uppercase' }}>TAU</div>
-                <input type="number" min="0" defaultValue={g.tau_cantidad || 0} onBlur={e => actualizarTauPos(g, Number(e.target.value), g.pos_cantidad || 0)} style={{ width:'50px', border:'none', fontSize:'13px', fontWeight:600, textAlign:'center', outline:'none' }} />
-                <div style={{ fontSize:'10px', color:'#9a998f' }}>× RD${tauPrecio}</div>
-              </div>
-              <div style={{ fontSize:'12px', color:'#378ADD', fontWeight:600, marginLeft:'6px' }}>= RD$ {((g.tau_cantidad||0)*Number(tauPrecio)).toLocaleString('en-US')}</div>
-            </div>
-            <div style={{ display:'flex', alignItems:'center', gap:'6px', background:'#fff', border:'1px solid #e0dfd8', borderRadius:'8px', padding:'6px 10px' }}>
-              <div>
-                <div style={{ fontSize:'9px', fontWeight:700, color:'#9a998f', textTransform:'uppercase' }}>POS</div>
-                <input type="number" min="0" defaultValue={g.pos_cantidad || 0} onBlur={e => actualizarTauPos(g, g.tau_cantidad || 0, Number(e.target.value))} style={{ width:'50px', border:'none', fontSize:'13px', fontWeight:600, textAlign:'center', outline:'none' }} />
-                <div style={{ fontSize:'10px', color:'#9a998f' }}>× RD${posPrecio}</div>
-              </div>
-              <div style={{ fontSize:'12px', color:'#378ADD', fontWeight:600, marginLeft:'6px' }}>= RD$ {((g.pos_cantidad||0)*Number(posPrecio)).toLocaleString('en-US')}</div>
-            </div>
-            <div style={{ fontSize:'13px', fontWeight:700, color:'#1a1915' }}>Total: RD$ {(g.monto_total||0).toLocaleString('en-US')}</div>
-          </div>
+          <DetalleTauPos g={g} tauPrecio={tauPrecio} posPrecio={posPrecio} onGuardar={actualizarTauPos} />
         </td>
       </tr>
     )}
