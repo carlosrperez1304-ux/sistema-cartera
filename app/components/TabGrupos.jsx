@@ -155,12 +155,12 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
     const nuevoTau = Math.max(0, tau);
     const nuevoPos = Math.max(0, pos);
     const nuevoMonto = nuevoTau * Number(tauPrecio) + nuevoPos * Number(posPrecio);
+    setGrupos(prev => prev.map(g => g.id === grupo.id ? { ...g, tau_cantidad: nuevoTau, pos_cantidad: nuevoPos, monto_total: nuevoMonto } : g));
     await fetch('/api/grupos-blueline', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: grupo.id, tau_cantidad: nuevoTau, pos_cantidad: nuevoPos, monto_total: nuevoMonto })
     });
-    await cargar();
   };
 
   const marcarPagado = async (grupo) => {
