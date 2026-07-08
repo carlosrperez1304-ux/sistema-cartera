@@ -58,6 +58,10 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
   const [telefonoJunior, setTelefonoJunior] = useState('');
   const [showConfigTel, setShowConfigTel] = useState(false);
   const [grupoSeleccionado, setGrupoSeleccionado] = useState(null);
+  const [vinculos, setVinculos] = useState([]);
+  const [modalVincular, setModalVincular] = useState(null);
+  const [selGruposVincular, setSelGruposVincular] = useState([]);
+  const [selNombreVincular, setSelNombreVincular] = useState('');
   const [editandoNota, setEditandoNota] = useState(null);
   const [notaTemp, setNotaTemp] = useState('');
   const [factura, setFactura] = useState(null);
@@ -67,6 +71,35 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
   const [posPrecio, setPosPrecio] = useState(862);
 
   const empresaId = session?.user?.empresa_id || empresaActual?.id;
+
+  const cargarVinculos = async () => {
+    if (!empresaId) return;
+    const res = await fetch('/api/grupos-vinculos?empresa_id=' + empresaId);
+    if (res.ok) setVinculos(await res.json());
+  };
+
+  const crearVinculo = async () => {
+    if (!modalVincular || selGruposVincular.length < 1 || !selNombreVincular) return;
+    const ids = [modalVincular.id, ...selGruposVincular];
+    // Eliminar vinculos existentes de esos grupos
+    const existentes = vinculos.filter(v => v.ids.some(id => ids.includes(id)));
+    for (const e of existentes) {
+      await fetch('/api/grupos-vinculos?id=' + e.id, { method: 'DELETE' });
+    }
+    const res = await fetch('/api/grupos-vinculos', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ empresa_id: empresaId, ids, nombre: selNombreVincular }) });
+    if (res.ok) {
+      await cargarVinculos();
+      setModalVincular(null);
+      setSelGruposVincular([]);
+      setSelNombreVincular('');
+      if (showToast) showToast('Grupos vinculados', 'success');
+    }
+  };
+
+  const eliminarVinculo = async (vinculoId) => {
+    await fetch('/api/grupos-vinculos?id=' + vinculoId, { method: 'DELETE' });
+    await cargarVinculos();
+  };
 
   const cargar = async () => {
     setLoading(true);
@@ -96,6 +129,7 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
   useEffect(() => {
     cargar();
     cargarFactura();
+    cargarVinculos();
     setTelefonoJunior(localStorage.getItem('junior_telefono') || '');
   }, []);
 
@@ -114,6 +148,9 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
 
   const marcarPagado = async (grupo) => {
     const esPagado = grupo.estado === 'PAGADO';
+    // Buscar grupos vinculados
+    const vinculo = vinculos.find(v => v.ids.includes(grupo.id));
+    const gruposAMarcar = vinculo ? grupos.filter(g => vinculo.ids.includes(g.id)) : [grupo];
     const deudaAnterior = Math.max(0, (grupo.deuda_pendiente || 0) - (grupo.monto_total || 0));
     const historial = [...(grupo.historial || []), {
       fecha: new Date().toISOString(),
@@ -121,18 +158,27 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
       accion: esPagado ? 'Marcado PENDIENTE' : 'Marcado PAGADO',
       monto: grupo.monto_total
     }];
-    await fetch('/api/grupos-blueline', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: grupo.id,
-        estado: esPagado ? 'PENDIENTE' : 'PAGADO',
-        monto_pagado: esPagado ? 0 : grupo.monto_total,
-        deuda_pendiente: esPagado ? grupo.monto_total : deudaAnterior,
-        fecha_pago: esPagado ? '' : new Date().toLocaleDateString('es-DO'),
-        historial
-      })
-    });
+    for (const g of gruposAMarcar) {
+      const deudaG = Math.max(0, (g.deuda_pendiente || 0) - (g.monto_total || 0));
+      const histG = [...(g.historial || []), {
+        fecha: new Date().toISOString(),
+        mes: getMesActual(),
+        accion: esPagado ? 'Marcado PENDIENTE' : 'Marcado PAGADO',
+        monto: g.monto_total
+      }];
+      await fetch('/api/grupos-blueline', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: g.id,
+          estado: esPagado ? 'PENDIENTE' : 'PAGADO',
+          monto_pagado: esPagado ? 0 : g.monto_total,
+          deuda_pendiente: esPagado ? g.monto_total : deudaG,
+          fecha_pago: esPagado ? '' : new Date().toLocaleDateString('es-DO'),
+          historial: histG
+        })
+      });
+    }
     await cargar();
     if (grupoSeleccionado?.id === grupo.id) {
       const res = await fetch(empresaId ? '/api/grupos-blueline?empresa_id=' + empresaId : '/api/grupos-blueline');
@@ -256,9 +302,26 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
     const saludo = getSaludo();
     let msg = 'Saludos, ' + saludo + ' Sr. Junior.\n\nLe informamos que estos son los balances pendientes:\n\n';
     let total = 0;
+    // Agrupar vinculados
+    const idsYaIncluidos = new Set();
+    const lineas = [];
+    // Primero procesar vinculos
+    vinculos.forEach(v => {
+      const gruposVinculo = pendientes.filter(g => v.ids.includes(g.id));
+      if (gruposVinculo.length === 0) return;
+      const montoTotal = gruposVinculo.reduce((s, g) => s + g.monto_total, 0);
+      lineas.push({ nombre: v.nombre, monto: montoTotal });
+      gruposVinculo.forEach(g => idsYaIncluidos.add(g.id));
+      total += montoTotal;
+    });
+    // Luego los no vinculados
     pendientes.forEach(g => {
-      msg += '• ' + g.nombre + ': RD$' + g.monto_total.toLocaleString('en-US', { maximumFractionDigits: 0 }) + '\n';
+      if (idsYaIncluidos.has(g.id)) return;
+      lineas.push({ nombre: g.nombre, monto: g.monto_total });
       total += g.monto_total;
+    });
+    lineas.forEach(l => {
+      msg += '• ' + l.nombre + ': RD$' + l.monto.toLocaleString('en-US', { maximumFractionDigits: 0 }) + '\n';
     });
     msg += '\nTotal pendiente: RD$' + total.toLocaleString('en-US', { maximumFractionDigits: 0 });
     const num = telefonoJunior.replace(/\D/g, '');
@@ -272,14 +335,16 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
   const gruposActivos = grupos.filter(g => (g.monto_total || 0) > 0);
   const gruposSoloDeuda = grupos.filter(g => (g.monto_total || 0) === 0 && (g.deuda_pendiente || 0) > 0);
 
-  const FilaGrupo = ({ g, i }) => (
+  const FilaGrupo = ({ g, i }) => {
+    const vinculoDeEste = vinculos.find(v => v.ids.includes(g.id));
+    return (
     <tr key={g.id} onClick={() => setGrupoSeleccionado(g)}
       style={{ borderBottom:'1px solid #f5f4ef', background: g.suspendido ? '#fff1f2' : g.estado === 'PAGADO' ? '#f0fdf4' : (g.monto_total||0) === 0 ? '#fffbeb' : i%2===0 ? '#fff' : '#fdfcf8', cursor:'pointer' }}
       onMouseOver={e => e.currentTarget.style.opacity = '0.85'}
       onMouseOut={e => e.currentTarget.style.opacity = '1'}>
       <td style={{ padding:'10px 14px', color:'#9a998f', fontFamily:'monospace', fontSize:'12px' }}>{g.numero || i+1}</td>
       <td style={{ padding:'10px 14px' }}>
-        <div style={{ fontWeight:600, color: g.suspendido ? '#dc2626' : g.estado === 'PAGADO' ? '#16a34a' : '#1a1915' }}>{g.nombre}</div>
+        <div style={{ fontWeight:600, color: g.suspendido ? '#dc2626' : g.estado === 'PAGADO' ? '#16a34a' : '#1a1915' }}>{g.nombre}{vinculoDeEste && <span style={{ fontSize:'10px', background:'#E6F1FB', color:'#185FA5', borderRadius:'10px', padding:'1px 6px', marginLeft:'6px', fontWeight:500 }}>vinculado: {vinculoDeEste.nombre}</span>}</div>
         {g.notas && <div style={{ fontSize:'11px', color:'#9a998f', marginTop:'2px' }}>{g.notas}</div>}
       </td>
       <td style={{ padding:'10px 14px', textAlign:'right', fontFamily:'monospace', fontWeight:600, color:'#1a1915' }}>RD$ {(g.monto_total||0).toLocaleString('en-US',{maximumFractionDigits:0})}</td>
@@ -298,12 +363,18 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
         </button>
       </td>
       <td style={{ padding:'10px 14px', textAlign:'center' }} onClick={e => e.stopPropagation()}>
-        <button onClick={() => eliminar(g.id)} style={{ padding:'4px 8px', borderRadius:'6px', border:'1px solid #fca5a5', background:'#fee2e2', color:'#dc2626', fontSize:'11px', cursor:'pointer' }}>
-          <Trash2 size={12}/>
-        </button>
+        <div style={{ display:'flex', gap:'4px', justifyContent:'center' }}>
+          <button onClick={() => { setModalVincular(g); setSelGruposVincular([]); setSelNombreVincular(''); }} title="Vincular con otro grupo" style={{ padding:'4px 6px', borderRadius:'6px', border:'1px solid #bfdbfe', background: vinculos.find(v => v.ids.includes(g.id)) ? '#E6F1FB' : '#f8fafc', color: vinculos.find(v => v.ids.includes(g.id)) ? '#378ADD' : '#94a3b8', fontSize:'11px', cursor:'pointer' }}>
+            🔗
+          </button>
+          <button onClick={() => eliminar(g.id)} style={{ padding:'4px 8px', borderRadius:'6px', border:'1px solid #fca5a5', background:'#fee2e2', color:'#dc2626', fontSize:'11px', cursor:'pointer' }}>
+            <Trash2 size={12}/>
+          </button>
+        </div>
       </td>
     </tr>
   );
+  };
 
   return (
     <div>
@@ -327,6 +398,8 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
           </button>
         </div>
       </div>
+
+
 
       <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'10px', marginBottom:'1.25rem' }}>
         {[
@@ -584,6 +657,50 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
               <button className="btn btn-secondary" onClick={() => setShowConfigTel(false)}>Cancelar</button>
               <button className="btn btn-primary" onClick={() => { localStorage.setItem('junior_telefono', telefonoJunior); setShowConfigTel(false); if(showToast) showToast('Teléfono guardado', 'success'); }}>Guardar</button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Modal vincular grupos */}
+      {modalVincular && (
+        <div onClick={e => { if (e.target === e.currentTarget) { setModalVincular(null); setSelGruposVincular([]); setSelNombreVincular(''); } }} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999 }}>
+          <div style={{ background:'#fff', border:'1px solid #e0dfd8', borderRadius:'14px', padding:'1.25rem', width:'360px', maxWidth:'90vw' }}>
+            <div style={{ fontWeight:700, fontSize:'14px', color:'#1a1915', marginBottom:'4px' }}>Vincular: {modalVincular.nombre}</div>
+            <div style={{ fontSize:'12px', color:'#9a998f', marginBottom:'14px' }}>Selecciona el grupo con el que quieres unificar el monto</div>
+            <div style={{ maxHeight:'200px', overflowY:'auto', marginBottom:'12px' }}>
+              {grupos.filter(g => g.id !== modalVincular.id && g.estado === 'PENDIENTE').map(g => (
+                <div key={g.id} onClick={() => { setSelGruposVincular(prev => prev.includes(g.id) ? prev.filter(x => x !== g.id) : prev.length < 5 ? [...prev, g.id] : prev); setSelNombreVincular(''); }} style={{ display:'flex', alignItems:'center', gap:'8px', padding:'8px 10px', borderRadius:'8px', border:'1px solid ' + (selGruposVincular.includes(g.id) ? '#378ADD' : '#e0dfd8'), background: selGruposVincular.includes(g.id) ? '#E6F1FB' : '#fff', cursor:'pointer', marginBottom:'6px' }}>
+                  <input type='checkbox' readOnly checked={selGruposVincular.includes(g.id)} style={{ flexShrink:0 }} />
+                  <div style={{ flex:1, fontSize:'13px', fontWeight:500, color:'#1a1915' }}>{g.nombre}</div>
+                  <div style={{ fontSize:'12px', color:'#dc2626', fontWeight:500 }}>RD$ {(g.monto_total||0).toLocaleString('en-US', {maximumFractionDigits:0})}</div>
+                </div>
+              ))}
+            </div>
+            {selGruposVincular.length > 0 && (
+              <div style={{ marginBottom:'12px' }}>
+                <div style={{ fontSize:'11px', fontWeight:700, color:'#9a998f', textTransform:'uppercase', marginBottom:'6px' }}>Usar nombre:</div>
+                <div style={{ display:'flex', gap:'6px', flexWrap:'wrap' }}>
+                  {[modalVincular, ...grupos.filter(g => selGruposVincular.includes(g.id))].map(g => (
+                    <button key={g.id} onClick={() => setSelNombreVincular(g.nombre)} style={{ padding:'5px 12px', borderRadius:'20px', border:'1px solid ' + (selNombreVincular === g.nombre ? '#378ADD' : '#e0dfd8'), background: selNombreVincular === g.nombre ? '#378ADD' : '#fff', color: selNombreVincular === g.nombre ? 'white' : '#1a1915', fontSize:'12px', cursor:'pointer' }}>{g.nombre}</button>
+                  ))}
+                </div>
+                {selNombreVincular && (
+                  <div style={{ marginTop:'10px', background:'#f8fafc', borderRadius:'8px', padding:'8px 12px', fontSize:'12px', color:'#1a1915' }}>
+                    Total: <strong>RD$ {((modalVincular.monto_total||0) + grupos.filter(g => selGruposVincular.includes(g.id)).reduce((s,g) => s+(g.monto_total||0), 0)).toLocaleString('en-US', {maximumFractionDigits:0})}</strong> · Nombre: <strong>{selNombreVincular}</strong>
+                  </div>
+                )}
+              </div>
+            )}
+            {vinculos.find(v => v.ids.includes(modalVincular.id)) && (
+              <button onClick={async () => { const v = vinculos.find(x => x.ids.includes(modalVincular.id)); if (v) await eliminarVinculo(v.id); setModalVincular(null); }} style={{ width:'100%', padding:'7px', borderRadius:'8px', border:'1px solid #fca5a5', background:'#fee2e2', color:'#dc2626', fontSize:'12px', fontWeight:600, cursor:'pointer', marginBottom:'6px' }}>
+                Quitar vínculo existente
+              </button>
+            )}
+            <button onClick={crearVinculo} disabled={selGruposVincular.length === 0 || !selNombreVincular} style={{ width:'100%', padding:'8px', borderRadius:'8px', border:'none', background: (selGruposVincular.length > 0 && selNombreVincular) ? '#378ADD' : '#e0dfd8', color:'white', fontSize:'13px', fontWeight:600, cursor: (selGruposVincular.length > 0 && selNombreVincular) ? 'pointer' : 'not-allowed', marginBottom:'6px' }}>
+              Confirmar vínculo
+            </button>
+            <button onClick={() => { setModalVincular(null); setSelGruposVincular([]); setSelNombreVincular(''); }} style={{ width:'100%', padding:'8px', borderRadius:'8px', border:'1px solid #e0dfd8', background:'#fff', color:'#6b6a62', fontSize:'13px', cursor:'pointer' }}>
+              Cancelar
+            </button>
           </div>
         </div>
       )}
