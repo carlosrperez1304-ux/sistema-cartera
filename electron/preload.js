@@ -14,6 +14,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ── PDF a WhatsApp ──
   sendPDFWhatsApp: (base64, filename, phone, message) =>
     ipcRenderer.invoke('send-pdf-whatsapp', { base64, filename, phone, message }),
+  whatsappEnviarMensaje: (numero, mensaje) =>
+    ipcRenderer.invoke('whatsapp-enviar-mensaje', { numero, mensaje }),
 
   // ── Versión ──
   getVersion: () => ipcRenderer.invoke('get-version'),
