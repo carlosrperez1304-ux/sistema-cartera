@@ -6,6 +6,12 @@ export default function TabRecarga({ clientes, empresaActual, showToast }) {
   const [recargas, setRecargas] = useState([]);
   const [telRecarga, setTelRecarga] = useState('');
   const [showConfigTel, setShowConfigTel] = useState(false);
+  const [masivoActivo, setMasivoActivo] = useState(false);
+  const [masivoIndex, setMasivoIndex] = useState(0);
+  const [masivoCountdown, setMasivoCountdown] = useState(0);
+  const [masivoEnviados, setMasivoEnviados] = useState(0);
+  const [masivoQueue, setMasivoQueue] = useState([]);
+  const [masivoActualId, setMasivoActualId] = useState(null);
   const empresaId = empresaActual?.id;
   const mesActual = new Date().toLocaleDateString('es-DO', { month: 'long', year: 'numeric' });
 
@@ -21,9 +27,6 @@ export default function TabRecarga({ clientes, empresaActual, showToast }) {
     cargar();
     setTelRecarga(localStorage.getItem('recarga_telefono') || '');
   }, [empresaId]);
-
-  const [masivoQueue, setMasivoQueue] = useState([]);
-  const [masivoActualId, setMasivoActualId] = useState(null);
 
   useEffect(() => {
     if (!masivoActivo) return;
