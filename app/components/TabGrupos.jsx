@@ -304,7 +304,7 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
       await fetch('/api/grupos-blueline', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: g.id, monto_total: 0, monto_pagado: 0, deuda_pendiente: nuevaDeuda, estado: 'PENDIENTE', fecha_pago: '', historial })
+        body: JSON.stringify({ id: g.id, monto_total: 0, monto_pagado: 0, deuda_pendiente: nuevaDeuda, estado: 'PENDIENTE', fecha_pago: '', historial, tau_cantidad: 0, pos_cantidad: 0 })
       });
     }
     await cargar();
