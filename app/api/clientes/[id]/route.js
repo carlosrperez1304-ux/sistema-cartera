@@ -59,6 +59,7 @@ export async function PUT(req, { params }) {
   if (body.nota !== undefined)               row.nota = body.nota ? sanitize(body.nota, 500) : null;
   if (body.suspendido !== undefined)         row.suspendido = body.suspendido || false;
   if (body.tags !== undefined)               row.tags = body.tags || [];
+  if (body.generaRecarga !== undefined)        row.genera_recarga = body.generaRecarga || false;
   if (body.historial !== undefined)          row.historial = body.historial || [];
 
   const { error } = await db().from('clientes').update(row).eq('id', id);
