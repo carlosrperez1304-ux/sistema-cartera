@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Phone, Send } from 'lucide-react';
 
 export default function TabRecarga({ clientes, empresaActual, showToast }) {
@@ -28,15 +28,24 @@ export default function TabRecarga({ clientes, empresaActual, showToast }) {
     setTelRecarga(localStorage.getItem('recarga_telefono') || '');
   }, [empresaId]);
 
+  const [masivoTargetTime, setMasivoTargetTime] = useState(null);
+  const enviandoRef = useRef(false);
+
   useEffect(() => {
-    if (!masivoActivo) return;
-    if (masivoCountdown <= 0) {
-      enviarMasivoActual();
-      return;
-    }
-    const t = setTimeout(() => setMasivoCountdown(prev => prev - 1), 1000);
-    return () => clearTimeout(t);
-  }, [masivoActivo, masivoCountdown]);
+    if (!masivoActivo || !masivoTargetTime) return;
+    const tick = setInterval(() => {
+      const restante = Math.ceil((masivoTargetTime - Date.now()) / 1000);
+      if (restante <= 0) {
+        if (enviandoRef.current) return;
+        enviandoRef.current = true;
+        setMasivoCountdown(0);
+        enviarMasivoActual().finally(() => { enviandoRef.current = false; });
+      } else {
+        setMasivoCountdown(restante);
+      }
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [masivoActivo, masivoTargetTime]);
 
   const randomCountdown = () => Math.floor(Math.random() * (120 - 20 + 1)) + 20;
 
