@@ -3610,6 +3610,7 @@ export default function App() {
             {tienePermiso('ver_reportes_pdf') && <div className="sidebar-item" onClick={exportarPDF}><span className="icon"><FileText size={14}/></span> PDF — Cartera</div>}
             {tienePermiso('ver_reportes_pdf') && <div className="sidebar-item" onClick={generarResumenPDF}><span className="icon"><FileText size={14}/></span> Resumen PDF</div>}
             <div className="sidebar-item" onClick={backupJSON}><span className="icon"><Download size={14}/></span> Backup JSON</div>
+            {esAdmin && <div className="sidebar-item" onClick={() => window.open('/api/backup-completo', '_blank')}><span className="icon"><Download size={14}/></span> Backup Completo (SQL)</div>}
             <div className="sidebar-item" onClick={() => setShowImportModal(true)}><span className="icon"><Upload size={14}/></span> Importar Excel</div>
             </>)}
           </div>
