@@ -6,6 +6,7 @@ import TabRecordatorio from './components/TabRecordatorio';
 import CreditoCard from './components/CreditoCard';
 import CentroNotificaciones from './components/CentroNotificaciones';
 import AgendaTareas from './components/AgendaTareas';
+import TabRecarga from './components/TabRecarga';
 import SubgruposCliente from './components/SubgruposCliente';
 import { getSupabaseBrowser } from '../lib/supabase-browser.js';
 import * as XLSX from 'xlsx';
@@ -1185,7 +1186,7 @@ export default function App() {
     else {
       const hoy = new Date();
       setEditingCliente(null);
-      setFormData({ codigoCliente: '', nombre: '', contacto: '', estado: 'Cotizado', fechaCotizacion: hoy.toISOString().split('T')[0], fechaNotificacion: '', fechaPago: '', fechaFacturacion: '', fechaSuspension: '', mes: (hoy.getMonth() + 1).toString(), año: hoy.getFullYear().toString(), monto: '', comentario: '', historial: [] });
+      setFormData({ codigoCliente: '', nombre: '', contacto: '', estado: 'No Generaron', fechaCotizacion: hoy.toISOString().split('T')[0], fechaNotificacion: '', fechaPago: '', fechaFacturacion: '', fechaSuspension: '', mes: (hoy.getMonth() + 1).toString(), año: hoy.getFullYear().toString(), monto: '', comentario: '', historial: [], generaRecarga: false, tags: [] });
     }
     setShowModal(true);
   };
@@ -1331,10 +1332,11 @@ export default function App() {
     e.preventDefault();
     const nuevoHistorial = [...(formData.historial || [])];
     nuevoHistorial.push({ fecha: new Date().toISOString(), accion: editingCliente ? `Actualizado - Estado: ${formData.estado}` : `Creado - Estado: ${formData.estado}`, usuario: currentUser || 'SISTEMA' });
-    const clienteConHistorial = { ...formData, historial: nuevoHistorial };
+    let clienteConHistorial = { ...formData, historial: nuevoHistorial };
     if (editingCliente) {
       await actualizarCliente({ ...clienteConHistorial, id: editingCliente.id });
     } else {
+      clienteConHistorial = { ...clienteConHistorial, tags: [...(clienteConHistorial.tags || []), 'Nuevo'], fechaCreacion: new Date().toISOString() };
       try {
         const r = await fetch('/api/clientes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(clienteConHistorial) });
         const data = await r.json();
@@ -3227,6 +3229,7 @@ export default function App() {
             ...(tienePermiso('ver_creditos') ? [{ tab:'credito', label:'Crédito' }] : []),
             { tab:'agenda', label:'Agenda' },
             { tab:'documentos', label:'Documentos' },
+            { tab:'recarga', label:'Recarga' },
             ...(esAdmin || currentUser === 'GSANCHEZ' ? [{ tab:'grupos', label:'Grupos' }] : []),
           ].map(item => (
             <button key={item.tab} onClick={() => setActiveTab(item.tab)} style={{ padding:'5px 14px', borderRadius:'16px', fontSize:'12px', fontWeight: activeTab === item.tab ? 600 : 400, background: activeTab === item.tab ? 'var(--text)' : 'transparent', color: activeTab === item.tab ? 'var(--bg)' : 'var(--text-muted)', border:'none', cursor:'pointer', transition:'all 0.15s', whiteSpace:'nowrap' }}>
@@ -4394,6 +4397,10 @@ export default function App() {
             </div>
           </div>
 
+          {/* TAB RECARGA */}
+          <div className={`tab-content ${activeTab === 'recarga' ? 'active' : ''}`}>
+            <TabRecarga clientes={clientes} empresaActual={empresaActual} showToast={showToast} />
+          </div>
           {/* TAB CARTERA */}
           <div className={`tab-content ${activeTab === 'cartera' ? 'active' : ''}`}>
 
@@ -5621,6 +5628,7 @@ export default function App() {
                     </div>
                   )}
                 </div>
+                {editingCliente && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Mes *</label>
@@ -5639,26 +5647,35 @@ export default function App() {
                     </select>
                   </div>
                 </div>
+                )}
                 <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '10px', padding: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                     <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b' }}>Monto</label>
-                    <label style={{ cursor: pdfCargando ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.25rem 0.7rem', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, color: '#475569', userSelect: 'none' }}>
+                    {editingCliente && <label style={{ cursor: pdfCargando ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.25rem 0.7rem', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, color: '#475569', userSelect: 'none' }}>
                       {pdfCargando ? <><Loader2 size={12}/> Leyendo PDF…</> : <><FileText size={12}/> Leer desde factura PDF</>}
                       <input type="file" accept=".pdf,application/pdf" style={{ display: 'none' }} disabled={pdfCargando} onChange={e => { if (e.target.files[0]) leerFacturaPDF(e.target.files[0]); e.target.value = ''; }} />
-                    </label>
+                    </label>}
                   </div>
                   <input type="number" value={formData.monto} onChange={(e) => setFormData({ ...formData, monto: e.target.value })} step="0.01" placeholder="Ej: 5000" style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '1rem', fontWeight: 700, boxSizing: 'border-box', background: '#fff' }} />
                   {pdfError && <div style={{ fontSize: '0.73rem', color: '#dc2626', marginTop: '0.4rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '0.4rem 0.6rem', display:'flex', alignItems:'center', gap:'0.3rem' }}><AlertTriangle size={12}/> {pdfError}</div>}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group" style={{ margin: 0 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: editingCliente ? '1fr 1fr' : '1fr', gap: '1rem' }}>
+                  {editingCliente && <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Fecha de Cotización</label>
                     <input type="date" value={formData.fechaCotizacion} onChange={(e) => setFormData({ ...formData, fechaCotizacion: e.target.value })} style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
-                  </div>
+                  </div>}
                   <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Comentario</label>
                     <textarea value={formData.comentario} onChange={(e) => setFormData({ ...formData, comentario: e.target.value })} rows={2} style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', resize: 'vertical', boxSizing: 'border-box' }} />
                   </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '10px' }}>
+                  <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#334155' }}>Genera recarga mensual</span>
+                  <label style={{ position: 'relative', display: 'inline-block', width: '40px', height: '22px', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={!!formData.generaRecarga} onChange={e => setFormData({ ...formData, generaRecarga: e.target.checked })} style={{ opacity: 0, width: 0, height: 0 }} />
+                    <span style={{ position: 'absolute', inset: 0, background: formData.generaRecarga ? '#1e2d4a' : '#cbd5e1', borderRadius: '22px', transition: '0.2s' }}></span>
+                    <span style={{ position: 'absolute', height: '16px', width: '16px', left: formData.generaRecarga ? '21px' : '3px', bottom: '3px', background: '#fff', borderRadius: '50%', transition: '0.2s' }}></span>
+                  </label>
                 </div>
                 {editingCliente && formData.historial && formData.historial.length > 0 && (
                   <div style={{ marginTop:'1rem' }}>

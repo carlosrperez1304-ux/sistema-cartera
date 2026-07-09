@@ -28,6 +28,7 @@ function toFront(c) {
     suspendido:         c.suspendido      || false,
     tags:               c.tags            || [],
     historial:          c.historial       || [],
+    generaRecarga:      c.genera_recarga  || false,
     pagosRealizados: (c.pagos || []).map(p => ({
       id:           p.id,
       monto:        parseFloat(p.monto),
@@ -59,6 +60,7 @@ function toRow(body) {
     suspendido:         body.suspendido         || false,
     tags:               body.tags               || [],
     historial:          body.historial          || [],
+    genera_recarga:     body.generaRecarga      || false,
     updated_at:         new Date().toISOString(),
   };
   if (!isNaN(parsedId) && parsedId > 0) row.id = parsedId;
