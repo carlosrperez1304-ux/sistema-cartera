@@ -22,6 +22,69 @@ export default function TabRecarga({ clientes, empresaActual, showToast }) {
     setTelRecarga(localStorage.getItem('recarga_telefono') || '');
   }, [empresaId]);
 
+  const [masivoQueue, setMasivoQueue] = useState([]);
+  const [masivoActualId, setMasivoActualId] = useState(null);
+
+  useEffect(() => {
+    if (!masivoActivo) return;
+    if (masivoCountdown <= 0) {
+      enviarMasivoActual();
+      return;
+    }
+    const t = setTimeout(() => setMasivoCountdown(prev => prev - 1), 1000);
+    return () => clearTimeout(t);
+  }, [masivoActivo, masivoCountdown]);
+
+  const randomCountdown = () => Math.floor(Math.random() * (120 - 20 + 1)) + 20;
+
+  const iniciarMasivo = () => {
+    const cola = clientesRecarga.filter(c => c.contacto);
+    if (cola.length === 0) { showToast && showToast('No hay clientes con contacto para notificar', 'error'); return; }
+    setMasivoQueue(cola);
+    setMasivoIndex(0);
+    setMasivoEnviados(0);
+    setMasivoActualId(cola[0].id);
+    setMasivoCountdown(randomCountdown());
+    setMasivoActivo(true);
+  };
+
+  const enviarMasivoActual = async () => {
+    const cliente = masivoQueue[masivoIndex];
+    if (!cliente) { setMasivoActivo(false); return; }
+    const rec = getRecarga(cliente.id);
+    const comision = rec?.comision || 0;
+    const servicio = parseFloat(cliente.monto || 0);
+    const diferencia = servicio - comision;
+    let msg;
+    if (diferencia <= 0) {
+      msg = 'Saludos ' + cliente.nombre + ', le informamos que sus comisiones de recarga saldaron el pago de su servicio.';
+    } else {
+      msg = 'Saludos ' + cliente.nombre + ', su comision de recarga generada fue de RD$' + comision.toLocaleString('en-US') + '. Su diferencia a pagar por servicio es de RD$' + diferencia.toLocaleString('en-US') + '.';
+    }
+    if (window.electronAPI?.whatsappEnviarMensaje && cliente.contacto) {
+      try { await window.electronAPI.whatsappEnviarMensaje(cliente.contacto, msg); } catch {}
+    }
+    // Marcar notificado
+    if (rec) {
+      const res = await fetch('/api/recargas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: rec.id, notificado: true }) });
+      if (res.ok) { const data = await res.json(); setRecargas(prev => prev.map(r => r.id === data.id ? data : r)); }
+    } else {
+      const res = await fetch('/api/recargas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cliente_id: cliente.id, empresa_id: empresaId, mes: mesActual, comision: 0, monto_servicio: servicio, notificado: true }) });
+      if (res.ok) { const data = await res.json(); setRecargas(prev => [...prev, data]); }
+    }
+    setMasivoEnviados(prev => prev + 1);
+    const siguienteIndex = masivoIndex + 1;
+    if (siguienteIndex >= masivoQueue.length) {
+      setMasivoActivo(false);
+      setMasivoActualId(null);
+      showToast && showToast(masivoQueue.length + ' clientes notificados', 'success');
+      return;
+    }
+    setMasivoIndex(siguienteIndex);
+    setMasivoActualId(masivoQueue[siguienteIndex].id);
+    setMasivoCountdown(randomCountdown());
+  };
+
   const getRecarga = (clienteId) => recargas.find(r => r.cliente_id === clienteId);
 
   const actualizarComision = async (cliente, comision) => {
@@ -92,6 +155,9 @@ export default function TabRecarga({ clientes, empresaActual, showToast }) {
           <button onClick={enviarMontosGenerados} style={{ padding:'8px 14px', borderRadius:'9px', fontSize:'13px', fontWeight:700, border:'none', background:'#378ADD', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', gap:'5px' }}>
             <Send size={13}/> Enviar montos generados
           </button>
+          <button onClick={iniciarMasivo} disabled={masivoActivo} style={{ padding:'8px 14px', borderRadius:'9px', fontSize:'13px', fontWeight:700, border:'none', background: masivoActivo ? '#94a3b8' : '#25D366', color:'#fff', cursor: masivoActivo ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', gap:'5px' }}>
+            <Send size={13}/> {masivoActivo ? 'Notificando (' + masivoEnviados + '/' + masivoQueue.length + ')' : 'Notificar masivo'}
+          </button>
         </div>
       </div>
 
@@ -108,14 +174,22 @@ export default function TabRecarga({ clientes, empresaActual, showToast }) {
           const servicio = parseFloat(c.monto || 0);
           const diferencia = servicio - comision;
           const saldado = diferencia <= 0;
+          const enCola = masivoActivo && masivoActualId === c.id;
+          const yaNotificado = rec?.notificado;
           return (
-            <div key={c.id} style={{ background:'#fff', border:'1px solid #e0dfd8', borderRadius:'12px', padding:'14px 16px', position:'relative', overflow:'hidden', borderLeft: '3px solid ' + (saldado ? '#16a34a' : '#dc2626') }}>
+            <div key={c.id} style={{ background:'#fff', border: enCola ? '1.5px solid #25D366' : '1px solid #e0dfd8', borderRadius:'12px', padding:'14px 16px', position:'relative', overflow:'hidden', borderLeft: '3px solid ' + (yaNotificado ? '#378ADD' : saldado ? '#16a34a' : '#dc2626') }}>
+              {enCola && (
+                <div style={{ background:'#dcfce7', color:'#14532d', fontSize:'11px', fontWeight:700, borderRadius:'8px', padding:'6px 10px', marginBottom:'10px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                  <span>Proxima notificacion</span>
+                  <span>{Math.floor(masivoCountdown/60)}:{String(masivoCountdown%60).padStart(2,'0')}</span>
+                </div>
+              )}
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'10px' }}>
                 <div style={{ width:'32px', height:'32px', borderRadius:'50%', background:'#E6F1FB', color:'#185FA5', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', fontWeight:600 }}>
                   {c.nombre.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase()}
                 </div>
-                <span style={{ fontSize:'10px', padding:'2px 8px', borderRadius:'10px', fontWeight:600, background: saldado ? '#dcfce7' : '#fee2e2', color: saldado ? '#14532d' : '#991b1b' }}>
-                  {saldado ? 'Saldado' : 'Pendiente'}
+                <span style={{ fontSize:'10px', padding:'2px 8px', borderRadius:'10px', fontWeight:600, background: yaNotificado ? '#E6F1FB' : saldado ? '#dcfce7' : '#fee2e2', color: yaNotificado ? '#185FA5' : saldado ? '#14532d' : '#991b1b' }}>
+                  {yaNotificado ? 'Notificado' : saldado ? 'Saldado' : 'Pendiente'}
                 </span>
               </div>
               <div style={{ fontSize:'14px', fontWeight:600, color:'#1a1915', marginBottom:'10px' }}>{c.nombre}</div>
