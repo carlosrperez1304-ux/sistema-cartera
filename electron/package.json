@@ -1,6 +1,6 @@
 {
     "name":  "paytrack",
-    "version":  "2.1.5",
+    "version":  "2.1.6",
     "description":  "PayTrack — Gestión de Cartera",
     "author":  "7LABS",
     "main":  "main.js",

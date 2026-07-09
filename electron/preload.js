@@ -26,6 +26,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('whatsapp-status', listener);
     return () => ipcRenderer.removeListener('whatsapp-status', listener);
   },
+  whatsappStatus: () => ipcRenderer.invoke('whatsapp-status'),
+  whatsappEnviarPDF: (numero, base64, filename, mensaje) =>
+    ipcRenderer.invoke('whatsapp-enviar-pdf', { numero, base64, filename, mensaje }),
+  whatsappCerrarSesion: () => ipcRenderer.invoke('whatsapp-cerrar-sesion'),
+  onWatcherActivo: (cb) => {
+    const listener = (_, data) => cb(data);
+    ipcRenderer.on('watcher-activo', listener);
+    return () => ipcRenderer.removeListener('watcher-activo', listener);
+  },
+  onAbrirSeleccionarCarpeta: (cb) => {
+    const listener = () => cb();
+    ipcRenderer.on('abrir-seleccionar-carpeta', listener);
+    return () => ipcRenderer.removeListener('abrir-seleccionar-carpeta', listener);
+  },
 
   // ── Versión ──
   getVersion: () => ipcRenderer.invoke('get-version'),
