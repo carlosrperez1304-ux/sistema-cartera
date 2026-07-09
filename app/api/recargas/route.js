@@ -14,9 +14,9 @@ export async function GET(req) {
 
 export async function POST(req) {
   const body = await req.json();
-  const { cliente_id, empresa_id, mes, comision, monto_servicio, notificado } = body;
+  const { cliente_id, empresa_id, mes, comision, monto_servicio, notificado, aplicar_a } = body;
   if (!cliente_id || !empresa_id || !mes) return Response.json({ error: 'Faltan datos' }, { status: 400 });
-  const { data, error } = await db().from('recargas').insert({ cliente_id, empresa_id, mes, comision: comision || 0, monto_servicio: monto_servicio || 0, notificado: notificado || false }).select().single();
+  const { data, error } = await db().from('recargas').insert({ cliente_id, empresa_id, mes, comision: comision || 0, monto_servicio: monto_servicio || 0, notificado: notificado || false, aplicar_a: aplicar_a || 'servicio' }).select().single();
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json(data);
 }

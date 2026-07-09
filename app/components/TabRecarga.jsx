@@ -41,8 +41,14 @@ export default function TabRecarga({ clientes, empresaActual, showToast }) {
   const randomCountdown = () => Math.floor(Math.random() * (120 - 20 + 1)) + 20;
 
   const iniciarMasivo = () => {
-    const cola = clientesRecarga.filter(c => c.contacto);
-    if (cola.length === 0) { showToast && showToast('No hay clientes con contacto para notificar', 'error'); return; }
+    const cola = clientesRecarga.filter(c => {
+      if (!c.contacto) return false;
+      const rec = getRecarga(c.id);
+      if (rec?.aplicar_a === 'recarga') return false;
+      if ((rec?.comision || 0) <= 0) return false;
+      return true;
+    });
+    if (cola.length === 0) { showToast && showToast('No hay clientes con comision registrada para notificar', 'error'); return; }
     setMasivoQueue(cola);
     setMasivoIndex(0);
     setMasivoEnviados(0);
@@ -90,6 +96,17 @@ export default function TabRecarga({ clientes, empresaActual, showToast }) {
 
   const getRecarga = (clienteId) => recargas.find(r => r.cliente_id === clienteId);
 
+  const cambiarAplicarA = async (cliente, valor) => {
+    const existente = getRecarga(cliente.id);
+    if (existente) {
+      const res = await fetch('/api/recargas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: existente.id, aplicar_a: valor }) });
+      if (res.ok) { const data = await res.json(); setRecargas(prev => prev.map(r => r.id === data.id ? data : r)); }
+    } else {
+      const res = await fetch('/api/recargas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cliente_id: cliente.id, empresa_id: empresaId, mes: mesActual, comision: 0, monto_servicio: parseFloat(cliente.monto||0), aplicar_a: valor }) });
+      if (res.ok) { const data = await res.json(); setRecargas(prev => [...prev, data]); }
+    }
+  };
+
   const actualizarComision = async (cliente, comision) => {
     const existente = getRecarga(cliente.id);
     const montoServicio = parseFloat(cliente.monto || 0);
@@ -118,7 +135,9 @@ export default function TabRecarga({ clientes, empresaActual, showToast }) {
 
   const notificarCliente = (cliente) => {
     const rec = getRecarga(cliente.id);
+    if (rec?.aplicar_a === 'recarga') { showToast && showToast('Este cliente aplica a recarga, no se notifica', 'error'); return; }
     const comision = rec?.comision || 0;
+    if (comision <= 0) { showToast && showToast('Sin comision de recarga registrada este mes', 'error'); return; }
     const servicio = parseFloat(cliente.monto || 0);
     const diferencia = servicio - comision;
     let msg;
@@ -196,6 +215,10 @@ export default function TabRecarga({ clientes, empresaActual, showToast }) {
                 </span>
               </div>
               <div style={{ fontSize:'14px', fontWeight:600, color:'#1a1915', marginBottom:'10px' }}>{c.nombre}</div>
+              <div style={{ display:'flex', background:'#f5f4ef', borderRadius:'8px', padding:'3px', marginBottom:'10px' }}>
+                <div onClick={() => cambiarAplicarA(c, 'servicio')} style={{ flex:1, textAlign:'center', padding:'6px', fontSize:'11px', fontWeight:600, borderRadius:'6px', cursor:'pointer', background: (rec?.aplicar_a || 'servicio') === 'servicio' ? '#378ADD' : 'transparent', color: (rec?.aplicar_a || 'servicio') === 'servicio' ? '#fff' : '#9a998f' }}>Servicio</div>
+                <div onClick={() => cambiarAplicarA(c, 'recarga')} style={{ flex:1, textAlign:'center', padding:'6px', fontSize:'11px', fontWeight:600, borderRadius:'6px', cursor:'pointer', background: rec?.aplicar_a === 'recarga' ? '#378ADD' : 'transparent', color: rec?.aplicar_a === 'recarga' ? '#fff' : '#9a998f' }}>Recarga</div>
+              </div>
               <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'6px' }}>
                 <span style={{ fontSize:'11px', color:'#9a998f' }}>Servicio</span>
                 <span style={{ fontSize:'13px', color:'#1a1915' }}>RD$ {servicio.toLocaleString('en-US')}</span>
