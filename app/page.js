@@ -5592,8 +5592,8 @@ export default function App() {
           {/* MODALES */}
           {/* Modal Cliente */}
           <div className={`modal ${showModal ? 'show' : ''}`}>
-            <div className="modal-content" style={{ maxWidth: '620px', width: '95vw', padding: 0, borderRadius: '16px', overflow: 'hidden' }}>
-              <div style={{ background: '#f8fafc', padding: '1.25rem 1.75rem', borderBottom: '1px solid #e2e8f0' }}>
+            <div className="modal-content" style={{ maxWidth: '620px', width: '95vw', padding: 0, borderRadius: '16px', overflow: 'hidden', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ background: '#f8fafc', padding: '1.25rem 1.75rem', borderBottom: '1px solid #e2e8f0', flexShrink: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem' }}>
                     <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#E6F1FB', color: '#185FA5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '17px', fontWeight: 700, flexShrink: 0 }}>
@@ -5629,7 +5629,7 @@ export default function App() {
                   </div>
                 )}
               </div>
-              <form onSubmit={guardarCliente} style={{ display: 'flex', flexDirection: 'column', maxHeight: '78vh' }}>
+              <form onSubmit={guardarCliente} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
                 <div style={{ padding: '1.5rem 1.75rem', display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto', flex: 1 }}>
                 <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem 1.1rem' }}>
                 <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>Información del cliente</div>
