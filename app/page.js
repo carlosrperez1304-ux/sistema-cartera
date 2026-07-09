@@ -5593,14 +5593,45 @@ export default function App() {
           {/* Modal Cliente */}
           <div className={`modal ${showModal ? 'show' : ''}`}>
             <div className="modal-content" style={{ maxWidth: '620px', width: '95vw', padding: 0, borderRadius: '16px', overflow: 'hidden' }}>
-              <div style={{ background: 'linear-gradient(135deg, #1e2d4a 0%, #2d4170 100%)', padding: '1.25rem 1.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#fff', display:'flex', alignItems:'center', gap:'0.4rem' }}>{editingCliente ? <><Pencil size={15}/> Editar Cliente</> : <><Plus size={15}/> Nuevo Cliente</>}</h2>
-                  {editingCliente && <div style={{ fontSize: '0.75rem', color: '#93c5fd', marginTop: '0.2rem' }}>ID #{formData.id} · Código {formData.codigoCliente || '—'}</div>}
+              <div style={{ background: '#f8fafc', padding: '1.25rem 1.75rem', borderBottom: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem' }}>
+                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#E6F1FB', color: '#185FA5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '17px', fontWeight: 700, flexShrink: 0 }}>
+                      {editingCliente ? (formData.nombre || '?').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase() : <UserPlus size={20}/>}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#1a1915' }}>{editingCliente ? (formData.nombre || 'Editar Cliente') : 'Nuevo Cliente'}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.15rem' }}>{editingCliente ? `ID #${formData.id} · Código ${formData.codigoCliente || '—'}` : 'Se agrega con estado "No Generaron"'}</div>
+                    </div>
+                  </div>
+                  <button className="close-btn" onClick={cerrarModal} style={{ color: '#64748b', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
                 </div>
-                <button className="close-btn" onClick={cerrarModal} style={{ color: '#fff', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                {editingCliente && (
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '0.85rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.72rem', padding: '3px 10px', borderRadius: '20px', fontWeight: 700, background: '#fef3c7', color: '#92400e' }}>{formData.estado}</span>
+                    {(formData.tags || []).map(t => <span key={t} style={{ fontSize: '0.68rem', padding: '2px 9px', borderRadius: '20px', fontWeight: 600, background: '#fff', color: '#64748b', border: '1px solid #e2e8f0' }}>{t}</span>)}
+                  </div>
+                )}
+                {editingCliente && (
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '0.9rem' }}>
+                    <div style={{ flex: 1, background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '8px 12px' }}>
+                      <div style={{ fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '2px' }}>Monto</div>
+                      <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1a1915' }}>${parseFloat(formData.monto || 0).toLocaleString('en-US')}</div>
+                    </div>
+                    <div style={{ flex: 1, background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '8px 12px' }}>
+                      <div style={{ fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '2px' }}>Créditos</div>
+                      <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1a1915' }}>{creditos.filter(cr => cr.cliente === formData.nombre).length} activo(s)</div>
+                    </div>
+                    <div style={{ flex: 1, background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '8px 12px' }}>
+                      <div style={{ fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '2px' }}>Historial</div>
+                      <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1a1915' }}>{(formData.historial || []).length} evento(s)</div>
+                    </div>
+                  </div>
+                )}
               </div>
               <form onSubmit={guardarCliente} style={{ padding: '1.5rem 1.75rem', display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '75vh', overflowY: 'auto' }}>
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem 1.1rem' }}>
+                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>Información del cliente</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Código de Cliente</label>
@@ -5629,7 +5660,7 @@ export default function App() {
                   )}
                 </div>
                 {editingCliente && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Mes *</label>
                     <select value={formData.mes} onChange={(e) => setFormData({ ...formData, mes: e.target.value })} required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', background: '#fff', boxSizing: 'border-box' }}>
@@ -5648,6 +5679,7 @@ export default function App() {
                   </div>
                 </div>
                 )}
+                </div>
                 <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '10px', padding: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                     <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b' }}>Monto</label>
