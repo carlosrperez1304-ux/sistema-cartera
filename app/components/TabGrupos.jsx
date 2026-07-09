@@ -176,6 +176,13 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
   };
 
   useEffect(() => {
+    const sumaTau = grupos.reduce((s, g) => s + (g.tau_cantidad || 0), 0);
+    const sumaPos = grupos.reduce((s, g) => s + (g.pos_cantidad || 0), 0);
+    setTauCantidad(sumaTau);
+    setPosCantidad(sumaPos);
+  }, [grupos]);
+
+  useEffect(() => {
     cargar();
     cargarFactura();
     cargarVinculos();
@@ -505,7 +512,7 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
                 <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
                   <div>
                     <div style={{ fontSize:'10px', color:'#9a998f', marginBottom:'3px' }}>Cantidad</div>
-                    <input type="number" value={tauCantidad} onChange={e => setTauCantidad(e.target.value)} style={{ width:'100%', padding:'6px 8px', border:'1px solid #e0dfd8', borderRadius:'6px', fontSize:'13px', fontWeight:600, outline:'none' }}/>
+                    <input type="number" value={tauCantidad} readOnly title="Se calcula automaticamente segun los grupos" style={{ width:'100%', padding:'6px 8px', border:'1px solid #e0dfd8', borderRadius:'6px', fontSize:'13px', fontWeight:600, outline:'none', background:'#f5f4ef', color:'#6b6a62', cursor:'not-allowed' }}/>
                   </div>
                   <div>
                     <div style={{ fontSize:'10px', color:'#9a998f', marginBottom:'3px' }}>Precio (RD$)</div>
@@ -522,7 +529,7 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
                 <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
                   <div>
                     <div style={{ fontSize:'10px', color:'#9a998f', marginBottom:'3px' }}>Cantidad</div>
-                    <input type="number" value={posCantidad} onChange={e => setPosCantidad(e.target.value)} style={{ width:'100%', padding:'6px 8px', border:'1px solid #e0dfd8', borderRadius:'6px', fontSize:'13px', fontWeight:600, outline:'none' }}/>
+                    <input type="number" value={posCantidad} readOnly title="Se calcula automaticamente segun los grupos" style={{ width:'100%', padding:'6px 8px', border:'1px solid #e0dfd8', borderRadius:'6px', fontSize:'13px', fontWeight:600, outline:'none', background:'#f5f4ef', color:'#6b6a62', cursor:'not-allowed' }}/>
                   </div>
                   <div>
                     <div style={{ fontSize:'10px', color:'#9a998f', marginBottom:'3px' }}>Precio (RD$)</div>
