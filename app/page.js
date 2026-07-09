@@ -1501,6 +1501,7 @@ export default function App() {
       creado_por: currentUser || 'SISTEMA',
     }) }).catch(() => null);
     fetch(`/api/clientes/${clienteActualizado.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(clienteActualizado) }).catch(() => null);
+    console.log('[DEBUG PAGO]', { currentUser, contacto: pagoClienteTarget.contacto, tieneAPI: !!window.electronAPI?.whatsappEnviarMensaje });
     if (currentUser === 'A-CPEREZ' && pagoClienteTarget.contacto && window.electronAPI?.whatsappEnviarMensaje) {
       const msgPago = 'Muchas gracias ' + pagoClienteTarget.nombre + ' por su pago.';
       window.electronAPI.whatsappEnviarMensaje(pagoClienteTarget.contacto, msgPago).catch(() => null);
