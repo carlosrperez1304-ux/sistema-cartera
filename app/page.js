@@ -3313,6 +3313,9 @@ export default function App() {
                 {esAdmin && <button onClick={() => { setShowTopbarMenu(false); setShowSettingsPanel(true); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'var(--text)', borderBottom:'1px solid var(--border)' }}>
                   <Settings size={14}/> Configuración
                 </button>}
+                {esAdmin && <button onClick={() => { setShowTopbarMenu(false); window.open('/api/backup-completo', '_blank'); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'var(--text)', borderBottom:'1px solid var(--border)' }}>
+                  <Download size={14}/> Backup Completo (SQL)
+                </button>}
                 <button onClick={() => { setShowTopbarMenu(false); abrirCargaMasiva(); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'var(--text)', borderBottom:'1px solid var(--border)' }}>
                   <Upload size={14}/> Carga Masiva PDF
                 </button>
@@ -3610,7 +3613,6 @@ export default function App() {
             {tienePermiso('ver_reportes_pdf') && <div className="sidebar-item" onClick={exportarPDF}><span className="icon"><FileText size={14}/></span> PDF — Cartera</div>}
             {tienePermiso('ver_reportes_pdf') && <div className="sidebar-item" onClick={generarResumenPDF}><span className="icon"><FileText size={14}/></span> Resumen PDF</div>}
             <div className="sidebar-item" onClick={backupJSON}><span className="icon"><Download size={14}/></span> Backup JSON</div>
-            {esAdmin && <div className="sidebar-item" onClick={() => window.open('/api/backup-completo', '_blank')}><span className="icon"><Download size={14}/></span> Backup Completo (SQL)</div>}
             <div className="sidebar-item" onClick={() => setShowImportModal(true)}><span className="icon"><Upload size={14}/></span> Importar Excel</div>
             </>)}
           </div>
