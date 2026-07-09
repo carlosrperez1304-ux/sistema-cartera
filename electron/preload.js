@@ -16,6 +16,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('send-pdf-whatsapp', { base64, filename, phone, message }),
   whatsappEnviarMensaje: (numero, mensaje) =>
     ipcRenderer.invoke('whatsapp-enviar-mensaje', { numero, mensaje }),
+  onWhatsappQR: (cb) => {
+    const listener = (_, qr) => cb(qr);
+    ipcRenderer.on('whatsapp-qr', listener);
+    return () => ipcRenderer.removeListener('whatsapp-qr', listener);
+  },
+  onWhatsappStatus: (cb) => {
+    const listener = (_, status) => cb(status);
+    ipcRenderer.on('whatsapp-status', listener);
+    return () => ipcRenderer.removeListener('whatsapp-status', listener);
+  },
 
   // ── Versión ──
   getVersion: () => ipcRenderer.invoke('get-version'),
