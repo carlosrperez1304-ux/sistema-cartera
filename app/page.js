@@ -5629,7 +5629,8 @@ export default function App() {
                   </div>
                 )}
               </div>
-              <form onSubmit={guardarCliente} style={{ padding: '1.5rem 1.75rem', display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '75vh', overflowY: 'auto' }}>
+              <form onSubmit={guardarCliente} style={{ display: 'flex', flexDirection: 'column', maxHeight: '78vh' }}>
+                <div style={{ padding: '1.5rem 1.75rem', display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto', flex: 1 }}>
                 <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem 1.1rem' }}>
                 <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>Información del cliente</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -5745,7 +5746,8 @@ export default function App() {
                     </div>
                   </div>
                 )}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid #e2e8f0', marginTop: '0.5rem' }}>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', padding: '1rem 1.75rem', borderTop: '1px solid #e2e8f0', background: '#fff', flexShrink: 0 }}>
                   <button type="button" onClick={cerrarModal} style={{ padding: '0.65rem 1.5rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#64748b', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer' }}>Cancelar</button>
                   <button type="submit" style={{ padding: '0.65rem 1.75rem', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #1e2d4a, #2d4170)', color: '#fff', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', display:'flex', alignItems:'center', gap:'0.4rem' }}>{editingCliente ? <><Save size={14}/> Actualizar</> : <><Plus size={14}/> Guardar</>}</button>
                 </div>
