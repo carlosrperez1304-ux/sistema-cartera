@@ -1,0 +1,159 @@
+'use client';
+import { useState, useEffect } from 'react';
+import { Phone, Send } from 'lucide-react';
+
+export default function TabRecarga({ clientes, empresaActual, showToast }) {
+  const [recargas, setRecargas] = useState([]);
+  const [telRecarga, setTelRecarga] = useState('');
+  const [showConfigTel, setShowConfigTel] = useState(false);
+  const empresaId = empresaActual?.id;
+  const mesActual = new Date().toLocaleDateString('es-DO', { month: 'long', year: 'numeric' });
+
+  const clientesRecarga = clientes.filter(c => c.generaRecarga);
+
+  const cargar = async () => {
+    if (!empresaId) return;
+    const res = await fetch('/api/recargas?empresa_id=' + empresaId + '&mes=' + encodeURIComponent(mesActual));
+    if (res.ok) setRecargas(await res.json());
+  };
+
+  useEffect(() => {
+    cargar();
+    setTelRecarga(localStorage.getItem('recarga_telefono') || '');
+  }, [empresaId]);
+
+  const getRecarga = (clienteId) => recargas.find(r => r.cliente_id === clienteId);
+
+  const actualizarComision = async (cliente, comision) => {
+    const existente = getRecarga(cliente.id);
+    const montoServicio = parseFloat(cliente.monto || 0);
+    if (existente) {
+      const res = await fetch('/api/recargas', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: existente.id, comision, monto_servicio: montoServicio })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRecargas(prev => prev.map(r => r.id === data.id ? data : r));
+      }
+    } else {
+      const res = await fetch('/api/recargas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cliente_id: cliente.id, empresa_id: empresaId, mes: mesActual, comision, monto_servicio: montoServicio })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRecargas(prev => [...prev, data]);
+      }
+    }
+  };
+
+  const notificarCliente = (cliente) => {
+    const rec = getRecarga(cliente.id);
+    const comision = rec?.comision || 0;
+    const servicio = parseFloat(cliente.monto || 0);
+    const diferencia = servicio - comision;
+    let msg;
+    if (diferencia <= 0) {
+      msg = 'Saludos ' + cliente.nombre + ', le informamos que sus comisiones de recarga saldaron el pago de su servicio.';
+    } else {
+      msg = 'Saludos ' + cliente.nombre + ', su comision de recarga generada fue de RD$' + comision.toLocaleString('en-US') + '. Su diferencia a pagar por servicio es de RD$' + diferencia.toLocaleString('en-US') + '.';
+    }
+    if (window.electronAPI?.whatsappEnviarMensaje && cliente.contacto) {
+      window.electronAPI.whatsappEnviarMensaje(cliente.contacto, msg).then(() => showToast && showToast('Mensaje enviado', 'success')).catch(() => showToast && showToast('Error al enviar', 'error'));
+    } else {
+      showToast && showToast('Sin contacto o WhatsApp no conectado', 'error');
+    }
+  };
+
+  const enviarMontosGenerados = () => {
+    if (!telRecarga) { setShowConfigTel(true); return; }
+    let msg = 'Saludos, buenas tardes.\n\nEstos son los montos de servicio generado este mes:\n\n';
+    clientesRecarga.forEach(c => {
+      msg += '• ' + c.nombre + ': RD$' + parseFloat(c.monto || 0).toLocaleString('en-US') + '\n';
+    });
+    const num = telRecarga.replace(/\D/g, '');
+    window.open('whatsapp://send?phone=' + num + '&text=' + encodeURIComponent(msg), '_blank');
+  };
+
+  return (
+    <div>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.25rem' }}>
+        <div>
+          <div style={{ fontSize:'22px', fontWeight:700, color:'#1a1915', letterSpacing:'-0.03em' }}>Recarga</div>
+          <div style={{ fontSize:'13px', color:'#9a998f', marginTop:'3px' }}>{mesActual} · {clientesRecarga.length} clientes activos</div>
+        </div>
+        <div style={{ display:'flex', gap:'8px' }}>
+          <button onClick={() => setShowConfigTel(true)} style={{ padding:'8px 14px', borderRadius:'9px', fontSize:'12px', fontWeight:600, border:'1px solid #e0dfd8', background:'#faf9f5', color:'#6b6a62', cursor:'pointer', display:'flex', alignItems:'center', gap:'5px' }}>
+            <Phone size={13}/> Tel. Recarga
+          </button>
+          <button onClick={enviarMontosGenerados} style={{ padding:'8px 14px', borderRadius:'9px', fontSize:'13px', fontWeight:700, border:'none', background:'#378ADD', color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', gap:'5px' }}>
+            <Send size={13}/> Enviar montos generados
+          </button>
+        </div>
+      </div>
+
+      {clientesRecarga.length === 0 && (
+        <div style={{ textAlign:'center', color:'#9a998f', padding:'3rem', background:'#fff', borderRadius:'12px', border:'1px solid #e0dfd8' }}>
+          No hay clientes marcados para recarga. Actívalo en Cartera al editar un cliente.
+        </div>
+      )}
+
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(260px, 1fr))', gap:'12px' }}>
+        {clientesRecarga.map(c => {
+          const rec = getRecarga(c.id);
+          const comision = rec?.comision || 0;
+          const servicio = parseFloat(c.monto || 0);
+          const diferencia = servicio - comision;
+          const saldado = diferencia <= 0;
+          return (
+            <div key={c.id} style={{ background:'#fff', border:'1px solid #e0dfd8', borderRadius:'12px', padding:'14px 16px', position:'relative', overflow:'hidden', borderLeft: '3px solid ' + (saldado ? '#16a34a' : '#dc2626') }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'10px' }}>
+                <div style={{ width:'32px', height:'32px', borderRadius:'50%', background:'#E6F1FB', color:'#185FA5', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', fontWeight:600 }}>
+                  {c.nombre.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase()}
+                </div>
+                <span style={{ fontSize:'10px', padding:'2px 8px', borderRadius:'10px', fontWeight:600, background: saldado ? '#dcfce7' : '#fee2e2', color: saldado ? '#14532d' : '#991b1b' }}>
+                  {saldado ? 'Saldado' : 'Pendiente'}
+                </span>
+              </div>
+              <div style={{ fontSize:'14px', fontWeight:600, color:'#1a1915', marginBottom:'10px' }}>{c.nombre}</div>
+              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'6px' }}>
+                <span style={{ fontSize:'11px', color:'#9a998f' }}>Servicio</span>
+                <span style={{ fontSize:'13px', color:'#1a1915' }}>RD$ {servicio.toLocaleString('en-US')}</span>
+              </div>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'6px' }}>
+                <span style={{ fontSize:'11px', color:'#9a998f' }}>Comision recarga</span>
+                <input type="number" defaultValue={comision} onBlur={e => actualizarComision(c, Number(e.target.value))} style={{ width:'80px', padding:'4px 8px', border:'1px solid #e0dfd8', borderRadius:'6px', fontSize:'12px', textAlign:'right' }} />
+              </div>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:'8px', marginTop:'4px', borderTop:'1px solid #f5f4ef' }}>
+                <span style={{ fontSize:'11px', color:'#9a998f' }}>Diferencia a pagar</span>
+                <span style={{ fontSize:'16px', fontWeight:700, color: saldado ? '#16a34a' : '#dc2626' }}>RD$ {Math.max(0, diferencia).toLocaleString('en-US')}</span>
+              </div>
+              <button onClick={() => notificarCliente(c)} style={{ width:'100%', marginTop:'10px', background:'none', border:'1px solid #e0dfd8', borderRadius:'8px', padding:'6px', fontSize:'12px', color:'#378ADD', cursor:'pointer', fontWeight:600 }}>
+                Notificar cliente
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {showConfigTel && (
+        <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowConfigTel(false); }}>
+          <div className="modal-content" style={{ maxWidth: '340px' }}>
+            <h2>Telefono Departamento Recarga</h2>
+            <div className="form-group">
+              <label>Numero de WhatsApp</label>
+              <input type="tel" value={telRecarga} onChange={e => setTelRecarga(e.target.value)} placeholder="Ej: 18091234567"/>
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={() => setShowConfigTel(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={() => { localStorage.setItem('recarga_telefono', telRecarga); setShowConfigTel(false); if(showToast) showToast('Telefono guardado', 'success'); }}>Guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
