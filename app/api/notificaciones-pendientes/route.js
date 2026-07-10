@@ -5,6 +5,7 @@ export async function GET(req) {
     .from('notificaciones_pendientes')
     .select('*')
     .eq('enviado', false)
+    .lte('programada_para', new Date().toISOString())
     .order('created_at', { ascending: true });
 
   if (error) return Response.json([]);
