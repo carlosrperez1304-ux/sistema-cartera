@@ -33,8 +33,10 @@ export default function TabRecarga({ clientes, empresaActual, showToast }) {
 
   useEffect(() => {
     if (!masivoActivo || !masivoTargetTime) return;
+    console.log('[Recarga Masivo] Interval iniciado, target:', masivoTargetTime);
     const tick = setInterval(() => {
       const restante = Math.ceil((masivoTargetTime - Date.now()) / 1000);
+      console.log('[Recarga Masivo] Tick, restante:', restante);
       if (restante <= 0) {
         if (enviandoRef.current) return;
         enviandoRef.current = true;
