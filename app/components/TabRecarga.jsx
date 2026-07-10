@@ -64,7 +64,9 @@ export default function TabRecarga({ clientes, empresaActual, showToast }) {
     setMasivoIndex(0);
     setMasivoEnviados(0);
     setMasivoActualId(cola[0].id);
-    setMasivoCountdown(randomCountdown());
+    const secsIniciales = randomCountdown();
+    setMasivoCountdown(secsIniciales);
+    setMasivoTargetTime(Date.now() + secsIniciales * 1000);
     setMasivoActivo(true);
   };
 
@@ -110,7 +112,9 @@ export default function TabRecarga({ clientes, empresaActual, showToast }) {
     }
     setMasivoIndex(siguienteIndex);
     setMasivoActualId(masivoQueue[siguienteIndex].id);
-    setMasivoCountdown(randomCountdown());
+    const secsSig = randomCountdown();
+    setMasivoCountdown(secsSig);
+    setMasivoTargetTime(Date.now() + secsSig * 1000);
   };
 
   const getRecarga = (clienteId) => recargas.find(r => r.cliente_id === clienteId);
