@@ -36,6 +36,11 @@ export async function POST(req) {
       return Response.json({ ok: false, mensaje: 'No se encontro cliente con nombre: ' + nombreCliente });
     }
 
+    const montoPagado = parseFloat(monto);
+    const montoFactura = parseFloat(match.monto || 0);
+    const restante = montoFactura - montoPagado;
+    const esPagoCompleto = restante <= 0.01;
+
     const historial = [...(match.historial || []), {
       fecha: new Date().toISOString(),
       accion: 'Marco Pagado (via Keeper)',
@@ -55,11 +60,17 @@ export async function POST(req) {
     if (updateError) return Response.json({ error: updateError.message }, { status: 500 });
 
     if (match.contacto) {
+      let mensajeNotif;
+      if (esPagoCompleto) {
+        mensajeNotif = 'Muchas gracias por su pago.';
+      } else {
+        mensajeNotif = 'Muchas gracias por su pago. Recordando que su factura fue de $' + montoFactura.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' y su pago fue de $' + montoPagado.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ', el restante a pagar es de $' + restante.toLocaleString('en-US', { minimumFractionDigits: 2 }) + '.';
+      }
       await db().from('notificaciones_pendientes').insert({
         cliente_id: match.id,
         contacto: match.contacto,
         nombre: match.nombre,
-        mensaje: 'Muchas gracias por su pago.',
+        mensaje: mensajeNotif,
         enviado: false,
       });
     }
