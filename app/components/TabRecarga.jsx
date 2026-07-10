@@ -67,6 +67,7 @@ export default function TabRecarga({ clientes, empresaActual, showToast }) {
   };
 
   const enviarMasivoActual = async () => {
+    console.log('[Recarga Masivo] Ejecutando envio para index', masivoIndex);
     const cliente = masivoQueue[masivoIndex];
     if (!cliente) { setMasivoActivo(false); return; }
     const rec = getRecarga(cliente.id);
@@ -80,7 +81,14 @@ export default function TabRecarga({ clientes, empresaActual, showToast }) {
       msg = 'Saludos ' + cliente.nombre + ', su comision de recarga generada fue de RD$' + comision.toLocaleString('en-US') + '. Su diferencia a pagar por servicio es de RD$' + diferencia.toLocaleString('en-US') + '.';
     }
     if (window.electronAPI?.whatsappEnviarMensaje && cliente.contacto) {
-      try { await window.electronAPI.whatsappEnviarMensaje(cliente.contacto, msg); } catch {}
+      try {
+        await Promise.race([
+          window.electronAPI.whatsappEnviarMensaje(cliente.contacto, msg),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 15000))
+        ]);
+      } catch (err) {
+        console.warn('[Recarga Masivo] Error o timeout enviando a', cliente.nombre, err);
+      }
     }
     // Marcar notificado
     if (rec) {
@@ -234,7 +242,7 @@ export default function TabRecarga({ clientes, empresaActual, showToast }) {
               </div>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'6px' }}>
                 <span style={{ fontSize:'11px', color:'#9a998f' }}>Comision recarga</span>
-                <input type="number" defaultValue={comision} onBlur={e => actualizarComision(c, Number(e.target.value))} style={{ width:'80px', padding:'4px 8px', border:'1px solid #e0dfd8', borderRadius:'6px', fontSize:'12px', textAlign:'right' }} />
+                <input key={c.id + "-" + comision} type="number" defaultValue={comision} onBlur={e => actualizarComision(c, Number(e.target.value))} style={{ width:'80px', padding:'4px 8px', border:'1px solid #e0dfd8', borderRadius:'6px', fontSize:'12px', textAlign:'right' }} />
               </div>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:'8px', marginTop:'4px', borderTop:'1px solid #f5f4ef' }}>
                 <span style={{ fontSize:'11px', color:'#9a998f' }}>Diferencia a pagar</span>
