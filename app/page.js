@@ -159,6 +159,28 @@ export default function App() {
       if (s?.conectado) setWhatsappConectado(true);
     }).catch(() => {});
   }, []);
+  // Revisar notificaciones pendientes (de Keeper) cada 30 segundos
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.electronAPI?.whatsappEnviarMensaje) return;
+    const revisar = async () => {
+      try {
+        const res = await fetch('/api/notificaciones-pendientes');
+        if (!res.ok) return;
+        const pendientes = await res.json();
+        for (const n of pendientes) {
+          if (n.contacto) {
+            try {
+              await window.electronAPI.whatsappEnviarMensaje(n.contacto, n.mensaje);
+              await fetch('/api/notificaciones-pendientes', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: n.id }) });
+            } catch {}
+          }
+        }
+      } catch {}
+    };
+    revisar();
+    const interval = setInterval(revisar, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const esAdmin = session
     ? (session.user?.rol === 'admin')

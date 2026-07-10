@@ -54,6 +54,16 @@ export async function POST(req) {
 
     if (updateError) return Response.json({ error: updateError.message }, { status: 500 });
 
+    if (match.contacto) {
+      await db().from('notificaciones_pendientes').insert({
+        cliente_id: match.id,
+        contacto: match.contacto,
+        nombre: match.nombre,
+        mensaje: 'Muchas gracias por su pago.',
+        enviado: false,
+      });
+    }
+
     return Response.json({ ok: true, mensaje: 'Cliente ' + match.nombre + ' marcado como pagado', clienteId: match.id });
   } catch (e) {
     return Response.json({ error: e.message }, { status: 500 });
