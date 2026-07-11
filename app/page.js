@@ -5966,80 +5966,66 @@ export default function App() {
           {showHistorialPagosModal && historialPagosCliente && (() => {
             const pagos = historialPagosCliente.pagosRealizados || [];
             const total = parseFloat(historialPagosCliente.monto) || 0;
-            const totalPagado = pagos.reduce((s, p) => s + (parseFloat(p.monto) || 0), 0);
-            const pendiente = Math.max(total - totalPagado, 0);
-            let balance = 0;
+            const pagado = pagos.reduce((s, p) => s + (parseFloat(p.monto) || 0), 0);
+            const pendiente = Math.max(0, total - pagado);
+            const iniciales = (historialPagosCliente.nombre || '?').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
             return (
-              <div className="modal show">
-                <div className="modal-content" style={{ maxWidth: '780px', width: '95vw', padding: 0, borderRadius: '12px', overflow: 'hidden' }}>
-                  <div className="modal-header" style={{ background: '#1e2d4a', color: '#fff', padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>Balance {historialPagosCliente.nombre}</h2>
-                    <button className="close-btn" style={{ color: '#fff', fontSize: '1.4rem', background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setShowHistorialPagosModal(false)}>×</button>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '0.6rem', padding: '1rem 1.5rem 0.5rem' }}>
-                    <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '8px', padding: '0.7rem', textAlign: 'center' }}>
-                      <div style={{ fontSize: '0.65rem', color: '#0369a1', fontWeight: 700, textTransform: 'uppercase' }}>Total</div>
-                      <div style={{ fontWeight: 800, fontFamily: 'monospace', color: '#0284c7' }}>${total.toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
+              <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowHistorialPagosModal(false); }}>
+                <div className="modal-content" style={{ maxWidth: '440px', width: '95vw', padding: 0, borderRadius: '16px', overflow: 'hidden' }}>
+                  <div style={{ padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#E6F1FB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '14px', color: '#185FA5', flexShrink: 0 }}>{iniciales}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: '16px', color: '#1a1915' }}>{historialPagosCliente.nombre}</div>
+                      <div style={{ fontSize: '13px', color: '#9a998f' }}>Historial de pagos</div>
                     </div>
-                    <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '8px', padding: '0.7rem', textAlign: 'center' }}>
-                      <div style={{ fontSize: '0.65rem', color: '#065f46', fontWeight: 700, textTransform: 'uppercase' }}>Pagado</div>
-                      <div style={{ fontWeight: 800, fontFamily: 'monospace', color: '#059669' }}>${totalPagado.toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
+                    <button onClick={() => setShowHistorialPagosModal(false)} style={{ background: '#f8fafc', border: 'none', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', fontSize: '1.1rem', color: '#64748b' }}>×</button>
+                  </div>
+
+                  <div style={{ padding: '0 1.5rem 1rem', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                    <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '10px' }}>
+                      <div style={{ fontSize: '11px', color: '#9a998f' }}>Total</div>
+                      <div style={{ fontSize: '17px', fontWeight: 700, color: '#1a1915' }}>${total.toLocaleString('en-US')}</div>
                     </div>
-                    <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '8px', padding: '0.7rem', textAlign: 'center' }}>
-                      <div style={{ fontSize: '0.65rem', color: '#c2410c', fontWeight: 700, textTransform: 'uppercase' }}>Pendiente</div>
-                      <div style={{ fontWeight: 800, fontFamily: 'monospace', color: '#ea580c' }}>${pendiente.toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
+                    <div style={{ background: '#dcfce7', borderRadius: '10px', padding: '10px' }}>
+                      <div style={{ fontSize: '11px', color: '#16a34a' }}>Pagado</div>
+                      <div style={{ fontSize: '17px', fontWeight: 700, color: '#16a34a' }}>${pagado.toLocaleString('en-US')}</div>
+                    </div>
+                    <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '10px' }}>
+                      <div style={{ fontSize: '11px', color: '#9a998f' }}>Pendiente</div>
+                      <div style={{ fontSize: '17px', fontWeight: 700, color: '#1a1915' }}>${pendiente.toLocaleString('en-US')}</div>
                     </div>
                   </div>
-                  <div style={{ padding: '0.75rem 1.5rem', overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                      <thead>
-                        <tr style={{ background: '#1e2d4a', color: '#fff' }}>
-                          <th style={{ padding: '0.6rem 0.8rem', textAlign: 'left', fontWeight: 600 }}>Fecha</th>
-                          <th style={{ padding: '0.6rem 0.8rem', textAlign: 'left', fontWeight: 600 }}>Género</th>
-                          <th style={{ padding: '0.6rem 0.8rem', textAlign: 'left', fontWeight: 600 }}>Concepto</th>
-                          <th style={{ padding: '0.6rem 0.8rem', textAlign: 'center', fontWeight: 600 }}>Cantidad</th>
-                          <th style={{ padding: '0.6rem 0.8rem', textAlign: 'right', fontWeight: 600 }}>Monto</th>
-                          <th style={{ padding: '0.6rem 0.8rem', textAlign: 'right', fontWeight: 600 }}>Balance</th>
-                          <th style={{ padding: '0.6rem 0.8rem', textAlign: 'center', fontWeight: 600 }}>Recibo</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {pagos.length === 0 ? (
-                          <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2.5rem', color: '#94a3b8' }}>
-                            <div style={{ marginBottom: '0.5rem' }}><DollarSign size={32}/></div>
-                            <p>No hay pagos registrados aún.</p>
-                          </td></tr>
-                        ) : (
-                          pagos.map((pago, i) => {
-                            const monto = parseFloat(pago.monto) || 0;
-                            balance -= monto;
-                            return (
-                              <tr key={pago.id || i} style={{ background: i % 2 === 0 ? '#fff' : '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                                <td style={{ padding: '0.6rem 0.8rem', color: '#64748b' }}>{pago.fechaFormato || new Date(pago.fecha).toLocaleDateString('es-DO')}</td>
-                                <td style={{ padding: '0.6rem 0.8rem', color: '#059669', fontWeight: 600 }}>Pago</td>
-                                <td style={{ padding: '0.6rem 0.8rem', color: '#1e2d4a' }}>{pago.descripcion || pago.concepto || `Pago #${i + 1}`}</td>
-                                <td style={{ padding: '0.6rem 0.8rem', textAlign: 'center', color: '#1e2d4a' }}>1</td>
-                                <td style={{ padding: '0.6rem 0.8rem', textAlign: 'right', color: '#059669', fontWeight: 700, fontFamily: 'monospace' }}>-${monto.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                                <td style={{ padding: '0.6rem 0.8rem', textAlign: 'right', fontWeight: 700, fontFamily: 'monospace', color: balance < 0 ? '#dc2626' : '#059669' }}>${balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                                <td style={{ padding: '0.6rem 0.8rem', textAlign: 'center' }}>
-                                  <button onClick={() => generarReciboPDF(historialPagosCliente, pago)} title="Descargar recibo" style={{ padding: '0.2rem 0.5rem', borderRadius: '6px', border: '1px solid #bae6fd', background: '#f0f9ff', color: '#0284c7', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}><FileText size={12}/></button>
-                                </td>
-                              </tr>
-                            );
-                          })
-                        )}
-                      </tbody>
-                    </table>
+
+                  <div style={{ padding: '0 1.5rem', maxHeight: '320px', overflowY: 'auto' }}>
+                    <div style={{ fontSize: '12px', color: '#9a998f', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Clock size={13}/> Movimientos
+                    </div>
+                    {pagos.length === 0 && <div style={{ textAlign: 'center', color: '#9a998f', fontSize: '13px', padding: '1rem 0' }}>Sin pagos registrados</div>}
+                    {pagos.map((pago, i) => (
+                      <div key={pago.id || i} style={{ display: 'flex', gap: '12px', padding: '10px 0', borderTop: '0.5px solid #f1f5f9' }}>
+                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <CheckCircle size={16} color="#16a34a"/>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: '14px', color: '#1a1915' }}>{pago.mesFactura || 'Pago'}</span>
+                            <span style={{ fontSize: '14px', fontWeight: 700, color: '#16a34a' }}>+${parseFloat(pago.monto||0).toLocaleString('en-US')}</span>
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#9a998f' }}>{pago.fechaFormato || new Date(pago.fecha).toLocaleDateString('es-DO')}{pago.banco ? ' · ' + pago.banco : ''}</div>
+                        </div>
+                        <button onClick={() => generarReciboPDF(historialPagosCliente, pago)} title="Descargar recibo" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 0, alignSelf: 'center' }}><FileText size={14}/></button>
+                      </div>
+                    ))}
                   </div>
-                  <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', background: '#f8fafc' }}>
-                    <button className="btn btn-secondary" onClick={() => setShowHistorialPagosModal(false)}>Cerrar</button>
-                    <button className="btn btn-success" onClick={() => { setShowHistorialPagosModal(false); setPagoClienteTarget(historialPagosCliente); setShowPagoModal(true); }}><DollarSign size={13}/> Agregar Pago</button>
+
+                  <div style={{ padding: '1.25rem 1.5rem', display: 'flex', gap: '10px' }}>
+                    <button onClick={() => setShowHistorialPagosModal(false)} style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#64748b', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>Cerrar</button>
+                    <button onClick={() => { setShowHistorialPagosModal(false); setPagoClienteTarget(historialPagosCliente); setShowPagoModal(true); }} style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: 'none', background: '#1e2d4a', color: '#fff', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}><DollarSign size={13}/> Agregar Pago</button>
                   </div>
                 </div>
               </div>
             );
           })()}
-
           {/* Modal Pago Cliente */}
           {showPagoModal && pagoClienteTarget && (() => { const s = calcularSaldoCliente(pagoClienteTarget); return (
             <div className="modal show">
