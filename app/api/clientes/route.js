@@ -35,6 +35,8 @@ function toFront(c) {
       fecha:        p.fecha,
       fechaFormato: p.fecha_formato || '',
       nota:         p.nota || '',
+      mesFactura:   p.mes_factura || '',
+      banco:        p.banco || '',
     })),
   };
 }

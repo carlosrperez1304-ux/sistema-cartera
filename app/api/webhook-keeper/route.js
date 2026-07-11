@@ -1,6 +1,8 @@
 import { db } from '../../../lib/supabase.js';
 
 const SECRET_KEY = 'ba10e5cf30066fadd14b87f844ba1993de2ccb692be920426284ac3dc690a7cb';
+const MINUTOS_ESPERA_PARCIAL = 5;
+const MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
 
 function normalizar(str) {
   return (str || '').toLowerCase()
@@ -38,7 +40,35 @@ export async function POST(req) {
 
     const montoPagado = parseFloat(monto);
     const montoFactura = parseFloat(match.monto || 0);
-    const restante = montoFactura - montoPagado;
+
+    const hoy = new Date();
+    const mesAnterior = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+    const mesFactura = MESES[mesAnterior.getMonth()] + ' ' + mesAnterior.getFullYear();
+
+    // Registrar este pago en la tabla pagos
+    await db().from('pagos').insert({
+      cliente_id: match.id,
+      cliente_nombre: match.nombre,
+      monto: montoPagado,
+      fecha: new Date().toISOString(),
+      fecha_formato: new Date().toLocaleDateString('es-DO'),
+      fecha_pago: new Date().toISOString().split('T')[0],
+      banco: 'Keeper',
+      referencia: 'Sincronizado desde Keeper',
+      tipo_negocio: 'Servicio y Repuestos',
+      estado: 'pendiente',
+      creado_por: 'Sistema-Keeper',
+      mes_factura: mesFactura,
+    });
+
+    // Sumar TODOS los pagos acumulados de este cliente (incluyendo el que acabamos de insertar)
+    const { data: pagosCliente } = await db()
+      .from('pagos')
+      .select('monto')
+      .eq('cliente_id', match.id);
+
+    const totalPagado = (pagosCliente || []).reduce((s, p) => s + parseFloat(p.monto || 0), 0);
+    const restante = montoFactura - totalPagado;
     const esPagoCompleto = restante <= 0.01;
 
     const historial = [...(match.historial || []), {
@@ -50,8 +80,8 @@ export async function POST(req) {
     const { error: updateError } = await db()
       .from('clientes')
       .update({
-        estado: 'Pagado',
-        fecha_pago: new Date().toISOString().split('T')[0],
+        estado: esPagoCompleto ? 'Pagado' : match.estado,
+        fecha_pago: esPagoCompleto ? new Date().toISOString().split('T')[0] : match.fechaPago,
         historial,
         updated_at: new Date().toISOString(),
       })
@@ -61,21 +91,31 @@ export async function POST(req) {
 
     if (match.contacto) {
       let mensajeNotif;
+      let programadaPara;
+
       if (esPagoCompleto) {
         mensajeNotif = 'Muchas gracias por su pago.';
+        programadaPara = new Date().toISOString();
       } else {
-        mensajeNotif = 'Muchas gracias por su pago. Recordando que su factura fue de $' + montoFactura.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' y su pago fue de $' + montoPagado.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ', el restante a pagar es de $' + restante.toLocaleString('en-US', { minimumFractionDigits: 2 }) + '.';
+        mensajeNotif = 'Muchas gracias por su pago. Recordando que su factura fue de $' + montoFactura.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' y su pago acumulado es de $' + totalPagado.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ', el restante a pagar es de $' + restante.toLocaleString('en-US', { minimumFractionDigits: 2 }) + '.';
+        const futuro = new Date();
+        futuro.setMinutes(futuro.getMinutes() + MINUTOS_ESPERA_PARCIAL);
+        programadaPara = futuro.toISOString();
       }
+
+      await db().from('notificaciones_pendientes').delete().eq('cliente_id', match.id).eq('enviado', false);
+
       await db().from('notificaciones_pendientes').insert({
         cliente_id: match.id,
         contacto: match.contacto,
         nombre: match.nombre,
         mensaje: mensajeNotif,
         enviado: false,
+        programada_para: programadaPara,
       });
     }
 
-    return Response.json({ ok: true, mensaje: 'Cliente ' + match.nombre + ' marcado como pagado', clienteId: match.id });
+    return Response.json({ ok: true, mensaje: 'Cliente ' + match.nombre + ' - Total pagado: $' + totalPagado + ' de $' + montoFactura, clienteId: match.id, esPagoCompleto });
   } catch (e) {
     return Response.json({ error: e.message }, { status: 500 });
   }
