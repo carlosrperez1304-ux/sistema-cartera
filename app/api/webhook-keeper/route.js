@@ -24,6 +24,7 @@ export async function POST(req) {
     }
 
     const nombreNorm = normalizar(nombreCliente);
+    const montoPagado = parseFloat(monto);
 
     const { data: clientes, error } = await db()
       .from('clientes')
@@ -38,14 +39,24 @@ export async function POST(req) {
       return Response.json({ ok: false, mensaje: 'No se encontro cliente con nombre: ' + nombreCliente });
     }
 
-    const montoPagado = parseFloat(monto);
-    const montoFactura = parseFloat(match.monto || 0);
+    // Verificar si este cliente esta vinculado a otros
+    const { data: vinculos } = await db()
+      .from('clientes_vinculos')
+      .select('*')
+      .eq('empresa_id', match.empresa_id);
+
+    const vinculo = (vinculos || []).find(v => v.ids.includes(match.id));
+    const idsGrupo = vinculo ? vinculo.ids : [match.id];
+    const nombreGrupo = vinculo ? vinculo.nombre : match.nombre;
+
+    const clientesGrupo = (clientes || []).filter(c => idsGrupo.includes(c.id));
+    const montoFacturaTotal = clientesGrupo.reduce((s, c) => s + parseFloat(c.monto || 0), 0);
 
     const hoy = new Date();
     const mesAnterior = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
     const mesFactura = MESES[mesAnterior.getMonth()] + ' ' + mesAnterior.getFullYear();
 
-    // Registrar este pago en la tabla pagos
+    // Registrar el pago a nombre del cliente real que llego desde Keeper
     await db().from('pagos').insert({
       cliente_id: match.id,
       cliente_nombre: match.nombre,
@@ -61,39 +72,42 @@ export async function POST(req) {
       mes_factura: mesFactura,
     });
 
-    // Sumar TODOS los pagos acumulados de este cliente (incluyendo el que acabamos de insertar)
-    const { data: pagosCliente } = await db()
+    // Sumar TODOS los pagos acumulados de TODOS los clientes del grupo vinculado
+    const { data: pagosGrupo } = await db()
       .from('pagos')
       .select('monto')
-      .eq('cliente_id', match.id);
+      .in('cliente_id', idsGrupo);
 
-    const totalPagado = (pagosCliente || []).reduce((s, p) => s + parseFloat(p.monto || 0), 0);
-    const pendienteArrastrado = parseFloat(match.pendiente_arrastrado || 0);
-    const totalADeber = montoFactura + pendienteArrastrado;
+    const totalPagado = (pagosGrupo || []).reduce((s, p) => s + parseFloat(p.monto || 0), 0);
+
+    const pendienteArrastradoTotal = clientesGrupo.reduce((s, c) => s + parseFloat(c.pendiente_arrastrado || 0), 0);
+    const totalADeber = montoFacturaTotal + pendienteArrastradoTotal;
     const restante = totalADeber - totalPagado;
     const esPagoCompleto = restante <= 0.01;
 
-    const historial = [...(match.historial || []), {
-      fecha: new Date().toISOString(),
-      accion: 'Marco Pagado (via Keeper)',
-      usuario: 'Sistema-Keeper'
-    }];
+    // Actualizar el estado de TODOS los clientes del grupo
+    for (const c of clientesGrupo) {
+      const historial = [...(c.historial || []), {
+        fecha: new Date().toISOString(),
+        accion: 'Marco Pagado (via Keeper' + (vinculo ? ' - grupo: ' + nombreGrupo : '') + ')',
+        usuario: 'Sistema-Keeper'
+      }];
+      await db()
+        .from('clientes')
+        .update({
+          estado: esPagoCompleto ? 'Pagado' : c.estado,
+          fecha_pago: esPagoCompleto ? new Date().toISOString().split('T')[0] : c.fechaPago,
+          historial,
+          pendiente_arrastrado: esPagoCompleto ? 0 : (c.pendiente_arrastrado || 0),
+          pendiente_arrastrado_mes: esPagoCompleto ? null : c.pendiente_arrastrado_mes,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', c.id);
+    }
 
-    const { error: updateError } = await db()
-      .from('clientes')
-      .update({
-        estado: esPagoCompleto ? 'Pagado' : match.estado,
-        fecha_pago: esPagoCompleto ? new Date().toISOString().split('T')[0] : match.fechaPago,
-        historial,
-        pendiente_arrastrado: esPagoCompleto ? 0 : pendienteArrastrado,
-        pendiente_arrastrado_mes: esPagoCompleto ? null : match.pendiente_arrastrado_mes,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', match.id);
-
-    if (updateError) return Response.json({ error: updateError.message }, { status: 500 });
-
-    if (match.contacto) {
+    // Notificar solo al cliente que hizo el pago (o al principal del grupo si tiene contacto)
+    const clienteContacto = match.contacto ? match : clientesGrupo.find(c => c.contacto);
+    if (clienteContacto?.contacto) {
       let mensajeNotif;
       let programadaPara;
 
@@ -101,25 +115,29 @@ export async function POST(req) {
         mensajeNotif = 'Muchas gracias por su pago.';
         programadaPara = new Date().toISOString();
       } else {
-        mensajeNotif = 'Muchas gracias por su pago. Recordando que su factura fue de $' + totalADeber.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' y su pago acumulado es de $' + totalPagado.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ', el restante a pagar es de $' + restante.toLocaleString('en-US', { minimumFractionDigits: 2 }) + '.';
+        let desglose = '';
+        if (vinculo && clientesGrupo.length > 1) {
+          desglose = clientesGrupo.map(c => '\\n- ' + c.nombre + ': $' + parseFloat(c.monto||0).toLocaleString('en-US',{minimumFractionDigits:2})).join('');
+        }
+        mensajeNotif = 'Muchas gracias por su pago. Recordando que su factura fue de $' + totalADeber.toLocaleString('en-US', { minimumFractionDigits: 2 }) + desglose + '\\n\\nSu pago acumulado es de $' + totalPagado.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ', el restante a pagar es de $' + restante.toLocaleString('en-US', { minimumFractionDigits: 2 }) + '.';
         const futuro = new Date();
         futuro.setMinutes(futuro.getMinutes() + MINUTOS_ESPERA_PARCIAL);
         programadaPara = futuro.toISOString();
       }
 
-      await db().from('notificaciones_pendientes').delete().eq('cliente_id', match.id).eq('enviado', false);
+      await db().from('notificaciones_pendientes').delete().in('cliente_id', idsGrupo).eq('enviado', false);
 
       await db().from('notificaciones_pendientes').insert({
-        cliente_id: match.id,
-        contacto: match.contacto,
-        nombre: match.nombre,
+        cliente_id: clienteContacto.id,
+        contacto: clienteContacto.contacto,
+        nombre: nombreGrupo,
         mensaje: mensajeNotif,
         enviado: false,
         programada_para: programadaPara,
       });
     }
 
-    return Response.json({ ok: true, mensaje: 'Cliente ' + match.nombre + ' - Total pagado: $' + totalPagado + ' de $' + montoFactura, clienteId: match.id, esPagoCompleto });
+    return Response.json({ ok: true, mensaje: 'Grupo ' + nombreGrupo + ' - Total pagado: $' + totalPagado + ' de $' + totalADeber, esPagoCompleto });
   } catch (e) {
     return Response.json({ error: e.message }, { status: 500 });
   }
