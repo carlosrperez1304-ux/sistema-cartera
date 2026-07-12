@@ -14,6 +14,12 @@ export async function POST(req) {
   }
 
   const empresa_id = auth.session.user.empresa_id;
+  // 0. Bloquear todos los pagos existentes (ya no editables despues del cierre)
+  await db()
+    .from('pagos')
+    .update({ bloqueado: true })
+    .eq('empresa_id', empresa_id)
+    .eq('bloqueado', false);
 
   // 1. Resetear todos los clientes EXCEPTO archivados
   const { error } = await db()

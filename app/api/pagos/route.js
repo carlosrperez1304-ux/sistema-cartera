@@ -55,18 +55,29 @@ export async function PUT(req) {
   const auth = await requireAuth(req);
   if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
   const body = await req.json();
-  const { id, estado, motivo_rechazo } = body;
-  if (!id || !estado)
+  const { id, estado, motivo_rechazo, monto, fecha_pago, nota } = body;
+  if (!id)
     return Response.json({ error: "Faltan datos" }, { status: 400 });
-  const update = {
-    estado,
-    validado_por: auth.session.user.username,
-    validado_en:  new Date().toISOString(),
-  };
+
+  const { data: pagoActual } = await db().from("pagos").select("bloqueado").eq("id", id).single();
+  if (pagoActual?.bloqueado) {
+    return Response.json({ error: "Este pago pertenece a un mes ya cerrado y no puede editarse" }, { status: 403 });
+  }
+
+  const update = {};
+  if (estado) {
+    update.estado = estado;
+    update.validado_por = auth.session.user.username;
+    update.validado_en = new Date().toISOString();
+  }
   if (motivo_rechazo) update.motivo_rechazo = motivo_rechazo;
+  if (monto !== undefined) update.monto = parseFloat(monto);
+  if (fecha_pago !== undefined) update.fecha_pago = fecha_pago;
+  if (nota !== undefined) update.nota = nota;
+
   const { data, error } = await db().from("pagos").update(update).eq("id", id).select().single();
   if (error) return Response.json({ error: error.message }, { status: 500 });
-  auditLog("PAGO_UPDATE", auth.session.user.username, getIP(req), `pago id=${id} estado=${estado}`);
+  auditLog("PAGO_UPDATE", auth.session.user.username, getIP(req), `pago id=${id}`);
   return Response.json(data);
 }
 
@@ -78,6 +89,12 @@ export async function DELETE(req) {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
   if (!id) return Response.json({ error: "Falta id" }, { status: 400 });
+
+  const { data: pagoActual } = await db().from("pagos").select("bloqueado").eq("id", parseInt(id)).single();
+  if (pagoActual?.bloqueado) {
+    return Response.json({ error: "Este pago pertenece a un mes ya cerrado y no puede eliminarse" }, { status: 403 });
+  }
+
   const { error } = await db().from("pagos").delete().eq("id", parseInt(id));
   if (error) return Response.json({ error: error.message }, { status: 500 });
   auditLog("PAGO_DELETE", auth.session.user.username, getIP(req), `pago id=${id}`);
