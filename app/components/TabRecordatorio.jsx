@@ -79,20 +79,40 @@ function ColaEnvio({ titulo, clientes, empresaActual, showToast, tipo, diaVencim
 
   useEffect(() => { cargarLista(); }, [clientes]);
 
+  const randomCountdown = () => Math.floor(Math.random() * (120 - 20 + 1)) + 20;
+  const targetTimeRef = useRef(null);
+
   useEffect(() => {
     if (!activo) { clearInterval(intervalRef.current); clearInterval(countdownRef.current); return; }
     const pendientes = cola.filter(c => !c._enviado);
     if (pendientes.length === 0) { setActivo(false); return; }
-    setCountdown(120);
+
+    const iniciarSiguiente = () => {
+      const secs = randomCountdown();
+      setCountdown(secs);
+      targetTimeRef.current = Date.now() + secs * 1000;
+    };
+
+    iniciarSiguiente();
     enviarMensaje(pendientes[0]);
-    countdownRef.current = setInterval(() => setCountdown(prev => prev <= 1 ? 120 : prev - 1), 1000);
+
+    countdownRef.current = setInterval(() => {
+      const restante = Math.ceil((targetTimeRef.current - Date.now()) / 1000);
+      setCountdown(restante > 0 ? restante : 0);
+    }, 1000);
+
     intervalRef.current = setInterval(() => {
+      const restante = Math.ceil((targetTimeRef.current - Date.now()) / 1000);
+      if (restante > 0) return;
       setCola(prev => {
         const pend = prev.filter(c => !c._enviado);
         if (pend.length === 0) { clearInterval(intervalRef.current); clearInterval(countdownRef.current); setActivo(false); showToast('✅ Envíos completados', 'success'); return prev; }
-        enviarMensaje(pend[0]); setCountdown(120); return prev;
+        enviarMensaje(pend[0]);
+        iniciarSiguiente();
+        return prev;
       });
-    }, 120000);
+    }, 1000);
+
     return () => { clearInterval(intervalRef.current); clearInterval(countdownRef.current); };
   }, [activo]);
 
