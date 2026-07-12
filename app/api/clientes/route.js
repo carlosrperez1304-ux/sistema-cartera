@@ -37,6 +37,7 @@ function toFront(c) {
       nota:         p.nota || '',
       mesFactura:   p.mes_factura || '',
       banco:        p.banco || '',
+      bloqueado:    p.bloqueado || false,
     })),
   };
 }

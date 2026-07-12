@@ -1,13 +1,5 @@
 'use client';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import TabTickets from './components/TabTickets';
-import TabGrupos from './components/TabGrupos';
-import TabRecordatorio from './components/TabRecordatorio';
-import CreditoCard from './components/CreditoCard';
-import CentroNotificaciones from './components/CentroNotificaciones';
-import AgendaTareas from './components/AgendaTareas';
-import TabRecarga from './components/TabRecarga';
-import SubgruposCliente from './components/SubgruposCliente';
 import { getSupabaseBrowser } from '../lib/supabase-browser.js';
 import * as XLSX from 'xlsx';
 import { signIn, signOut, useSession } from 'next-auth/react';
@@ -22,9 +14,8 @@ export default function App() {
   });
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginError, setLoginError] = useState('');
-  const [recordarme, setRecordarme] = useState(() => typeof window !== 'undefined' && localStorage.getItem('recordarme') === 'true');
-  const [username, setUsername] = useState(() => typeof window !== 'undefined' ? localStorage.getItem('savedUsername') || '' : '');
-  const [password, setPassword] = useState(() => typeof window !== 'undefined' ? localStorage.getItem('savedPassword') || '' : '');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [currentUser, setCurrentUser] = useState('');
 
   useEffect(() => {
@@ -67,10 +58,6 @@ export default function App() {
   const [sessionExpired, setSessionExpired] = useState(false);
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showTopbarMenu, setShowTopbarMenu] = useState(false);
-  const [carpetaVigilada, setCarpetaVigilada] = useState('');
-  const [whatsappQR, setWhatsappQR] = useState(null);
-  const [whatsappConectado, setWhatsappConectado] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [bancoMovimientos, setBancoMovimientos] = useState([]);
   const [bancoArchivoNombre, setBancoArchivoNombre] = useState('');
@@ -128,60 +115,6 @@ export default function App() {
 
   // Si hay sesión NextAuth: usar el rol del token JWT o el email de Google
   // Si no: fallback a la lista local (para compatibilidad)
-  // Carpeta vigilada
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.electronAPI) return;
-    window.electronAPI.estadoWatcher().then(s => {
-      if (s?.carpeta) setCarpetaVigilada(s.carpeta);
-    }).catch(() => {});
-    window.electronAPI.onWatcherIniciado && window.electronAPI.onWatcherIniciado((carpeta) => {
-      setCarpetaVigilada(carpeta);
-    });
-  }, []);
-
-  // WhatsApp Baileys listeners
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.electronAPI) return;
-    window.electronAPI.onWhatsappQR((qr) => {
-      setWhatsappQR(qr);
-      setWhatsappConectado(false);
-    });
-    window.electronAPI.onWhatsappStatus((status) => {
-      if (status.conectado) {
-        setWhatsappConectado(true);
-        setWhatsappQR(null);
-      } else {
-        setWhatsappConectado(false);
-      }
-    });
-    // Verificar estado inicial
-    window.electronAPI.whatsappStatus().then(s => {
-      if (s?.conectado) setWhatsappConectado(true);
-    }).catch(() => {});
-  }, []);
-  // Revisar notificaciones pendientes (de Keeper) cada 30 segundos
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.electronAPI?.whatsappEnviarMensaje) return;
-    const revisar = async () => {
-      try {
-        const res = await fetch('/api/notificaciones-pendientes');
-        if (!res.ok) return;
-        const pendientes = await res.json();
-        for (const n of pendientes) {
-          if (n.contacto) {
-            try {
-              await window.electronAPI.whatsappEnviarMensaje(n.contacto, n.mensaje);
-              await fetch('/api/notificaciones-pendientes', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: n.id }) });
-            } catch {}
-          }
-        }
-      } catch {}
-    };
-    revisar();
-    const interval = setInterval(revisar, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
   const esAdmin = session
     ? (session.user?.rol === 'admin')
     : (usuarios[currentUser]?.rol === 'admin');
@@ -215,15 +148,6 @@ export default function App() {
         setCurrentUser(username.trim().toUpperCase());
         localStorage.setItem('isLoggedIn', 'true');
         localStorage.setItem('currentUser', username.trim().toUpperCase());
-        if (recordarme) {
-          localStorage.setItem('savedUsername', username.trim());
-          localStorage.setItem('savedPassword', password);
-          localStorage.setItem('recordarme', 'true');
-        } else {
-          localStorage.removeItem('savedUsername');
-          localStorage.removeItem('savedPassword');
-          localStorage.setItem('recordarme', 'false');
-        }
         cargarUsuarios();
       } else {
         setLoginError((result?.error || 'Usuario o contraseña incorrectos'));
@@ -242,10 +166,6 @@ export default function App() {
   };
 
   const [clientes, setClientes] = useState([]);
-  const [vendedores, setVendedores] = useState([]);
-  const [notifInit, setNotifInit] = useState(null);
-  const [nuevoVendedorNombre, setNuevoVendedorNombre] = useState('');
-  const [nuevoVendedorWhatsapp, setNuevoVendedorWhatsapp] = useState('');
   const [creditos, setCreditos] = useState([]);
   const [historialMeses, setHistorialMeses] = useState({});
   const [hydrated, setHydrated] = useState(false);
@@ -428,7 +348,6 @@ export default function App() {
     // Carga inicial de datos
     cargarClientes();
     cargarCreditos();
-    fetch('/api/vendedores').then(r => r.ok ? r.json() : []).then(setVendedores).catch(() => {});
     cargarNotasDashboard();
     cargarTodosDocumentos();
     if (['contabilidad', 'supervisor_cobro', 'supervisor_contabilidad', 'admin'].includes(session?.user?.rol)) {
@@ -544,9 +463,10 @@ export default function App() {
         }
         if (version !== versionRef.current) {
           setNuevaVersion(true);
-          // Recargar silenciosamente sin cerrar sesion (la cookie de sesion persiste)
-          setTimeout(() => {
-            window.location.reload();
+          // Cerrar sesión y recargar después de 3 segundos
+          setTimeout(async () => {
+            await signOut({ redirect: false });
+            window.location.href = '/';
           }, 3000);
         }
       } catch { /* offline — ignorar */ }
@@ -558,13 +478,11 @@ export default function App() {
   }, [session?.user?.username]);
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [clientesIdsSubgrupo, setClientesIdsSubgrupo] = useState(new Set());
   const [filter, setFilter] = useState('todos');
   const [showModal, setShowModal] = useState(false);
   const [duplicadosAlerta, setDuplicadosAlerta] = useState([]);
   const [menuAbierto, setMenuAbierto] = useState(null);
   const [menuAbiertoDir, setMenuAbiertoDir] = useState('down');
-  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const [mostrarArchivados, setMostrarArchivados] = useState(false);
   const [isElectron, setIsElectron] = useState(false);
   const [isMiniMode, setIsMiniMode] = useState(false);
@@ -631,18 +549,9 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
-
-  useEffect(() => {
-    if (!menuAbierto) return;
-    const handler = (e) => {
-      if (!e.target.closest('[data-menu]')) setMenuAbierto(null);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [menuAbierto]);
   const [showCreditoModal, setShowCreditoModal] = useState(false);
   const [editingCredito, setEditingCredito] = useState(null);
-  const [creditoFormData, setCreditoFormData] = useState({ id: '', numeroOrden: '', cliente: '', monto: '', fechaInicio: '', plazoMeses: '', fechaVencimiento: '', estado: 'Activo', comentario: '', historial: [], abonos: [], vendedor: '', vendedor_whatsapp: '' });
+  const [creditoFormData, setCreditoFormData] = useState({ id: '', numeroOrden: '', cliente: '', monto: '', fechaInicio: '', plazoMeses: '', fechaVencimiento: '', estado: 'Activo', comentario: '', historial: [], abonos: [] });
   const [nuevoAbono, setNuevoAbono] = useState('');
   const [mostrarAutocomplete, setMostrarAutocomplete] = useState(false);
   const [clientesFiltradosAuto, setClientesFiltradosAuto] = useState([]);
@@ -678,9 +587,6 @@ export default function App() {
   const [pagoClienteTarget, setPagoClienteTarget] = useState(null);
   const [showHistorialPagosModal, setShowHistorialPagosModal] = useState(false);
   const [historialPagosCliente, setHistorialPagosCliente] = useState(null);
-  const [editandoPago, setEditandoPago] = useState(null);
-  const [editPagoMonto, setEditPagoMonto] = useState('');
-  const [editPagoFecha, setEditPagoFecha] = useState('');
   const [pagoMonto, setPagoMonto] = useState('');
   const [pagoBanco, setPagoBanco] = useState('');
   const [pagoFecha, setPagoFecha] = useState('');
@@ -700,7 +606,6 @@ export default function App() {
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [updateDownloaded, setUpdateDownloaded] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const [showWhatsappStatusModal, setShowWhatsappStatusModal] = useState(false);
   const [showWhatsappModal, setShowWhatsappModal] = useState(false);
   const [whatsappCliente, setWhatsappCliente] = useState(null);
   const [whatsappMensaje, setWhatsappMensaje] = useState('');
@@ -735,8 +640,6 @@ export default function App() {
   const [filtroMontoMax, setFiltroMontoMax] = useState('');
   const [filtroEstados, setFiltroEstados] = useState([]);
   const [recordatoriosDias, setRecordatoriosDias] = useState(7);
-  const [diaVencimiento, setDiaVencimiento] = useState(15);
-  const [mensajeRecordatorio, setMensajeRecordatorio] = useState('');
   const [activaciones, setActivaciones] = useState([]);
   const [nuevaActivNombre, setNuevaActivNombre] = useState('');
   const [loadingActivaciones, setLoadingActivaciones] = useState(false);
@@ -808,8 +711,6 @@ export default function App() {
         if (cfg.meta_mensual   != null) setMetaMensual(parseFloat(cfg.meta_mensual) || 0);
         if (cfg.color_acento)           setColorAcento(cfg.color_acento);
         if (cfg.recordatorio_dias)      setRecordatoriosDias(parseInt(cfg.recordatorio_dias) || 7);
-        if (cfg.dia_vencimiento)         setDiaVencimiento(parseInt(cfg.dia_vencimiento) || 15);
-        if (cfg.mensaje_recordatorio)    setMensajeRecordatorio(cfg.mensaje_recordatorio);
         if (cfg.modo_compacto  != null) setModoCompacto(cfg.modo_compacto === 'true');
         // Guardar si ya fue enviado este mes para usarlo en el efecto separado
         const hoy = new Date();
@@ -974,7 +875,17 @@ export default function App() {
     if (!hydrated) return;
     const verificarVencimientos = () => {
       const hoy = new Date();
-      // Vencimiento manejado en TabRecordatorio sin cambiar estado
+      if (hoy.getDate() >= 16) {
+        const updated = clientes.map(cliente => {
+          if (!['Pagado','Facturado','Vencido','No Generaron'].includes(cliente.estado)) {
+            if (parseInt(cliente.mes) === hoy.getMonth() + 1 && parseInt(cliente.año) === hoy.getFullYear()) {
+              return { ...cliente, estado: 'Vencido', historial: [...(cliente.historial||[]), { fecha: hoy.toISOString(), accion: 'Movido automáticamente a Vencido (día 16)', usuario: 'Sistema' }] };
+            }
+          }
+          return cliente;
+        });
+        if (JSON.stringify(updated) !== JSON.stringify(clientes)) setClientes(updated);
+      }
     };
     verificarVencimientos();
     const interval = setInterval(verificarVencimientos, 3600000);
@@ -1163,7 +1074,7 @@ export default function App() {
       resultado = resultado.filter(c => c.creadoPor.toLowerCase() === myUsername);
     }
     if (filtroAgente) resultado = resultado.filter(c => c.creadoPor === filtroAgente);
-    if (searchTerm) resultado = resultado.filter(c => c.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || (c.contacto || '').includes(searchTerm) || c.id.toString().includes(searchTerm) || (c.codigoCliente || '').toLowerCase().includes(searchTerm.toLowerCase()) || clientesIdsSubgrupo.has(c.id));
+    if (searchTerm) resultado = resultado.filter(c => c.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || (c.contacto || '').includes(searchTerm) || c.id.toString().includes(searchTerm) || (c.codigoCliente || '').toLowerCase().includes(searchTerm.toLowerCase()));
     if (fechaDesde) resultado = resultado.filter(c => c.fechaCotizacion && c.fechaCotizacion >= fechaDesde);
     if (fechaHasta) resultado = resultado.filter(c => c.fechaCotizacion && c.fechaCotizacion <= fechaHasta);
     if (filtroMontoMin !== '') resultado = resultado.filter(c => (parseFloat(c.monto) || 0) >= parseFloat(filtroMontoMin));
@@ -1172,7 +1083,6 @@ export default function App() {
     else if (filter !== 'todos' && filter !== 'delegaciones') {
       if (filter === 'no-generaron') resultado = resultado.filter(c => c.estado === 'No Generaron');
       else if (filter === 'sin-documento') resultado = resultado.filter(c => estadoActivoCliente(c) === 'Cotizado' && (cotizaciones[c.id] || []).length === 0);
-      else if (filter === 'suspendido') resultado = datosActuales.clientes.filter(c => c.suspendido === true);
       else resultado = resultado.filter(c => estadoActivoCliente(c).toLowerCase() === filter);
     }
     resultado = [...resultado].sort((a, b) => {
@@ -1210,7 +1120,7 @@ export default function App() {
     else {
       const hoy = new Date();
       setEditingCliente(null);
-      setFormData({ codigoCliente: '', nombre: '', contacto: '', estado: 'No Generaron', fechaCotizacion: hoy.toISOString().split('T')[0], fechaNotificacion: '', fechaPago: '', fechaFacturacion: '', fechaSuspension: '', mes: (hoy.getMonth() + 1).toString(), año: hoy.getFullYear().toString(), monto: '', comentario: '', historial: [], generaRecarga: false, tags: [] });
+      setFormData({ codigoCliente: '', nombre: '', contacto: '', estado: 'Cotizado', fechaCotizacion: hoy.toISOString().split('T')[0], fechaNotificacion: '', fechaPago: '', fechaFacturacion: '', fechaSuspension: '', mes: (hoy.getMonth() + 1).toString(), año: hoy.getFullYear().toString(), monto: '', comentario: '', historial: [] });
     }
     setShowModal(true);
   };
@@ -1356,11 +1266,10 @@ export default function App() {
     e.preventDefault();
     const nuevoHistorial = [...(formData.historial || [])];
     nuevoHistorial.push({ fecha: new Date().toISOString(), accion: editingCliente ? `Actualizado - Estado: ${formData.estado}` : `Creado - Estado: ${formData.estado}`, usuario: currentUser || 'SISTEMA' });
-    let clienteConHistorial = { ...formData, historial: nuevoHistorial };
+    const clienteConHistorial = { ...formData, historial: nuevoHistorial };
     if (editingCliente) {
       await actualizarCliente({ ...clienteConHistorial, id: editingCliente.id });
     } else {
-      clienteConHistorial = { ...clienteConHistorial, tags: [...(clienteConHistorial.tags || []), 'Nuevo'], fechaCreacion: new Date().toISOString() };
       try {
         const r = await fetch('/api/clientes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(clienteConHistorial) });
         const data = await r.json();
@@ -1525,48 +1434,9 @@ export default function App() {
       creado_por: currentUser || 'SISTEMA',
     }) }).catch(() => null);
     fetch(`/api/clientes/${clienteActualizado.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(clienteActualizado) }).catch(() => null);
-    if (currentUser === 'A-CPEREZ' && pagoClienteTarget.contacto && window.electronAPI?.whatsappEnviarMensaje) {
-      const msgPago = 'Muchas gracias por su pago.';
-      window.electronAPI.whatsappEnviarMensaje(pagoClienteTarget.contacto, msgPago).catch(() => null);
-    }
   };
 
   const abrirPagoCreditoModal = (credito) => { setPagoCreditoTarget(credito); setPagoCreditoMonto(''); setShowPagoCreditoModal(true); };
-  const guardarEdicionPago = async () => {
-    if (!editandoPago) return;
-    const nuevoMonto = parseFloat(editPagoMonto);
-    if (!nuevoMonto || nuevoMonto <= 0) { showToast('Monto invalido', 'error'); return; }
-    try {
-      const r = await fetch('/api/pagos', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: editandoPago.id, monto: nuevoMonto, fecha_pago: editPagoFecha }),
-      });
-      const data = await r.json();
-      if (!r.ok) { showToast(data.error || 'Error al editar pago', 'error'); return; }
-      showToast('Pago actualizado', 'success');
-      setEditandoPago(null);
-      await cargarClientes();
-      if (historialPagosCliente) {
-        const cRes = await fetch(`/api/clientes/${historialPagosCliente.id}`);
-        if (cRes.ok) setHistorialPagosCliente(await cRes.json());
-      }
-    } catch { showToast('Error de conexion', 'error'); }
-  };
-  const eliminarPagoHistorial = async (pago) => {
-    if (!confirm('¿Eliminar este pago del historial?')) return;
-    try {
-      const r = await fetch(`/api/pagos?id=${pago.id}`, { method: 'DELETE' });
-      const data = await r.json();
-      if (!r.ok) { showToast(data.error || 'Error al eliminar pago', 'error'); return; }
-      showToast('Pago eliminado', 'success');
-      await cargarClientes();
-      if (historialPagosCliente) {
-        const cRes = await fetch(`/api/clientes/${historialPagosCliente.id}`);
-        if (cRes.ok) setHistorialPagosCliente(await cRes.json());
-      }
-    } catch { showToast('Error de conexion', 'error'); }
-  };
   const confirmarPagoCredito = () => {
     if (!pagoCreditoTarget) return;
     const montoPagado = parseFloat(pagoCreditoMonto);
@@ -1595,7 +1465,8 @@ export default function App() {
     if (credito) { setEditingCredito(credito); setCreditoFormData({ ...credito, abonos: credito.abonos || [] }); }
     else {
       setEditingCredito(null);
-      setCreditoFormData({ numeroOrden: '', cliente: '', monto: '', fechaInicio: new Date().toISOString().split('T')[0], plazoMeses: '', fechaVencimiento: '', estado: 'Activo', comentario: '', historial: [], abonos: [], vendedor: '', vendedor_whatsapp: '' });
+      const nuevoId = creditos.length > 0 ? Math.max(...creditos.map(c => c.id)) + 1 : 1;
+      setCreditoFormData({ id: nuevoId, numeroOrden: '', cliente: '', monto: '', fechaInicio: new Date().toISOString().split('T')[0], plazoMeses: '', fechaVencimiento: '', estado: 'Activo', comentario: '', historial: [], abonos: [] });
     }
     setShowCreditoModal(true);
   };
@@ -1648,20 +1519,8 @@ export default function App() {
     try {
       const r = await fetch('/api/creditos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(entrada) });
       const data = await r.json();
-      if (r.ok) {
-        setCreditos(prev => [...prev, data]);
-        const monto = "$" + parseFloat(entrada.monto||0).toLocaleString('en-US',{minimumFractionDigits:2});
-        const fechaVenc = new Date(entrada.fechaVencimiento).toLocaleDateString('es-DO');
-        const clienteObj = clientes.find(c => c.nombre === entrada.cliente);
-        if (clienteObj?.contacto && window.electronAPI?.whatsappEnviarMensaje) {
-          const msgCliente = "🎉 *Nuevo Crédito Aprobado*\n\nEstimado " + entrada.cliente + ", le informamos que se ha generado un crédito a su nombre.\n\n📋 *Orden:* " + entrada.numeroOrden + "\n💰 *Monto:* " + monto + "\n📅 *Plazo:* " + (String(entrada.plazoMeses||'').endsWith('d') ? entrada.plazoMeses.replace('d','') + ' días' : entrada.plazoMeses + ' meses') + "\n⏰ *Vencimiento:* " + fechaVenc;
-          window.electronAPI.whatsappEnviarMensaje(clienteObj.contacto, msgCliente).catch(()=>{});
-        }
-        if (entrada.vendedor_whatsapp && window.electronAPI?.whatsappEnviarMensaje) {
-          const msgVendedor = "✅ *Nuevo Crédito Creado*\n\nEstimado " + entrada.vendedor + ", se ha creado un nuevo crédito.\n\n👤 *Cliente:* " + entrada.cliente + "\n📋 *Orden:* " + entrada.numeroOrden + "\n💰 *Monto:* " + monto + "\n📅 *Plazo:* " + (String(entrada.plazoMeses||'').endsWith('d') ? entrada.plazoMeses.replace('d','') + ' días' : entrada.plazoMeses + ' meses') + "\n⏰ *Vencimiento:* " + fechaVenc;
-          window.electronAPI.whatsappEnviarMensaje(entrada.vendedor_whatsapp, msgVendedor).catch(()=>{});
-        }
-      } else showToast('Error al guardar crédito: ' + data.error, 'error');
+      if (r.ok) setCreditos(prev => [...prev, data]);
+      else showToast('Error al guardar crédito: ' + data.error, 'error');
     } catch { showToast('Error de conexión', 'error'); }
   }
   cerrarCreditoModal();
@@ -1825,30 +1684,21 @@ export default function App() {
     }
 
     setShowWhatsappModal(false);
-    if (window.electronAPI?.isElectron) {
-      const waStatus = await window.electronAPI.whatsappStatus().catch(() => ({ conectado: false }));
-      if (waStatus.conectado && doc?.base64) {
-        showToast("Enviando por WhatsApp...", "info");
-        const result = await window.electronAPI.whatsappEnviarPDF(num, doc.base64, doc.nombre, whatsappMensaje);
-        if (result.ok) {
-          showToast("✅ Enviado por WhatsApp automáticamente", "success");
-        } else {
-          showToast("Error: " + result.error, "error");
-        }
-      } else if (doc?.base64) {
-        const result = await window.electronAPI.sendPDFWhatsApp(doc.base64, doc.nombre, num, whatsappMensaje);
-        if (!result.ok) {
-          if (doc) descargarDocumento(doc);
-          window.open(`https://wa.me/1${num}?text=${encodeURIComponent(whatsappMensaje)}`, "_blank");
-        } else {
-          showToast("PDF copiado al portapapeles — Ctrl+V en WhatsApp para pegarlo", "success");
-        }
+
+    if (window.electronAPI?.isElectron && doc?.base64) {
+      // Modo escritorio: PDF al portapapeles + WhatsApp Desktop con mensaje
+      const result = await window.electronAPI.sendPDFWhatsApp(doc.base64, doc.nombre, num, whatsappMensaje);
+      if (!result.ok) {
+        if (doc) descargarDocumento(doc);
+        window.open(`https://wa.me/1${num}?text=${encodeURIComponent(whatsappMensaje)}`, '_blank');
+      } else {
+        showToast('PDF copiado al portapapeles — Ctrl+V en WhatsApp para pegarlo', 'success');
       }
     } else {
+      // Modo web: descargar PDF (si hay) + abrir wa.me
       if (doc?.base64) descargarDocumento(doc);
-      window.open(`https://wa.me/1${num}?text=${encodeURIComponent(whatsappMensaje)}`, "_blank");
+      window.open(`https://wa.me/1${num}?text=${encodeURIComponent(whatsappMensaje)}`, '_blank');
     }
-
 
     // Marcar como Notificado automáticamente
     marcarNotificado(whatsappCliente);
@@ -3074,9 +2924,9 @@ export default function App() {
   if (!isAuthenticated && !session) {
     return (
       <div className="login-container" style={{ position: 'relative', zIndex: 1, isolation: 'isolate' }}>
-        {/* Fondo oscuro */}
-        <div style={{ position: 'fixed', inset: 0, zIndex: 0, background: '#1a1915', overflow: 'hidden' }}>
-          <svg width="0" height="0" style={{display:'none'}}>
+        {/* Fondo animado con gráficas */}
+        <div style={{ position: 'fixed', inset: 0, zIndex: 0, background: '#0a0f1e', overflow: 'hidden' }}>
+          <svg width="100%" height="100%" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <linearGradient id="line1grad" x1="0%" y1="0%" x2="100%" y2="0%">
                 <stop offset="0%" stopColor="#4f46e5" stopOpacity="0"/>
@@ -3163,41 +3013,26 @@ export default function App() {
             <rect width="1440" height="900" fill="url(#glow2)"/>
           </svg>
         </div>
-        <div style={{ position:'relative', zIndex:2, display:'flex', width:'100%', maxWidth:'860px', minHeight:'480px', borderRadius:'16px', overflow:'hidden', boxShadow:'0 20px 60px rgba(0,0,0,0.4)' }}>
-          {/* Lado izquierdo - Logo */}
-          <div style={{ flex:'1.1', background:'#1a1915', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'40px', position:'relative', overflow:'hidden' }}>
-            <div style={{ position:'absolute', left:'-60px', top:'50%', transform:'translateY(-50%)', width:'300px', height:'300px', borderRadius:'50%', border:'40px solid rgba(255,255,255,0.03)' }}></div>
-            <div style={{ position:'relative', zIndex:1, width:'100%' }}>
-              <img src="/CashRD_logo.png" alt="CashRD" style={{ width:'100%', maxWidth:'260px', marginBottom:'20px', borderRadius:'12px', padding:'12px', background:'white' }}/>
-              <p style={{ color:'rgba(255,255,255,0.4)', fontSize:'13px', margin:'0', letterSpacing:'2px', textTransform:'uppercase' }}>Sistema de Gestión de Cartera</p>
-              <p style={{ color:'rgba(255,255,255,0.2)', fontSize:'11px', margin:'8px 0 0' }}>app.cashrd.com</p>
-            </div>
+        <div className="login-box" style={{ position: 'relative', zIndex: 2 }}>
+          <div className="login-header">
+            <div className="login-logo"><BarChart2 size={34} strokeWidth={2}/></div>
+            <h1 className="login-title"><span className="logo-carta">Pay</span><span className="logo-master">Track</span></h1>
+            <p className="login-subtitle">Sistema de Gestión de Cartera</p>
           </div>
-          {/* Lado derecho - Formulario */}
-          <div style={{ flex:'1', background:'#f5f4ef', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'40px' }}>
-            <div style={{ width:'100%', maxWidth:'280px' }}>
-              <div style={{ marginBottom:'28px' }}>
-                <h2 style={{ fontSize:'20px', fontWeight:700, color:'#1a1915', margin:'0 0 6px' }}>Bienvenido</h2>
-                <p style={{ fontSize:'13px', color:'#9a998f', margin:0 }}>Ingresa tus credenciales para acceder</p>
-              </div>
-              <div style={{ marginBottom:'14px' }}>
-                <label style={{ display:'block', fontSize:'11px', fontWeight:700, color:'#5f5e5a', marginBottom:'5px', textTransform:'uppercase', letterSpacing:'0.05em' }}>Usuario</label>
-                <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Tu usuario" autoFocus style={{ width:'100%', padding:'10px 12px', border:'1px solid #e0dfd8', borderRadius:'8px', fontSize:'13px', background:'white', color:'#1a1915', boxSizing:'border-box' }}/>
-              </div>
-              <div style={{ marginBottom:'22px' }}>
-                <label style={{ display:'block', fontSize:'11px', fontWeight:700, color:'#5f5e5a', marginBottom:'5px', textTransform:'uppercase', letterSpacing:'0.05em' }}>Contraseña</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" style={{ width:'100%', padding:'10px 12px', border:'1px solid #e0dfd8', borderRadius:'8px', fontSize:'13px', background:'white', color:'#1a1915', boxSizing:'border-box' }}/>
-              </div>
-              <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'16px' }}>
-                <input type="checkbox" id="recordarme" checked={recordarme} onChange={e => setRecordarme(e.target.checked)} style={{ cursor:'pointer', width:'14px', height:'14px' }} />
-                <label htmlFor="recordarme" style={{ fontSize:'12px', color:'#5f5e5a', cursor:'pointer' }}>Recordar usuario y contraseña</label>
-              </div>
-              {loginError && <div style={{ background:'#fef2f2', border:'1px solid #fca5a5', borderRadius:'8px', padding:'10px 12px', fontSize:'13px', color:'#dc2626', marginBottom:'16px' }}>{loginError}</div>}
-              <button type="button" onClick={handleLogin} style={{ width:'100%', padding:'11px', background:'#1a1915', color:'white', border:'none', borderRadius:'8px', fontSize:'14px', fontWeight:700, cursor:'pointer' }}>Iniciar sesión</button>
-              <p style={{ textAlign:'center', fontSize:'11px', color:'#b4b2a9', margin:'18px 0 0' }}>PayTrack · 7LABS © 2026</p>
+          <form className="login-form" onSubmit={handleLogin}>
+            <div className="login-input-group">
+              <label>Usuario</label>
+              <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Ingresa tu usuario" autoFocus />
             </div>
-          </div>
+            <div className="login-input-group">
+              <label>Contraseña</label>
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Ingresa tu contraseña" />
+            </div>
+            {loginError && <div className="login-error">{loginError}</div>}
+            <button type="submit" className="login-btn">Iniciar Sesión</button>
+          </form>
         </div>
+        <p className="login-footer" style={{ position: 'relative', zIndex: 2 }}>© 2026 PayTrack · Todos los derechos reservados</p>
       </div>
     );
   }
@@ -3246,9 +3081,12 @@ export default function App() {
 
       {/* ── ELECTRON: Custom Titlebar ─────────────────────────── */}
       {isElectron && !isMiniMode && (
-        <div style={{ height: '36px', background: '#1a1915', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 1rem', WebkitAppRegion: 'drag', flexShrink: 0, zIndex: 9999 }}>
+        <div style={{ height: '36px', background: '#1e1e2e', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 1rem', WebkitAppRegion: 'drag', flexShrink: 0, zIndex: 9999 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontFamily:'Georgia,serif', fontWeight:700, fontSize:'0.85rem', letterSpacing:'-0.01em', color:'white' }}>Cash<span style={{ color:'#b8962e' }}>RD</span></span>
+            <div style={{ width: '20px', height: '20px', background: 'linear-gradient(135deg, #6366f1, #7c3aed)', borderRadius: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ color: '#fff', fontSize: '0.65rem', fontWeight: 800 }}>P</span>
+            </div>
+            <span style={{ color: '#818cf8', fontSize: '0.78rem', fontWeight: 300 }}>Pay</span><span style={{ color: '#ffffff', fontSize: '0.78rem', fontWeight: 800 }}>Track</span>
           </div>
           {tickerItems.length > 0 && (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: '0 1rem' }}>
@@ -3265,148 +3103,30 @@ export default function App() {
           )}
           <div id="electron-win-controls" style={{ display: 'flex', gap: '0.3rem', WebkitAppRegion: 'no-drag' }}>
             <button onClick={() => window.electronAPI?.toggleMini()} title="Modo mini" style={{ width: '28px', height: '20px', background: 'none', border: 'none', cursor: 'pointer', color: '#7878a0', borderRadius: '4px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.1)'} onMouseLeave={e => e.currentTarget.style.background='none'}><Minimize2 size={10}/></button>
-
+            <button onClick={() => window.electronAPI?.minimizeWindow()} title="Minimizar" style={{ width: '28px', height: '20px', background: 'none', border: 'none', cursor: 'pointer', color: '#7878a0', borderRadius: '4px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.1)'} onMouseLeave={e => e.currentTarget.style.background='none'}>─</button>
+            <button onClick={() => window.electronAPI?.maximizeWindow()} title="Maximizar" style={{ width: '28px', height: '20px', background: 'none', border: 'none', cursor: 'pointer', color: '#7878a0', borderRadius: '4px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.1)'} onMouseLeave={e => e.currentTarget.style.background='none'}>□</button>
+            <button onClick={() => window.electronAPI?.closeWindow()} title="Cerrar" style={{ width: '28px', height: '20px', background: 'none', border: 'none', cursor: 'pointer', color: '#7878a0', borderRadius: '4px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => { e.currentTarget.style.background='#ef4444'; e.currentTarget.style.color='#fff'; }} onMouseLeave={e => { e.currentTarget.style.background='none'; e.currentTarget.style.color='#7878a0'; }}>✕</button>
           </div>
         </div>
       )}
 
       {/* TOPBAR — ESPN style */}
-      <div className="topbar" style={{ background:'var(--bg)', borderBottom:'1px solid var(--border)', height:'52px', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 1.25rem', position:'sticky', top:0, zIndex:300 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
+      <div className="topbar">
+        <div className="topbar-left">
           <button className="hamburger-btn" onClick={() => setShowMobileMenu(v => !v)} title="Menú">
             {showMobileMenu ? <X size={20}/> : <Menu size={20}/>}
           </button>
-          <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
-            <span style={{ fontFamily:'Georgia,serif', fontWeight:700, fontSize:'1.1rem', letterSpacing:'-0.01em', color:'var(--text)' }}>Cash<span style={{ color:'#b8962e' }}>RD</span></span>
-          </div>
-        </div>
-
-        {/* NAV CENTRAL TIPO PILL */}
-        <div style={{ display:'flex', alignItems:'center', gap:'2px', background:'var(--surface-2)', borderRadius:'20px', padding:'3px' }}>
-          {[
-            { tab:'dashboard', label:'Inicio' },
-            ...(tienePermiso('ver_clientes') ? [{ tab:'cartera', label:'Cartera' }] : []),
-            ...(tienePermiso('ver_clientes') ? [{ tab:'recordatorio', label:'Recordatorio' }] : []),
-            { tab:'tickets', label:'Tickets' },
-            ...(tienePermiso('ver_creditos') ? [{ tab:'credito', label:'Crédito' }] : []),
-            { tab:'agenda', label:'Agenda' },
-            { tab:'documentos', label:'Documentos' },
-            { tab:'recarga', label:'Recarga' },
-            ...(esAdmin || currentUser === 'GSANCHEZ' ? [{ tab:'grupos', label:'Grupos' }] : []),
-          ].map(item => (
-            <button key={item.tab} onClick={() => setActiveTab(item.tab)} style={{ padding:'5px 14px', borderRadius:'16px', fontSize:'12px', fontWeight: activeTab === item.tab ? 600 : 400, background: activeTab === item.tab ? 'var(--text)' : 'transparent', color: activeTab === item.tab ? 'var(--bg)' : 'var(--text-muted)', border:'none', cursor:'pointer', transition:'all 0.15s', whiteSpace:'nowrap' }}>
-              {item.label}
-            </button>
-          ))}
-        </div>
-
-        {/* TOPBAR RIGHT */}
-        <div style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>
-          <div style={{ position:'relative' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:'0.4rem', background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'10px', padding:'0.3rem 0.75rem', minWidth:'200px' }}>
-              <Search size={13} style={{ color:'var(--text-muted)', flexShrink:0 }}/>
-              <input type="text" value={busquedaGlobal} onChange={e => { setBusquedaGlobal(e.target.value); setShowBusquedaGlobal(true); }} onBlur={() => setTimeout(() => setShowBusquedaGlobal(false), 300)} placeholder="Buscar cliente..." style={{ border:'none', background:'transparent', outline:'none', fontSize:'0.82rem', color:'var(--text)', width:'100%' }}/>
-              {busquedaGlobal && <button onClick={() => { setBusquedaGlobal(''); setShowBusquedaGlobal(false); }} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0, lineHeight:1 }}>×</button>}
-            </div>
-            {showBusquedaGlobal && busquedaGlobal.length > 1 && (() => {
-              const term = busquedaGlobal.toLowerCase();
-              const resultados = clientes.filter(c => (c.nombre || '').toLowerCase().includes(term) || (c.codigoCliente || '').toString().includes(term) || (c.contacto || '').includes(term)).slice(0, 7);
-              return (
-                <div style={{ position:'absolute', top:'calc(100% + 6px)', left:0, right:0, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'10px', boxShadow:'0 8px 24px rgba(0,0,0,0.25)', zIndex:9999, overflow:'hidden', minWidth:'340px' }}>
-                  {resultados.length === 0 ? <div style={{ padding:'0.75rem 1rem', fontSize:'0.8rem', color:'var(--text-muted)' }}>Sin resultados para "{busquedaGlobal}"</div> : resultados.map(c => {
-                    const creditosCliente = creditos.filter(cr => cr.cliente === c.nombre);
-                    const tieneCredito = creditosCliente.length > 0;
-                    const creditoVencido = creditosCliente.some(cr => cr.estado === 'Vencido' || getDiasRestantes(cr.fechaVencimiento) < 0);
-                    const monto = parseFloat(c.monto || 0);
-                    const estadoColor = c.estado === 'Pagado' || c.estado === 'Facturado' ? '#639922' : c.estado === 'Vencido' ? '#E24B4A' : c.estado === 'Notificado' ? '#BA7517' : 'var(--text-muted)';
-                    return (
-                      <div key={c.id} onMouseDown={() => { setBusquedaGlobal(''); setShowBusquedaGlobal(false); setActiveTab('cartera'); setTimeout(() => { setSearchTerm(c.nombre || ''); setPaginaActual(1); }, 100); }} style={{ display:'flex', alignItems:'center', gap:'0.6rem', padding:'0.6rem 0.9rem', cursor:'pointer', borderBottom:'1px solid var(--border)' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-2)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                        <div style={{ width:'32px', height:'32px', borderRadius:'50%', background:'#E6F1FB', color:'#185FA5', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:'0.75rem', flexShrink:0 }}>{(c.nombre || '?').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase()}</div>
-                        <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ fontWeight:600, fontSize:'0.82rem', color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{c.nombre}</div>
-                          <div style={{ fontSize:'0.7rem', color:'var(--text-muted)', display:'flex', gap:'6px', flexWrap:'wrap' }}>
-                            {c.codigoCliente && <span>Cod: {c.codigoCliente}</span>}
-                            {c.contacto && <span>{c.contacto}</span>}
-                          </div>
-                        </div>
-                        <div style={{ textAlign:'right', flexShrink:0 }}>
-                          <div style={{ fontSize:'0.7rem', fontWeight:600, color: estadoColor }}>{c.estado}</div>
-                          {monto > 0 && <div style={{ fontSize:'0.7rem', color:'var(--text-muted)' }}>${monto.toLocaleString('en-US')}</div>}
-                          {tieneCredito && <div style={{ fontSize:'0.68rem', color: creditoVencido ? '#E24B4A' : '#378ADD', fontWeight:600 }}>{creditoVencido ? 'Credito vencido' : creditosCliente.length + ' credito(s)'}</div>}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-          </div>
-          <div ref={clockRef} style={{ fontSize:'0.75rem', color:'var(--text-muted)', whiteSpace:'nowrap', letterSpacing:'0.02em' }} />
-          {/* CARPETA VIGILADA */}
-          {carpetaVigilada && (
-            <div title={'Carpeta vigilada: ' + carpetaVigilada} style={{ display:'flex', alignItems:'center', gap:'5px', fontSize:'11px', color:'#16a34a', background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:'20px', padding:'4px 10px', cursor:'default' }}>
-              <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:'#16a34a' }}></div>
-              Watcher activo
+          {!(typeof window !== 'undefined' && window.electronAPI?.isElectron) && (
+            <div className="topbar-logo">
+              <div className="dot">
+                <BarChart2 size={16} strokeWidth={2.5}/>
+              </div>
             </div>
           )}
-          {/* ESTADO WHATSAPP */}
-          <div title={whatsappConectado ? 'WhatsApp conectado' : 'WhatsApp desconectado'} style={{ display:'flex', alignItems:'center', gap:'5px', fontSize:'11px', color: whatsappConectado ? '#16a34a' : '#9a998f', background: whatsappConectado ? '#f0fdf4' : '#f5f4ef', border: whatsappConectado ? '1px solid #bbf7d0' : '1px solid #e0dfd8', borderRadius:'20px', padding:'4px 10px', cursor:'default' }}>
-            <div style={{ width:'6px', height:'6px', borderRadius:'50%', background: whatsappConectado ? '#16a34a' : '#9a998f' }}></div>
-            WA {whatsappConectado ? 'ON' : 'OFF'}
-          </div>
-
-          {/* AVATAR + CERRAR SESIÓN */}
-          <div style={{ position:'relative' }}>
-            <div onClick={() => setShowTopbarMenu(v => !v)} style={{ width:'32px', height:'32px', borderRadius:'50%', background:'linear-gradient(135deg,#4f46e5,#6366f1)', color:'#fff', fontSize:'12px', fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
-              {(session?.user?.name || currentUser || 'U').charAt(0).toUpperCase()}
-            </div>
-            {showTopbarMenu && (
-              <div style={{ position:'absolute', top:'calc(100% + 8px)', right:0, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'10px', boxShadow:'0 8px 24px rgba(0,0,0,0.12)', zIndex:9999, minWidth:'180px', overflow:'hidden' }}>
-                <div style={{ padding:'10px 14px', borderBottom:'1px solid var(--border)', fontSize:'12px', color:'var(--text-muted)' }}>
-                  <div style={{ fontWeight:700, color:'var(--text)', fontSize:'13px' }}>{session?.user?.name || currentUser}</div>
-                  <div style={{ fontSize:'11px', marginTop:'2px' }}>{session?.user?.rol || 'Usuario'}</div>
-                </div>
-                <button onClick={() => { setShowTopbarMenu(false); setDarkMode(!darkMode); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'var(--text)', borderBottom:'1px solid var(--border)' }}>
-                  {darkMode ? <Sun size={14}/> : <Moon size={14}/>} {darkMode ? 'Modo claro' : 'Modo oscuro'}
-                </button>
-                {esAdmin && <button onClick={() => { setShowTopbarMenu(false); cargarUsuariosAdmin(); setActiveTab('usuarios'); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'var(--text)', borderBottom:'1px solid var(--border)' }}>
-                  <Users size={14}/> Usuarios
-                </button>}
-                {['admin','supervisor_cobro','supervisor_contabilidad'].includes(session?.user?.rol) && <button onClick={() => { setShowTopbarMenu(false); setShowDescargaMesModal(true); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'#dc2626', borderBottom:'1px solid var(--border)' }}>
-                  <Save size={14}/> Cierre de Mes
-                </button>}
-                {esAdmin && <button onClick={() => { setShowTopbarMenu(false); setShowSettingsPanel(true); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'var(--text)', borderBottom:'1px solid var(--border)' }}>
-                  <Settings size={14}/> Configuración
-                </button>}
-                {esAdmin && <button onClick={() => { setShowTopbarMenu(false); window.open('/api/backup-completo', '_blank'); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'var(--text)', borderBottom:'1px solid var(--border)' }}>
-                  <Download size={14}/> Backup Completo (SQL)
-                </button>}
-                <button onClick={() => { setShowTopbarMenu(false); abrirCargaMasiva(); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'var(--text)', borderBottom:'1px solid var(--border)' }}>
-                  <Upload size={14}/> Carga Masiva PDF
-                </button>
-                {typeof window !== 'undefined' && window.electronAPI?.isElectron && (
-                  <button onClick={() => { setShowTopbarMenu(false); if (updateDownloaded) { window.electronAPI.installUpdate(); } else if (updateAvailable) { setDownloading(true); window.electronAPI.startDownload(); } }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor: updateAvailable ? 'pointer' : 'default', fontSize:'13px', color: updateDownloaded ? '#22c55e' : updateAvailable ? '#6366f1' : 'var(--text-muted)', borderBottom:'1px solid var(--border)' }}>
-                    <Download size={14}/>
-                    {updateDownloaded ? 'Reiniciar y actualizar' : downloading ? `Descargando... ${downloadProgress}%` : updateAvailable ? `Actualizar a v${updateVersion}` : 'App actualizada'}
-                    {updateAvailable && !downloading && !updateDownloaded && <span style={{ marginLeft:'auto', width:'7px', height:'7px', borderRadius:'50%', background:'#6366f1' }}/>}
-                  </button>
-                )}
-                <button onClick={() => { setShowTopbarMenu(false); setShowWhatsappStatusModal(true); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'var(--text)', borderBottom:'1px solid var(--border)' }}>
-                  <MessageCircle size={14}/> WhatsApp
-                </button>
-                <button onClick={() => { setShowTopbarMenu(false); window._manualLogout = true; signOut({ callbackUrl: '/' }); setTimeout(() => { window.location.href = '/'; }, 500); }} style={{ width:'100%', display:'flex', alignItems:'center', gap:'10px', padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontSize:'13px', color:'#dc2626', fontWeight:600 }}>
-                  <LogOut size={14}/> Cerrar sesión
-                </button>
-              </div>
-            )}
-          </div>
         </div>
 
-        <div className="topbar-left" style={{ display:'none' }}>
-
-        </div>
         {/* TOPBAR CENTER — búsqueda global + reloj */}
-        <div className="topbar-center" style={{ display:"none" }}>
+        <div className="topbar-center">
           <div style={{ position: 'relative' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--surface-2, rgba(255,255,255,0.06))', border: '1px solid var(--border)', borderRadius: '10px', padding: '0.3rem 0.75rem', minWidth: '260px' }}>
               <Search size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }}/>
@@ -3414,7 +3134,7 @@ export default function App() {
                 type="text"
                 value={busquedaGlobal}
                 onChange={e => { setBusquedaGlobal(e.target.value); setShowBusquedaGlobal(true); }}
-                onBlur={() => setTimeout(() => setShowBusquedaGlobal(false), 300)}
+                onBlur={() => setTimeout(() => setShowBusquedaGlobal(false), 180)}
                 placeholder="Buscar cliente..."
                 style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.82rem', color: 'var(--text)', width: '100%' }}
               />
@@ -3457,7 +3177,7 @@ export default function App() {
           <div ref={clockRef} style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', letterSpacing: '0.02em', marginLeft: '1rem' }} />
         </div>
 
-        <div className="topbar-right" style={{ display:"none" }}>
+        <div className="topbar-right">
           {soloLectura && <span style={{ background: 'rgba(254,249,195,0.15)', color: '#fbbf24', fontSize: '0.67rem', padding: '0.2rem 0.55rem', borderRadius: '5px', fontWeight: 700, marginRight: '0.25rem', border: '1px solid rgba(251,191,36,0.25)' }}>Solo lectura</span>}
           <button className="topbar-icon-btn" onClick={() => setDarkMode(!darkMode)} title="Modo oscuro">
             {darkMode ? <Sun size={16}/> : <Moon size={16}/>}
@@ -3624,8 +3344,33 @@ export default function App() {
                       <Settings size={14}/> Preferencias
                     </button>
                   )}
-
-                  <button onClick={() => { setShowTopbarMenu(false); window._manualLogout = true; signOut({ callbackUrl: '/' }); setTimeout(() => { window.location.href = '/'; }, 500); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.75rem', background: 'none', border: 'none', cursor: 'pointer', borderRadius: '6px', fontSize: '0.83rem', color: '#ef4444', textAlign: 'left' }} onMouseEnter={e => e.currentTarget.style.background='#fff1f2'} onMouseLeave={e => e.currentTarget.style.background='none'}>
+                  {/* Actualización — solo en Electron */}
+                  {typeof window !== 'undefined' && window.electronAPI?.isElectron && (
+                    <button
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        if (updateDownloaded) { window.electronAPI.installUpdate(); }
+                        else if (downloading) { /* en progreso */ }
+                        else if (updateAvailable) { setDownloading(true); window.electronAPI.startDownload(); }
+                      }}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.75rem', background: 'none', border: 'none', cursor: updateAvailable ? 'pointer' : 'default', borderRadius: '6px', fontSize: '0.83rem', color: updateDownloaded ? '#22c55e' : updateAvailable ? '#6366f1' : 'var(--text-muted)', textAlign: 'left' }}
+                      onMouseEnter={e => e.currentTarget.style.background='var(--surface-2)'}
+                      onMouseLeave={e => e.currentTarget.style.background='none'}
+                    >
+                      <Download size={14}/>
+                      {updateDownloaded
+                        ? 'Reiniciar y actualizar'
+                        : downloading
+                          ? `Descargando... ${downloadProgress}%`
+                          : updateAvailable
+                            ? `Actualizar a v${updateVersion}`
+                            : 'App actualizada'}
+                      {updateAvailable && !downloading && !updateDownloaded && (
+                        <span style={{ marginLeft: 'auto', width: '7px', height: '7px', borderRadius: '50%', background: '#6366f1', flexShrink: 0 }}/>
+                      )}
+                    </button>
+                  )}
+                  <button onClick={() => { setShowUserMenu(false); window._manualLogout = true; signOut({ callbackUrl: '/' }); setTimeout(() => { window.location.href = '/'; }, 500); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.55rem 0.75rem', background: 'none', border: 'none', cursor: 'pointer', borderRadius: '6px', fontSize: '0.83rem', color: '#ef4444', textAlign: 'left' }} onMouseEnter={e => e.currentTarget.style.background='#fff1f2'} onMouseLeave={e => e.currentTarget.style.background='none'}>
                     <LogOut size={14}/> Cerrar sesión
                   </button>
                 </div>
@@ -3636,9 +3381,9 @@ export default function App() {
       </div>
 
       {showMobileMenu && <div className="mobile-overlay" onClick={() => setShowMobileMenu(false)} />}
-      <div className="main-layout" style={{ display:'block' }}>
-        {/* SIDEBAR — oculto */}
-        <div className={`sidebar${showMobileMenu ? ' mobile-open' : ''}`} style={{ display:'none' }}>
+      <div className="main-layout">
+        {/* SIDEBAR */}
+        <div className={`sidebar${showMobileMenu ? ' mobile-open' : ''}`}>
           {/* Logo — fuera del scroll, siempre visible */}
           <div style={{ padding: '1.1rem 1rem', borderBottom: '1px solid #e0dfd8', display: 'flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0 }}>
             <div style={{ width: '28px', height: '28px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(99,102,241,0.4)' }}>
@@ -3653,7 +3398,6 @@ export default function App() {
             <div className={`sidebar-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}><span className="icon"><LayoutGrid size={14}/></span> Inicio</div>
             <div className={`sidebar-item ${activeTab === 'calendario' ? 'active' : ''}`} onClick={() => setActiveTab('calendario')}><span className="icon"><Calendar size={14}/></span> Calendario</div>
             {tienePermiso('ver_clientes') && <div className={`sidebar-item ${activeTab === 'cartera' ? 'active' : ''}`} onClick={() => setActiveTab('cartera')}><span className="icon"><BarChart2 size={14}/></span> Cartera</div>}
-            <div className={`sidebar-item ${activeTab === 'tickets' ? 'active' : ''}`} onClick={() => setActiveTab('tickets')}><span className="icon"><ClipboardList size={14}/></span> Tickets</div>
             {tienePermiso('ver_creditos') && <div className={`sidebar-item ${activeTab === 'credito' ? 'active' : ''}`} onClick={() => setActiveTab('credito')}><span className="icon"><CreditCard size={14}/></span> Crédito</div>}
             <div className={`sidebar-item ${activeTab === 'agenda' ? 'active' : ''}`} onClick={() => setActiveTab('agenda')}><span className="icon"><Calendar size={14}/></span> Agenda del Día</div>
             <div className={`sidebar-item ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => { setActiveTab('documentos'); cargarTodosDocumentos(); }}><span className="icon"><FileText size={14}/></span> Documentos</div>
@@ -3698,7 +3442,7 @@ export default function App() {
         </div>
 
         {/* CONTENT */}
-        <div className="content-area" style={{ marginLeft:0, width:'100%' }}>
+        <div className="content-area">
           <div className="page-header" style={{ flexDirection:'column', alignItems:'stretch', gap:'1rem', padding:'1.25rem 1.5rem', background:'var(--surface)', borderRadius:'14px', border:'1px solid var(--border)', marginBottom:'0.5rem' }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
               <div>
@@ -4117,7 +3861,6 @@ export default function App() {
             </div>
           </div>
 
-            <CentroNotificaciones clientes={clientes} creditos={creditos} showToast={showToast} notifInit={notifInit} setNotifInit={setNotifInit} />
           {/* TAB CALENDARIO */}
           <div className={`tab-content ${activeTab === 'calendario' ? 'active' : ''}`}>
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '1.5rem' }}>
@@ -4283,7 +4026,6 @@ export default function App() {
 
           {/* TAB AGENDA DEL DÍA */}
           <div className={`tab-content ${activeTab === 'agenda' ? 'active' : ''}`}>
-            <AgendaTareas currentUser={currentUser} />
             {(() => {
               const hoy = new Date(); hoy.setHours(23,59,59,999);
               const seguimientoHoy = clientes.filter(c => tieneProximoSeguimiento(c.id));
@@ -4459,10 +4201,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* TAB RECARGA */}
-          <div className={`tab-content ${activeTab === 'recarga' ? 'active' : ''}`}>
-            <TabRecarga clientes={clientes} empresaActual={empresaActual} showToast={showToast} />
-          </div>
           {/* TAB CARTERA */}
           <div className={`tab-content ${activeTab === 'cartera' ? 'active' : ''}`}>
 
@@ -4507,25 +4245,22 @@ export default function App() {
               );
             })()}
 
-            <div style={{ display:'flex', gap:'8px', marginBottom:'1.25rem', flexWrap:'wrap' }}>
+            <div className="dashboard">
               {[
-                { key: 'cotizado',      label: 'Cotizado',      val: estadisticas.cotizado,    pct: estadisticas.cotizadoPct,    color: '#ea580c', bg: '#fff7ed', border: '#fed7aa' },
-                { key: 'notificado',    label: 'Notificado',    val: estadisticas.notificado,  pct: estadisticas.notificadoPct,  color: '#6366f1', bg: '#eff6ff', border: '#bfdbfe' },
-                { key: 'pagado',        label: 'Pagado',        val: estadisticas.pagado,      pct: estadisticas.pagadoPct,      color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
-                { key: 'facturado',     label: 'Facturado',     val: estadisticas.facturado,   pct: estadisticas.facturadoPct,   color: '#0d9488', bg: '#f0fdfa', border: '#99f6e4' },
-                { key: 'vencido',       label: 'Vencido',       val: estadisticas.vencido,     pct: estadisticas.vencidoPct,     color: '#dc2626', bg: '#fff1f2', border: '#fecdd3' },
-                { key: 'no-generaron',  label: 'No Generaron',  val: estadisticas.noGeneraron, pct: estadisticas.noGeneraronPct, color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' },
-                { key: 'suspendido',    label: 'Suspendidos',   val: estadisticas.suspendido,  pct: estadisticas.suspendidoPct,  color: '#e11d48', bg: '#fff1f2', border: '#fecdd3' },
-                ...(estadisticas.sinDocumento > 0 ? [{ key: 'sin-documento', label: 'Sin Doc.', val: estadisticas.sinDocumento, pct: estadisticas.total > 0 ? ((estadisticas.sinDocumento / estadisticas.total) * 100).toFixed(0) : 0, color: '#b45309', bg: '#fffbeb', border: '#fde68a' }] : []),
+                { key: 'cotizado', label: 'Cotizado', val: estadisticas.cotizado, pct: estadisticas.cotizadoPct, monto: estadisticas.montoCotizado, color: '#ea580c' },
+                { key: 'notificado', label: 'Notificado', val: estadisticas.notificado, pct: estadisticas.notificadoPct, monto: estadisticas.montoNotificado, color: '#0284c7' },
+                { key: 'pagado', label: 'Pagado', val: estadisticas.pagado, pct: estadisticas.pagadoPct, monto: estadisticas.montoPagado, color: '#059669' },
+                { key: 'facturado', label: 'Facturado', val: estadisticas.facturado, pct: estadisticas.facturadoPct, monto: estadisticas.montoFacturado, color: '#16a34a' },
+                { key: 'vencido', label: 'Vencido', val: estadisticas.vencido, pct: estadisticas.vencidoPct, monto: estadisticas.montoVencido, color: '#dc2626' },
+                { key: 'no-generaron', label: 'No Generaron', val: estadisticas.noGeneraron, pct: estadisticas.noGeneraronPct, monto: null, color: '#64748b' },
+                { key: 'suspendido', label: 'Suspendidos', val: estadisticas.suspendido, pct: estadisticas.suspendidoPct, monto: estadisticas.montoSuspendido, color: '#dc2626' },
+                ...(estadisticas.sinDocumento > 0 ? [{ key: 'sin-documento', label: 'Sin Documento', val: estadisticas.sinDocumento, pct: estadisticas.total > 0 ? ((estadisticas.sinDocumento / estadisticas.total) * 100).toFixed(0) : 0, monto: null, color: '#b45309' }] : []),
               ].map(s => (
-                <div key={s.key} onClick={() => { setFilter(filter === s.key ? 'todos' : s.key); setPaginaActual(1); }}
-                  title={filter === s.key ? 'Clic para quitar filtro' : `Filtrar por ${s.label}`}
-                  style={{ display:'flex', alignItems:'center', gap:'8px', background: s.bg, border: `1px solid ${filter === s.key ? s.color : s.border}`, borderRadius:'10px', padding:'7px 13px', cursor:'pointer', transition:'all 0.15s', outline: filter === s.key ? `2px solid ${s.color}` : 'none', outlineOffset:'2px' }}>
-                  <div style={{ width:'8px', height:'8px', borderRadius:'50%', background: s.color, flexShrink:0 }}></div>
-                  <span style={{ fontSize:'12px', color:'#9a998f' }}>{s.label}</span>
-                  <span style={{ fontSize:'16px', fontWeight:700, color: s.color, fontFamily:'monospace', lineHeight:1 }}>{s.val}</span>
-                  <span style={{ fontSize:'10px', color: s.color }}>{s.pct}%</span>
-                  {filter === s.key && <span style={{ fontSize:'10px', fontWeight:700, color: s.color }}>✓</span>}
+                <div key={s.key} className={`stat-card ${s.key}`} onClick={() => { setFilter(filter === s.key ? 'todos' : s.key); setPaginaActual(1); }} style={{ cursor: 'pointer', outline: filter === s.key ? `2px solid ${s.color}` : 'none', outlineOffset: '2px', transition: 'all 0.15s' }} title={filter === s.key ? 'Clic para quitar filtro' : `Filtrar por ${s.label}`}>
+                  <div className="stat-label">{s.label}</div>
+                  <div className="stat-value">{s.val}</div>
+                  <div className="stat-percentage">{s.pct}%{s.monto != null && fmtMonto(s.monto, s.val) && <span style={{ display: 'block', color: s.color, fontWeight: 800, fontSize: '0.85rem' }}>{fmtMonto(s.monto, s.val)}</span>}</div>
+                  {filter === s.key && <div style={{ fontSize: '0.65rem', fontWeight: 700, color: s.color, marginTop: '0.2rem' }}>✓ Filtrando</div>}
                 </div>
               ))}
             </div>
@@ -4585,20 +4320,15 @@ export default function App() {
             <div className="controls">
               <div className="search-box">
                 <span className="search-icon"><HelpCircle size={14}/></span>
-                <input type="text" placeholder="Buscar por nombre, ID o contacto... (F)" value={searchTerm} onChange={async (e) => {
-                    const val = e.target.value;
-                    setSearchTerm(val);
-                    setPaginaActual(1);
-                    if (val.length >= 2) {
-                      const res = await fetch(`/api/subgrupos?buscar=${encodeURIComponent(val)}`);
-                      const sgs = res.ok ? await res.json() : [];
-                      setClientesIdsSubgrupo(new Set(sgs.map(sg => sg.cliente_id)));
-                    } else {
-                      setClientesIdsSubgrupo(new Set());
-                    }
-                  }} />
+                <input type="text" placeholder="Buscar por nombre, ID o contacto... (F)" value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setPaginaActual(1); }} />
               </div>
-
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>Desde:</span>
+                <input type="date" value={fechaDesde} onChange={e => { setFechaDesde(e.target.value); setPaginaActual(1); }} style={{ padding: '0.45rem 0.6rem', border: '1px solid var(--border2)', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--surface)', color: 'var(--text)' }} />
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>Hasta:</span>
+                <input type="date" value={fechaHasta} onChange={e => { setFechaHasta(e.target.value); setPaginaActual(1); }} style={{ padding: '0.45rem 0.6rem', border: '1px solid var(--border2)', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--surface)', color: 'var(--text)' }} />
+                {(fechaDesde || fechaHasta) && <button onClick={() => { setFechaDesde(''); setFechaHasta(''); }} style={{ padding: '0.4rem 0.7rem', borderRadius: '7px', border: '1px solid var(--danger)', background: '#fef2f2', color: 'var(--danger)', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}>✕ Limpiar</button>}
+              </div>
 
               <div style={{ display: 'flex', gap: '0.3rem' }}>
                 <button className="btn btn-secondary" onClick={() => setVistaCards(false)} style={{ background: !vistaCards ? 'var(--navy)' : '', color: !vistaCards ? 'white' : '' }} title="Tabla"><ClipboardList size={14}/></button>
@@ -4684,33 +4414,33 @@ export default function App() {
             )}
 
 
-            <div className="table-container" style={{ display: vistaCards ? 'none' : 'block', background:'transparent', border:'none', boxShadow:'none' }}>
+            <div className="table-container" style={{ display: vistaCards ? 'none' : 'block' }}>
               <div className="table-wrapper">
                 {clientesFiltrados.length === 0 ? (
                   <div className="empty-state"><h3>No se encontraron clientes</h3><p>Intenta ajustar los filtros o agregar un nuevo cliente</p></div>
                 ) : (
                   <table className={modoCompacto ? 'compact-mode' : ''}>
-                    <thead><tr style={{ background:'transparent' }}>
-                      <th style={{ width:'32px', textAlign:'center', padding:'6px 14px', fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', border:'none' }}><input type="checkbox" onChange={toggleTodos} checked={clientesPaginados.length > 0 && clientesPaginados.every(c => clientesSeleccionados.includes(c.id))} style={{ cursor:'pointer' }} title="Seleccionar todos" /></th>
+                    <thead><tr>
+                      <th style={{ width:'32px', textAlign:'center' }}><input type="checkbox" onChange={toggleTodos} checked={clientesPaginados.length > 0 && clientesPaginados.every(c => clientesSeleccionados.includes(c.id))} style={{ cursor:'pointer' }} title="Seleccionar todos" /></th>
                       <th style={{ width:'60px', display:'none' }}>ID</th>
-                      <th style={{ padding:'6px 8px', fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center', border:'none' }}># CÓD</th>
-                      <th style={{ padding:'6px 14px', fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'left', border:'none' }}>CLIENTE</th>
-                      {puedeVerTodo && <th style={{ padding:'6px 14px', fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center', border:'none' }}>AGENTE</th>}
-                      <th style={{ padding:'6px 14px', fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center', border:'none' }}>ESTADO</th>
-                      <th style={{ padding:'6px 14px', fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center', border:'none' }}>TELÉFONO</th>
-                      <th style={{ padding:'6px 14px', fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'right', border:'none' }}>MONTO</th>
-                      <th style={{ padding:'6px 14px', fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center', border:'none' }}>PROCESO</th>
-                      <th style={{ padding:'6px 14px', fontSize:'10px', fontWeight:600, color:'#9a998f', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'center', border:'none' }}>ACCIONES</th>
+                      <th style={{ width:'80px', textAlign:'center' }}>CÓDIGO</th>
+                      <th style={{ textAlign:'left' }}>CLIENTE</th>
+                      {puedeVerTodo && <th style={{ width:'90px', textAlign:'center' }}>AGENTE</th>}
+                      <th style={{ width:'130px', textAlign:'center' }}>ESTADO</th>
+                      <th style={{ width:'140px', textAlign:'center' }}>TELÉFONO</th>
+                      <th style={{ width:'90px', textAlign:'center' }}>MONTO</th>
+                      <th style={{ width:'160px', textAlign:'center' }}>PROCESO</th>
+                      <th style={{ width:'100px', textAlign:'center' }}>OPCIONES</th>
                     </tr></thead>
                     <tbody>
                       {clientesPaginados.map(cliente => {
                         const estaSuspendido = cliente.suspendido === true;
                         return (
-                          <tr key={cliente.id} className={`${estaSuspendido ? 'cliente-suspendido' : ''} ${clientesSeleccionados.includes(cliente.id) ? 'row-selected' : ''}`} style={{ background: clientesSeleccionados.includes(cliente.id) ? '#fefce8' : estaSuspendido ? '#fff1f2' : '#fff', border:'1px solid #f0efe9', borderRadius:'10px', marginBottom:'6px', boxShadow:'0 1px 3px rgba(0,0,0,0.04)', transition:'all 0.15s' }}>
+                          <tr key={cliente.id} className={`${estaSuspendido ? 'cliente-suspendido' : ''} ${clientesSeleccionados.includes(cliente.id) ? 'row-selected' : ''}`}>
                             <td style={{ width:'32px', textAlign:'center' }}><input type="checkbox" checked={clientesSeleccionados.includes(cliente.id)} onChange={() => toggleSeleccion(cliente.id)} style={{ cursor:'pointer' }} /></td>
                             <td style={{ display:'none' }}><div className="id-with-led"><span className={`status-led ${estaSuspendido ? 'suspended' : esClienteActivo(cliente) ? 'active' : 'inactive'}`}></span><strong>{cliente.id}</strong></div></td>
-                            <td style={{ padding:'10px 8px', fontSize:'12px', color:'#6366f1', fontFamily:'monospace', fontWeight:700, textAlign:'center', borderBottom:'1px solid #f5f4ef' }}>{cliente.codigoCliente || cliente.id}</td>
-                            <td style={{ padding:'10px 14px', borderBottom:'1px solid #f5f4ef' }}>
+                            <td style={{ width:'80px', textAlign:'center' }}><strong style={{ fontFamily: 'var(--mono)', color: 'var(--accent)' }}>{cliente.codigoCliente || '—'}</strong></td>
+                            <td>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 {(() => { const av = getAvatar(cliente.nombre); return <div className="avatar avatar-sm" style={{ background: av.color }}>{av.letra}</div>; })()}
                                 <div>
@@ -4733,7 +4463,6 @@ export default function App() {
                                       <span style={{ fontSize:'0.68rem', fontWeight:600, color:'#92400e', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{cliente.nota.length > 35 ? cliente.nota.slice(0, 35) + '…' : cliente.nota}</span>
                                     </div>
                                   )}
-                                  <SubgruposCliente cliente={cliente} empresaActual={empresaActual} showToast={showToast} />
                                 </div>
                               </div>
                             </td>
@@ -4775,7 +4504,7 @@ export default function App() {
                               <div className="proceso-icons">
                                 <button className={`proceso-icon cotizado ${cliente.fechaCotizacion ? 'done' : ''}`} disabled={esModoPasado} title={cliente.fechaCotizacion ? 'Cotizado' : 'Marcar Cotizado'} onClick={() => { if (esModoPasado) return; const a = { ...cliente }; if (!a.fechaCotizacion) { a.fechaCotizacion = new Date().toISOString().split('T')[0]; a.estado = 'Cotizado'; } else { a.fechaCotizacion = ''; a.fechaNotificacion = ''; a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'No Generaron'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaCotizacion ? 'Marco Cotizado' : 'Desmarco Cotizado', usuario: currentUser || session?.user?.username || 'Sistema' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}><ClipboardList size={13}/></button>
                                 <button className={`proceso-icon notificado ${cliente.fechaNotificacion ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaCotizacion} style={{ opacity: !cliente.fechaCotizacion ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaCotizacion) return; if (!cliente.fechaNotificacion) { abrirWhatsappModal(cliente); } else { const a = { ...cliente, fechaNotificacion: '', fechaPago: '', fechaFacturacion: '', pagosRealizados: [], estado: 'Cotizado' }; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: 'Desmarco Notificado', usuario: currentUser || session?.user?.username || 'Sistema' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, 'Cotizado'); } }}><Mail size={13}/></button>
-                                {tienePermiso('registrar_pagos') && <button className={`proceso-icon pagado ${cliente.fechaPago ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaNotificacion} style={{ opacity: !cliente.fechaNotificacion ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaNotificacion) return; const a = { ...cliente }; if (!a.fechaPago) { a.fechaPago = new Date().toISOString().split('T')[0]; a.estado = 'Pagado'; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: 'Marco Pagado', usuario: currentUser || session?.user?.username || 'Sistema' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, 'Pagado'); if (currentUser === 'A-CPEREZ' && a.contacto && window.electronAPI?.whatsappEnviarMensaje) { window.electronAPI.whatsappEnviarMensaje(a.contacto, 'Muchas gracias por su pago.').catch(() => null); } return; } a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'Notificado'; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: 'Desmarco Pagado', usuario: currentUser || session?.user?.username || 'Sistema' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}><DollarSign size={13}/></button>}
+                                {tienePermiso('registrar_pagos') && <button className={`proceso-icon pagado ${cliente.fechaPago ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaNotificacion} style={{ opacity: !cliente.fechaNotificacion ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaNotificacion) return; const a = { ...cliente }; if (!a.fechaPago) { a.fechaPago = new Date().toISOString().split('T')[0]; a.estado = 'Pagado'; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: 'Marco Pagado', usuario: currentUser || session?.user?.username || 'Sistema' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, 'Pagado'); return; } a.fechaPago = ''; a.fechaFacturacion = ''; a.pagosRealizados = []; a.estado = 'Notificado'; a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: 'Desmarco Pagado', usuario: currentUser || session?.user?.username || 'Sistema' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}><DollarSign size={13}/></button>}
                                 <button className={`proceso-icon facturado ${cliente.fechaFacturacion ? 'done' : ''}`} disabled={esModoPasado || !cliente.fechaPago} style={{ opacity: !cliente.fechaPago ? 0.3 : 1 }} onClick={() => { if (esModoPasado || !cliente.fechaPago) return; const a = { ...cliente }; if (!a.fechaFacturacion) { a.fechaFacturacion = new Date().toISOString().split('T')[0]; a.estado = 'Facturado'; } else { a.fechaFacturacion = ''; a.estado = 'Pagado'; } a.historial = [...(a.historial || []), { fecha: new Date().toISOString(), accion: a.fechaFacturacion ? 'Marco Facturado' : 'Desmarco Facturado', usuario: currentUser || session?.user?.username || 'Sistema' }]; actualizarCliente(a); sincronizarEstadoCotizacion(cliente.id, a.estado); }}><FileText size={13}/></button>
                               </div>
                             </td>
@@ -4783,13 +4512,13 @@ export default function App() {
                             <td style={{ width:'100px', textAlign:'center', position: 'relative' }}>
                               <div style={{ position: 'relative', display: 'inline-block' }}>
                                 <button
-                                  onClick={(e) => { const rect = e.currentTarget.getBoundingClientRect(); const spaceBelow = window.innerHeight - rect.bottom; const dir = spaceBelow < 240 ? 'up' : 'down'; setMenuAbiertoDir(dir); setMenuPos({ top: dir === 'down' ? rect.bottom + 4 : rect.top - 4, right: window.innerWidth - rect.right }); setMenuAbierto(prev => prev === cliente.id ? null : cliente.id); e.stopPropagation(); }}
+                                  onClick={(e) => { const rect = e.currentTarget.getBoundingClientRect(); const spaceBelow = window.innerHeight - rect.bottom; setMenuAbiertoDir(spaceBelow < 240 ? 'up' : 'down'); setMenuAbierto(prev => prev === cliente.id ? null : cliente.id); }}
                                   title="Opciones"
                                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.4rem 0.55rem', borderRadius: '7px', border: '1.5px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', color: '#1e2d4a' }}>
                                   <MoreVertical size={15}/>
                                 </button>
                                 {menuAbierto === cliente.id && (
-                                  <div data-menu style={{ position: 'fixed', right: menuPos.right + 'px', ...(menuAbiertoDir === 'up' ? { bottom: (window.innerHeight - menuPos.top + 4) + 'px', top: 'auto' } : { top: menuPos.top + 'px', bottom: 'auto' }), background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 99999, minWidth: '200px', maxHeight: '60vh', overflowY: 'auto' }}>
+                                  <div style={{ position: 'absolute', right: 0, top: '110%', background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 9999, minWidth: '200px', overflow: 'hidden' }}>
                                     {cliente.contacto && (
                                       <button onClick={() => { abrirWhatsappModal(cliente); setMenuAbierto(null); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 1rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#16a34a', fontWeight: 600, borderBottom: '1px solid #f1f5f9' }}>
                                         <Phone size={15}/>
@@ -4888,21 +4617,8 @@ export default function App() {
           </div>
 
           {/* TAB CRÉDITO */}
-          <div className={`tab-content ${activeTab === 'tickets' ? 'active' : ''}`}>
-            <TabTickets currentUser={currentUser} session={session} empresaActual={empresaActual} clientes={clientes} showToast={showToast} />
-          </div>
-
-          {(esAdmin || currentUser === 'GSANCHEZ') && <div className={`tab-content ${activeTab === 'grupos' ? 'active' : ''}`}>
-            <TabGrupos clientes={clientes} session={session} currentUser={currentUser} empresaActual={empresaActual} showToast={showToast} />
-          </div>}
-
-          {/* TAB RECORDATORIO */}
-          <div className={`tab-content ${activeTab === 'recordatorio' ? 'active' : ''}`}>
-            <TabRecordatorio clientes={clientes} showToast={showToast} empresaActual={empresaActual} diaVencimiento={diaVencimiento} setDiaVencimiento={setDiaVencimiento} mensajeRecordatorio={mensajeRecordatorio} setMensajeRecordatorio={setMensajeRecordatorio} currentUser={currentUser} puedeVerTodo={puedeVerTodo} />
-          </div>
-
           <div className={`tab-content ${activeTab === 'credito' ? 'active' : ''}`}>
-            {creditosVencidos.length > 0 && <div className="alert-box danger"><h3><AlertTriangle size={14} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Créditos Vencidos ({creditosVencidos.length})</h3>{creditosVencidos.map(credito => <div key={credito.id} className="alert-item" onClick={() => { const c = clientes.find(x => x.nombre === credito.cliente); if (c) setNotifInit({ cliente: c, deuda: { label: 'Credito #' + credito.numeroOrden, monto: parseFloat(credito.monto||0), fecha: credito.fechaVencimiento, dias: getDiasRestantes(credito.fechaVencimiento) }, plantilla: 1 }); }} style={{ cursor: 'pointer' }}><div><strong>{credito.cliente}</strong> - Orden: {credito.numeroOrden}<div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Vencido: {new Date(credito.fechaVencimiento).toLocaleDateString('es-DO')}</div></div><span className="dias-restantes critico">{Math.abs(getDiasRestantes(credito.fechaVencimiento))} días vencido</span></div>)}</div>}
+            {creditosVencidos.length > 0 && <div className="alert-box danger"><h3><AlertTriangle size={14} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Créditos Vencidos ({creditosVencidos.length})</h3>{creditosVencidos.map(credito => <div key={credito.id} className="alert-item"><div><strong>{credito.cliente}</strong> - Orden: {credito.numeroOrden}<div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Vencido: {new Date(credito.fechaVencimiento).toLocaleDateString('es-DO')}</div></div><span className="dias-restantes critico">{Math.abs(getDiasRestantes(credito.fechaVencimiento))} días vencido</span></div>)}</div>}
             {creditosAlerta.length > 0 && <div className="alert-box"><h3><Clock size={14} style={{verticalAlign:'middle', marginRight:'0.3rem'}}/>Créditos por Vencer ({creditosAlerta.length})</h3>{creditosAlerta.map(credito => { const dias = getDiasRestantes(credito.fechaVencimiento); return <div key={credito.id} className="alert-item"><div><strong>{credito.cliente}</strong> - Orden: {credito.numeroOrden}<div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Vence: {new Date(credito.fechaVencimiento).toLocaleDateString('es-DO')}</div></div><span className={`dias-restantes ${dias <= 3 ? 'critico' : 'advertencia'}`}>{dias} {dias === 1 ? 'día' : 'días'}</span></div>; })}</div>}
 
             <div className="dashboard">
@@ -4921,26 +4637,51 @@ export default function App() {
               {tienePermiso('crear_creditos') && <button className="btn btn-primary" onClick={() => abrirCreditoModal()}><Plus size={13}/> Nuevo Crédito</button>}
             </div>
 
-            <div style={{ display:'flex', flexDirection:'column', gap:'10px', padding:'0.5rem 0' }}>
+            <div className="table-container">
               {creditos.length === 0 ? <div className="empty-state"><p>No hay créditos registrados</p></div> : (
-                creditos.filter(c => c.cliente.toLowerCase().includes(searchTerm.toLowerCase()) || c.numeroOrden.toLowerCase().includes(searchTerm.toLowerCase()) || c.id.toString().includes(searchTerm)).map(credito => (
-                  <CreditoCard
-                    key={credito.id}
-                    credito={credito}
-                    clientes={clientes}
-                    editingCreditoMontoId={editingCreditoMontoId}
-                    tempCreditoMonto={tempCreditoMonto}
-                    setTempCreditoMonto={setTempCreditoMonto}
-                    guardarCreditoMontoInline={guardarCreditoMontoInline}
-                    cancelarEdicionCreditoMonto={cancelarEdicionCreditoMonto}
-                    iniciarEdicionCreditoMonto={iniciarEdicionCreditoMonto}
-                    calcularSaldosCredito={calcularSaldosCredito}
-                    getDiasRestantes={getDiasRestantes}
-                    abrirCreditoModal={abrirCreditoModal}
-                    eliminarCredito={eliminarCredito}
-                    actualizarCredito={actualizarCredito}
-                  />
-                ))
+                <table>
+                  <thead><tr><th>ID</th><th>Nº Orden</th><th>Cliente</th><th>Monto</th><th>Saldo Pend.</th><th>Proceso</th><th>Fecha Inicio</th><th>Plazo</th><th>Vencimiento</th><th>Días Restantes</th><th>Estado</th><th>Acciones</th></tr></thead>
+                  <tbody>
+                    {creditos.filter(c => c.cliente.toLowerCase().includes(searchTerm.toLowerCase()) || c.numeroOrden.toLowerCase().includes(searchTerm.toLowerCase()) || c.id.toString().includes(searchTerm)).map(credito => {
+                      const diasRestantes = getDiasRestantes(credito.fechaVencimiento);
+                      return (
+                        <tr key={credito.id}>
+                          <td><strong>{credito.id}</strong></td>
+                          <td><strong>{credito.numeroOrden}</strong></td>
+                          <td>{credito.cliente}</td>
+                          <td>
+                            {editingCreditoMontoId === credito.id ? (
+                              <input type="text" inputMode="decimal" value={tempCreditoMonto} onChange={(e) => setTempCreditoMonto(e.target.value)} onBlur={() => guardarCreditoMontoInline(credito.id)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); guardarCreditoMontoInline(credito.id); } else if (e.key === 'Escape') cancelarEdicionCreditoMonto(); }} autoFocus style={{ width: '100%', padding: '0.5rem', border: '2px solid #0ea5e9', borderRadius: '6px', fontWeight: 700 }} />
+                            ) : (
+                              <span onClick={() => iniciarEdicionCreditoMonto(credito)} style={{ cursor: 'pointer', padding: '0.5rem', borderRadius: '6px', display: 'inline-block', fontWeight: 700 }} title="Click para editar">${parseFloat(credito.monto || 0).toLocaleString()}</span>
+                            )}
+                          </td>
+                          <td>{(() => { const s = calcularSaldosCredito(credito.monto, credito.abonos || []); const pct = s.total > 0 ? Math.min((s.abonado / s.total) * 100, 100) : 0; return <div style={{ minWidth: '110px' }}><div style={{ fontWeight: 700, color: s.pendiente > 0 ? '#f59e0b' : '#059669', marginBottom: '0.25rem' }}>${s.pendiente.toFixed(2)}</div>{s.total > 0 && <div className="progress-bar-wrap"><div className="progress-bar-fill" style={{ width: `${pct}%`, background: pct >= 100 ? '#059669' : '#635bff' }}></div></div>}{s.abonado > 0 && <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{pct.toFixed(0)}% pagado</div>}</div>; })()}</td>
+                          <td>
+                            <div className="proceso-icons">
+                              <button className={`proceso-icon cotizado ${credito.fechaCotizacion ? 'done' : ''}`} onClick={() => { const a = { ...credito }; if (!a.fechaCotizacion) a.fechaCotizacion = new Date().toISOString().split('T')[0]; else { a.fechaCotizacion = ''; a.fechaNotificacionC = ''; a.fechaPagoC = ''; a.fechaFacturacionC = ''; } actualizarCredito(a); }}><ClipboardList size={13}/></button>
+                              <button className={`proceso-icon notificado ${credito.fechaNotificacionC ? 'done' : ''}`} disabled={!credito.fechaCotizacion} style={{ opacity: !credito.fechaCotizacion ? 0.3 : 1 }} onClick={() => { if (!credito.fechaCotizacion) return; const a = { ...credito }; if (!a.fechaNotificacionC) a.fechaNotificacionC = new Date().toISOString().split('T')[0]; else { a.fechaNotificacionC = ''; a.fechaPagoC = ''; a.fechaFacturacionC = ''; } actualizarCredito(a); }}><Mail size={13}/></button>
+                              <button className={`proceso-icon pagado ${credito.fechaPagoC ? 'done' : ''}`} disabled={!credito.fechaNotificacionC} style={{ opacity: !credito.fechaNotificacionC ? 0.3 : 1 }} onClick={() => { if (!credito.fechaNotificacionC) return; if (!credito.fechaPagoC) { abrirPagoCreditoModal(credito); return; } const a = { ...credito }; a.fechaPagoC = ''; a.fechaFacturacionC = ''; a.abonos = []; a.estado = 'Activo'; actualizarCredito(a); }}><DollarSign size={13}/></button>
+                              <button className={`proceso-icon facturado ${credito.fechaFacturacionC ? 'done' : ''}`} disabled={!credito.fechaPagoC} style={{ opacity: !credito.fechaPagoC ? 0.3 : 1 }} onClick={() => { if (!credito.fechaPagoC) return; const a = { ...credito }; if (!a.fechaFacturacionC) a.fechaFacturacionC = new Date().toISOString().split('T')[0]; else a.fechaFacturacionC = ''; actualizarCredito(a); }}><DollarSign size={13}/></button>
+                            </div>
+                          </td>
+                          <td>{new Date(credito.fechaInicio).toLocaleDateString('es-DO')}</td>
+                          <td>{credito.plazoMeses} {credito.plazoMeses === '1' ? 'mes' : 'meses'}</td>
+                          <td>{new Date(credito.fechaVencimiento).toLocaleDateString('es-DO')}</td>
+                          <td>{credito.estado !== 'Pagado' && <span className={`dias-restantes ${diasRestantes < 0 ? 'critico' : diasRestantes <= 3 ? 'critico' : diasRestantes <= 7 ? 'advertencia' : ''}`}>{diasRestantes < 0 ? `${Math.abs(diasRestantes)} días vencido` : `${diasRestantes} días`}</span>}</td>
+                          <td><span className={`badge badge-${(credito.estado||'').toLowerCase().replace(/ /g, '-')}`}>{credito.estado}</span></td>
+                          <td>
+                            <div className="action-btns">
+                              {credito.estado !== 'Pagado' && <button className="btn-icon" onClick={() => { const a = { ...credito, estado: 'Pagado', historial: [...(credito.historial || []), { fecha: new Date().toISOString(), accion: 'Marcado como Pagado' }] }; actualizarCredito(a); }} title="Marcar Pagado"><CheckCircle size={13}/></button>}
+                              <button className="btn-icon" onClick={() => abrirCreditoModal(credito)} title="Editar"><Pencil size={13}/></button>
+                              <button className="btn-icon" onClick={() => eliminarCredito(credito.id)} title="Eliminar"><Trash2 size={13}/></button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               )}
             </div>
           </div>
@@ -5654,47 +5395,15 @@ export default function App() {
           {/* MODALES */}
           {/* Modal Cliente */}
           <div className={`modal ${showModal ? 'show' : ''}`}>
-            <div className="modal-content" style={{ maxWidth: '620px', width: '95vw', padding: 0, borderRadius: '16px', overflow: 'hidden', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ background: '#f8fafc', padding: '1.25rem 1.75rem', borderBottom: '1px solid #e2e8f0', flexShrink: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem' }}>
-                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#E6F1FB', color: '#185FA5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '17px', fontWeight: 700, flexShrink: 0 }}>
-                      {editingCliente ? (formData.nombre || '?').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase() : <UserPlus size={20}/>}
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#1a1915' }}>{editingCliente ? (formData.nombre || 'Editar Cliente') : 'Nuevo Cliente'}</div>
-                      <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.15rem' }}>{editingCliente ? `ID #${formData.id} · Código ${formData.codigoCliente || '—'}` : 'Se agrega con estado "No Generaron"'}</div>
-                    </div>
-                  </div>
-                  <button className="close-btn" onClick={cerrarModal} style={{ color: '#64748b', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
+            <div className="modal-content" style={{ maxWidth: '620px', width: '95vw', padding: 0, borderRadius: '16px', overflow: 'hidden' }}>
+              <div style={{ background: 'linear-gradient(135deg, #1e2d4a 0%, #2d4170 100%)', padding: '1.25rem 1.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#fff', display:'flex', alignItems:'center', gap:'0.4rem' }}>{editingCliente ? <><Pencil size={15}/> Editar Cliente</> : <><Plus size={15}/> Nuevo Cliente</>}</h2>
+                  {editingCliente && <div style={{ fontSize: '0.75rem', color: '#93c5fd', marginTop: '0.2rem' }}>ID #{formData.id} · Código {formData.codigoCliente || '—'}</div>}
                 </div>
-                {editingCliente && (
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '0.85rem', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '0.72rem', padding: '3px 10px', borderRadius: '20px', fontWeight: 700, background: '#fef3c7', color: '#92400e' }}>{formData.estado}</span>
-                    {(formData.tags || []).map(t => <span key={t} style={{ fontSize: '0.68rem', padding: '2px 9px', borderRadius: '20px', fontWeight: 600, background: '#fff', color: '#64748b', border: '1px solid #e2e8f0' }}>{t}</span>)}
-                  </div>
-                )}
-                {editingCliente && (
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '0.9rem' }}>
-                    <div style={{ flex: 1, background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '8px 12px' }}>
-                      <div style={{ fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '2px' }}>Monto</div>
-                      <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1a1915' }}>${parseFloat(formData.monto || 0).toLocaleString('en-US')}</div>
-                    </div>
-                    <div style={{ flex: 1, background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '8px 12px' }}>
-                      <div style={{ fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '2px' }}>Créditos</div>
-                      <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1a1915' }}>{creditos.filter(cr => cr.cliente === formData.nombre).length} activo(s)</div>
-                    </div>
-                    <div style={{ flex: 1, background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '8px 12px' }}>
-                      <div style={{ fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '2px' }}>Historial</div>
-                      <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1a1915' }}>{(formData.historial || []).length} evento(s)</div>
-                    </div>
-                  </div>
-                )}
+                <button className="close-btn" onClick={cerrarModal} style={{ color: '#fff', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
               </div>
-              <form onSubmit={guardarCliente} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-                <div style={{ padding: '1.5rem 1.75rem', display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto', flex: 1 }}>
-                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem 1.1rem' }}>
-                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>Información del cliente</div>
+              <form onSubmit={guardarCliente} style={{ padding: '1.5rem 1.75rem', display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '75vh', overflowY: 'auto' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Código de Cliente</label>
@@ -5722,8 +5431,7 @@ export default function App() {
                     </div>
                   )}
                 </div>
-                {editingCliente && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Mes *</label>
                     <select value={formData.mes} onChange={(e) => setFormData({ ...formData, mes: e.target.value })} required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', background: '#fff', boxSizing: 'border-box' }}>
@@ -5741,36 +5449,26 @@ export default function App() {
                     </select>
                   </div>
                 </div>
-                )}
-                </div>
                 <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '10px', padding: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                     <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b' }}>Monto</label>
-                    {editingCliente && <label style={{ cursor: pdfCargando ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.25rem 0.7rem', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, color: '#475569', userSelect: 'none' }}>
+                    <label style={{ cursor: pdfCargando ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.25rem 0.7rem', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, color: '#475569', userSelect: 'none' }}>
                       {pdfCargando ? <><Loader2 size={12}/> Leyendo PDF…</> : <><FileText size={12}/> Leer desde factura PDF</>}
                       <input type="file" accept=".pdf,application/pdf" style={{ display: 'none' }} disabled={pdfCargando} onChange={e => { if (e.target.files[0]) leerFacturaPDF(e.target.files[0]); e.target.value = ''; }} />
-                    </label>}
+                    </label>
                   </div>
                   <input type="number" value={formData.monto} onChange={(e) => setFormData({ ...formData, monto: e.target.value })} step="0.01" placeholder="Ej: 5000" style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '1rem', fontWeight: 700, boxSizing: 'border-box', background: '#fff' }} />
                   {pdfError && <div style={{ fontSize: '0.73rem', color: '#dc2626', marginTop: '0.4rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '0.4rem 0.6rem', display:'flex', alignItems:'center', gap:'0.3rem' }}><AlertTriangle size={12}/> {pdfError}</div>}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: editingCliente ? '1fr 1fr' : '1fr', gap: '1rem' }}>
-                  {editingCliente && <div className="form-group" style={{ margin: 0 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Fecha de Cotización</label>
                     <input type="date" value={formData.fechaCotizacion} onChange={(e) => setFormData({ ...formData, fechaCotizacion: e.target.value })} style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
-                  </div>}
+                  </div>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Comentario</label>
                     <textarea value={formData.comentario} onChange={(e) => setFormData({ ...formData, comentario: e.target.value })} rows={2} style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', resize: 'vertical', boxSizing: 'border-box' }} />
                   </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '10px' }}>
-                  <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#334155' }}>Genera recarga mensual</span>
-                  <label style={{ position: 'relative', display: 'inline-block', width: '40px', height: '22px', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={!!formData.generaRecarga} onChange={e => setFormData({ ...formData, generaRecarga: e.target.checked })} style={{ opacity: 0, width: 0, height: 0 }} />
-                    <span style={{ position: 'absolute', inset: 0, background: formData.generaRecarga ? '#1e2d4a' : '#cbd5e1', borderRadius: '22px', transition: '0.2s' }}></span>
-                    <span style={{ position: 'absolute', height: '16px', width: '16px', left: formData.generaRecarga ? '21px' : '3px', bottom: '3px', background: '#fff', borderRadius: '50%', transition: '0.2s' }}></span>
-                  </label>
                 </div>
                 {editingCliente && formData.historial && formData.historial.length > 0 && (
                   <div style={{ marginTop:'1rem' }}>
@@ -5808,8 +5506,7 @@ export default function App() {
                     </div>
                   </div>
                 )}
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', padding: '1rem 1.75rem', borderTop: '1px solid #e2e8f0', background: '#fff', flexShrink: 0 }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid #e2e8f0', marginTop: '0.5rem' }}>
                   <button type="button" onClick={cerrarModal} style={{ padding: '0.65rem 1.5rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#64748b', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer' }}>Cancelar</button>
                   <button type="submit" style={{ padding: '0.65rem 1.75rem', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #1e2d4a, #2d4170)', color: '#fff', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', display:'flex', alignItems:'center', gap:'0.4rem' }}>{editingCliente ? <><Save size={14}/> Actualizar</> : <><Plus size={14}/> Guardar</>}</button>
                 </div>
@@ -5877,11 +5574,11 @@ export default function App() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div style={{ margin: 0 }}>
                     <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Fecha de Inicio *</label>
-                    <input type="date" value={creditoFormData.fechaInicio} onChange={(e) => { const nd = { ...creditoFormData, fechaInicio: e.target.value }; if (nd.fechaVencimiento) { const i = new Date(e.target.value); const f = new Date(nd.fechaVencimiento); const dias = Math.round((f-i)/(1000*60*60*24)); nd.plazoMeses = dias < 30 ? dias+'d' : String(Math.floor(dias/30)); } setCreditoFormData(nd); }} required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+                    <input type="date" value={creditoFormData.fechaInicio} onChange={(e) => { const nd = { ...creditoFormData, fechaInicio: e.target.value }; if (nd.fechaVencimiento) { const i = new Date(e.target.value); const f = new Date(nd.fechaVencimiento); nd.plazoMeses = Math.max(1, ((f.getFullYear() - i.getFullYear()) * 12) + (f.getMonth() - i.getMonth())).toString(); } setCreditoFormData(nd); }} required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
                   </div>
                   <div style={{ margin: 0 }}>
                     <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Fecha de Vencimiento *</label>
-                    <input type="date" value={creditoFormData.fechaVencimiento} onChange={(e) => { const nd = { ...creditoFormData, fechaVencimiento: e.target.value }; if (nd.fechaInicio) { const i = new Date(nd.fechaInicio); const f = new Date(e.target.value); const dias = Math.round((f-i)/(1000*60*60*24)); nd.plazoMeses = dias < 30 ? dias+'d' : String(Math.floor(dias/30)); } setCreditoFormData(nd); }} required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+                    <input type="date" value={creditoFormData.fechaVencimiento} onChange={(e) => { const nd = { ...creditoFormData, fechaVencimiento: e.target.value }; if (nd.fechaInicio) { const i = new Date(nd.fechaInicio); const f = new Date(e.target.value); nd.plazoMeses = Math.max(1, ((f.getFullYear() - i.getFullYear()) * 12) + (f.getMonth() - i.getMonth())).toString(); } setCreditoFormData(nd); }} required style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', boxSizing: 'border-box' }} />
                   </div>
                 </div>
 
@@ -5890,21 +5587,10 @@ export default function App() {
                   <div style={{ padding: '0.75rem 1rem', background: 'rgba(14,165,233,0.07)', border: '1px solid rgba(14,165,233,0.2)', borderRadius: '9px', fontSize: '0.85rem', fontWeight: 600, color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Clock size={14} style={{ color: '#0ea5e9' }}/>
                     Plazo calculado:
-                    <span style={{ color: '#0ea5e9', fontWeight: 800, fontSize: '1rem' }}>{String(creditoFormData.plazoMeses||'').endsWith('d') ? creditoFormData.plazoMeses.replace('d','') + ' días' : (creditoFormData.plazoMeses || '0') + ' ' + (creditoFormData.plazoMeses === '1' ? 'mes' : 'meses')}</span>
+                    <span style={{ color: '#0ea5e9', fontWeight: 800, fontSize: '1rem' }}>{creditoFormData.plazoMeses || '0'} {creditoFormData.plazoMeses === '1' ? 'mes' : 'meses'}</span>
                   </div>
                 )}
 
-                {/* Vendedor */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div style={{ margin: 0 }}>
-                    <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Vendedor</label>
-                    <select value={creditoFormData.vendedor || ''} onChange={(e) => { const v = vendedores.find(v => v.nombre === e.target.value); setCreditoFormData({ ...creditoFormData, vendedor: e.target.value, vendedor_whatsapp: v?.whatsapp || '' }); }} style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', fontSize: '0.9rem', background: '#fff', boxSizing: 'border-box' }}>
-                      <option value=''>Sin vendedor asignado</option>
-                      {vendedores.map(v => <option key={v.id} value={v.nombre}>{v.nombre}{v.whatsapp ? ' · ' + v.whatsapp : ''}</option>)}
-                    </select>
-                  </div>
-
-                </div>
                 {/* Comentario */}
                 <div style={{ margin: 0 }}>
                   <label style={{ fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '0.4rem', display: 'block' }}>Comentario</label>
@@ -5940,6 +5626,90 @@ export default function App() {
               </form>
             </div>
           </div>
+
+          {/* Búsqueda Global */}
+          {showBusquedaGlobal && (
+            <div className="global-search-overlay" onClick={e => { if (e.target === e.currentTarget) { setShowBusquedaGlobal(false); setBusquedaGlobal(''); }}}>
+              <div className="global-search-box">
+
+                {/* Input */}
+                <div className="global-search-input-row">
+                  <Search size={18} className="global-search-icon"/>
+                  <input
+                    autoFocus
+                    type="text"
+                    className="global-search-input"
+                    placeholder="Buscar cliente, crédito, contacto..."
+                    value={busquedaGlobal}
+                    onChange={e => setBusquedaGlobal(e.target.value)}
+                  />
+                  <button className="global-search-close" onClick={() => { setShowBusquedaGlobal(false); setBusquedaGlobal(''); }}>
+                    <X size={14}/>
+                  </button>
+                </div>
+
+                {/* Results */}
+                <div className="global-search-body">
+                  {busquedaGlobal.length > 1 ? (() => {
+                    const term = busquedaGlobal.toLowerCase();
+                    const resClientes = clientes.filter(c => c.nombre.toLowerCase().includes(term) || c.id.toString().includes(term) || (c.contacto||'').includes(term));
+                    const resCreditos = creditos.filter(c => c.cliente.toLowerCase().includes(term) || c.numeroOrden.toLowerCase().includes(term));
+                    if (resClientes.length === 0 && resCreditos.length === 0) {
+                      return (
+                        <div className="global-search-empty">
+                          <Search size={30}/>
+                          <p>Sin resultados para <strong>"{busquedaGlobal}"</strong></p>
+                        </div>
+                      );
+                    }
+                    return (
+                      <>
+                        {resClientes.length > 0 && (
+                          <div className="global-search-section">
+                            <div className="global-search-section-label"><Users size={11}/> Cartera · {resClientes.length}</div>
+                            {resClientes.map(c => (
+                              <div key={c.id} className="global-search-result" onClick={() => { setActiveTab('cartera'); setSearchTerm(c.nombre); setShowBusquedaGlobal(false); setBusquedaGlobal(''); }}>
+                                <div className="global-search-result-info">
+                                  <span className="global-search-result-name">{c.nombre}</span>
+                                  <span className="global-search-result-sub">#{c.id}</span>
+                                </div>
+                                <span className={`badge badge-${(c.estado||'').toLowerCase().replace(/ /g,'-')}`}>{c.estado}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {resCreditos.length > 0 && (
+                          <div className="global-search-section">
+                            <div className="global-search-section-label"><CreditCard size={11}/> Créditos · {resCreditos.length}</div>
+                            {resCreditos.map(c => (
+                              <div key={c.id} className="global-search-result" onClick={() => { setActiveTab('credito'); setShowBusquedaGlobal(false); setBusquedaGlobal(''); }}>
+                                <div className="global-search-result-info">
+                                  <span className="global-search-result-name">{c.cliente}</span>
+                                  <span className="global-search-result-sub">Orden {c.numeroOrden}</span>
+                                </div>
+                                <span className={`badge badge-${(c.estado||'').toLowerCase().replace(/ /g,'-')}`}>{c.estado}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })() : (
+                    <div className="global-search-hint">
+                      Escribe al menos 2 caracteres para buscar
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="global-search-footer">
+                  <span><kbd>ESC</kbd> cerrar</span>
+                  <span><kbd>F</kbd> abrir</span>
+                </div>
+
+              </div>
+            </div>
+          )}
 
           {/* Modal WhatsApp */}
           {showWhatsappModal && whatsappCliente && (
@@ -5999,94 +5769,84 @@ export default function App() {
             </div>
           )}
 
-          {/* Modal Editar Pago */}
-          {editandoPago && (
-            <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setEditandoPago(null); }}>
-              <div className="modal-content" style={{ maxWidth: '340px' }}>
-                <h2>Editar Pago</h2>
-                <div className="form-group">
-                  <label>Monto</label>
-                  <input type="number" value={editPagoMonto} onChange={e => setEditPagoMonto(e.target.value)} step="0.01" />
-                </div>
-                <div className="form-group">
-                  <label>Fecha de pago</label>
-                  <input type="date" value={editPagoFecha} onChange={e => setEditPagoFecha(e.target.value)} />
-                </div>
-                <div className="modal-actions">
-                  <button className="btn btn-secondary" onClick={() => setEditandoPago(null)}>Cancelar</button>
-                  <button className="btn btn-primary" onClick={guardarEdicionPago}>Guardar</button>
-                </div>
-              </div>
-            </div>
-          )}
           {/* Modal Historial de Pagos */}
           {showHistorialPagosModal && historialPagosCliente && (() => {
             const pagos = historialPagosCliente.pagosRealizados || [];
             const total = parseFloat(historialPagosCliente.monto) || 0;
-            const pagado = pagos.reduce((s, p) => s + (parseFloat(p.monto) || 0), 0);
-            const pendiente = Math.max(0, total - pagado);
-            const iniciales = (historialPagosCliente.nombre || '?').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+            const totalPagado = pagos.reduce((s, p) => s + (parseFloat(p.monto) || 0), 0);
+            const pendiente = Math.max(total - totalPagado, 0);
+            let balance = 0;
             return (
-              <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowHistorialPagosModal(false); }}>
-                <div className="modal-content" style={{ maxWidth: '440px', width: '95vw', padding: 0, borderRadius: '16px', overflow: 'hidden' }}>
-                  <div style={{ padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#E6F1FB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '14px', color: '#185FA5', flexShrink: 0 }}>{iniciales}</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, fontSize: '16px', color: '#1a1915' }}>{historialPagosCliente.nombre}</div>
-                      <div style={{ fontSize: '13px', color: '#9a998f' }}>Historial de pagos</div>
-                    </div>
-                    <button onClick={() => setShowHistorialPagosModal(false)} style={{ background: '#f8fafc', border: 'none', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', fontSize: '1.1rem', color: '#64748b' }}>×</button>
+              <div className="modal show">
+                <div className="modal-content" style={{ maxWidth: '780px', width: '95vw', padding: 0, borderRadius: '12px', overflow: 'hidden' }}>
+                  <div className="modal-header" style={{ background: '#1e2d4a', color: '#fff', padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>Balance {historialPagosCliente.nombre}</h2>
+                    <button className="close-btn" style={{ color: '#fff', fontSize: '1.4rem', background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setShowHistorialPagosModal(false)}>×</button>
                   </div>
-
-                  <div style={{ padding: '0 1.5rem 1rem', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-                    <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '10px' }}>
-                      <div style={{ fontSize: '11px', color: '#9a998f' }}>Total</div>
-                      <div style={{ fontSize: '17px', fontWeight: 700, color: '#1a1915' }}>${total.toLocaleString('en-US')}</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '0.6rem', padding: '1rem 1.5rem 0.5rem' }}>
+                    <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '8px', padding: '0.7rem', textAlign: 'center' }}>
+                      <div style={{ fontSize: '0.65rem', color: '#0369a1', fontWeight: 700, textTransform: 'uppercase' }}>Total</div>
+                      <div style={{ fontWeight: 800, fontFamily: 'monospace', color: '#0284c7' }}>${total.toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
                     </div>
-                    <div style={{ background: '#dcfce7', borderRadius: '10px', padding: '10px' }}>
-                      <div style={{ fontSize: '11px', color: '#16a34a' }}>Pagado</div>
-                      <div style={{ fontSize: '17px', fontWeight: 700, color: '#16a34a' }}>${pagado.toLocaleString('en-US')}</div>
+                    <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '8px', padding: '0.7rem', textAlign: 'center' }}>
+                      <div style={{ fontSize: '0.65rem', color: '#065f46', fontWeight: 700, textTransform: 'uppercase' }}>Pagado</div>
+                      <div style={{ fontWeight: 800, fontFamily: 'monospace', color: '#059669' }}>${totalPagado.toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
                     </div>
-                    <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '10px' }}>
-                      <div style={{ fontSize: '11px', color: '#9a998f' }}>Pendiente</div>
-                      <div style={{ fontSize: '17px', fontWeight: 700, color: '#1a1915' }}>${pendiente.toLocaleString('en-US')}</div>
+                    <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '8px', padding: '0.7rem', textAlign: 'center' }}>
+                      <div style={{ fontSize: '0.65rem', color: '#c2410c', fontWeight: 700, textTransform: 'uppercase' }}>Pendiente</div>
+                      <div style={{ fontWeight: 800, fontFamily: 'monospace', color: '#ea580c' }}>${pendiente.toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
                     </div>
                   </div>
-
-                  <div style={{ padding: '0 1.5rem', maxHeight: '320px', overflowY: 'auto' }}>
-                    <div style={{ fontSize: '12px', color: '#9a998f', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Clock size={13}/> Movimientos
-                    </div>
-                    {pagos.length === 0 && <div style={{ textAlign: 'center', color: '#9a998f', fontSize: '13px', padding: '1rem 0' }}>Sin pagos registrados</div>}
-                    {pagos.map((pago, i) => (
-                      <div key={pago.id || i} style={{ display: 'flex', gap: '12px', padding: '10px 0', borderTop: '0.5px solid #f1f5f9' }}>
-                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <CheckCircle size={16} color="#16a34a"/>
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ fontSize: '14px', color: '#1a1915' }}>{pago.mesFactura || 'Pago'}</span>
-                            <span style={{ fontSize: '14px', fontWeight: 700, color: '#16a34a' }}>+${parseFloat(pago.monto||0).toLocaleString('en-US')}</span>
-                          </div>
-                          <div style={{ fontSize: '12px', color: '#9a998f' }}>{pago.fechaFormato || new Date(pago.fecha).toLocaleDateString('es-DO')}{pago.banco ? ' · ' + pago.banco : ''}</div>
-                        </div>
-                        <div style={{ display: 'flex', gap: '8px', alignSelf: 'center' }}>
-                          {!pago.bloqueado && <button onClick={() => { setEditandoPago(pago); setEditPagoMonto(String(pago.monto)); setEditPagoFecha(pago.fecha ? new Date(pago.fecha).toISOString().split('T')[0] : ''); }} title="Editar pago" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 0 }}><Pencil size={13}/></button>}
-                          {!pago.bloqueado && <button onClick={() => eliminarPagoHistorial(pago)} title="Eliminar pago" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: 0 }}><Trash2 size={13}/></button>}
-                          <button onClick={() => generarReciboPDF(historialPagosCliente, pago)} title="Descargar recibo" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 0 }}><FileText size={14}/></button>
-                        </div>
-                      </div>
-                    ))}
+                  <div style={{ padding: '0.75rem 1.5rem', overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                      <thead>
+                        <tr style={{ background: '#1e2d4a', color: '#fff' }}>
+                          <th style={{ padding: '0.6rem 0.8rem', textAlign: 'left', fontWeight: 600 }}>Fecha</th>
+                          <th style={{ padding: '0.6rem 0.8rem', textAlign: 'left', fontWeight: 600 }}>Género</th>
+                          <th style={{ padding: '0.6rem 0.8rem', textAlign: 'left', fontWeight: 600 }}>Concepto</th>
+                          <th style={{ padding: '0.6rem 0.8rem', textAlign: 'center', fontWeight: 600 }}>Cantidad</th>
+                          <th style={{ padding: '0.6rem 0.8rem', textAlign: 'right', fontWeight: 600 }}>Monto</th>
+                          <th style={{ padding: '0.6rem 0.8rem', textAlign: 'right', fontWeight: 600 }}>Balance</th>
+                          <th style={{ padding: '0.6rem 0.8rem', textAlign: 'center', fontWeight: 600 }}>Recibo</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pagos.length === 0 ? (
+                          <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2.5rem', color: '#94a3b8' }}>
+                            <div style={{ marginBottom: '0.5rem' }}><DollarSign size={32}/></div>
+                            <p>No hay pagos registrados aún.</p>
+                          </td></tr>
+                        ) : (
+                          pagos.map((pago, i) => {
+                            const monto = parseFloat(pago.monto) || 0;
+                            balance -= monto;
+                            return (
+                              <tr key={pago.id || i} style={{ background: i % 2 === 0 ? '#fff' : '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                                <td style={{ padding: '0.6rem 0.8rem', color: '#64748b' }}>{pago.fechaFormato || new Date(pago.fecha).toLocaleDateString('es-DO')}</td>
+                                <td style={{ padding: '0.6rem 0.8rem', color: '#059669', fontWeight: 600 }}>Pago</td>
+                                <td style={{ padding: '0.6rem 0.8rem', color: '#1e2d4a' }}>{pago.descripcion || pago.concepto || `Pago #${i + 1}`}</td>
+                                <td style={{ padding: '0.6rem 0.8rem', textAlign: 'center', color: '#1e2d4a' }}>1</td>
+                                <td style={{ padding: '0.6rem 0.8rem', textAlign: 'right', color: '#059669', fontWeight: 700, fontFamily: 'monospace' }}>-${monto.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                                <td style={{ padding: '0.6rem 0.8rem', textAlign: 'right', fontWeight: 700, fontFamily: 'monospace', color: balance < 0 ? '#dc2626' : '#059669' }}>${balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                                <td style={{ padding: '0.6rem 0.8rem', textAlign: 'center' }}>
+                                  <button onClick={() => generarReciboPDF(historialPagosCliente, pago)} title="Descargar recibo" style={{ padding: '0.2rem 0.5rem', borderRadius: '6px', border: '1px solid #bae6fd', background: '#f0f9ff', color: '#0284c7', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}><FileText size={12}/></button>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
                   </div>
-
-                  <div style={{ padding: '1.25rem 1.5rem', display: 'flex', gap: '10px' }}>
-                    <button onClick={() => setShowHistorialPagosModal(false)} style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#64748b', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>Cerrar</button>
-                    <button onClick={() => { setShowHistorialPagosModal(false); setPagoClienteTarget(historialPagosCliente); setShowPagoModal(true); }} style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: 'none', background: '#1e2d4a', color: '#fff', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}><DollarSign size={13}/> Agregar Pago</button>
+                  <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', background: '#f8fafc' }}>
+                    <button className="btn btn-secondary" onClick={() => setShowHistorialPagosModal(false)}>Cerrar</button>
+                    <button className="btn btn-success" onClick={() => { setShowHistorialPagosModal(false); setPagoClienteTarget(historialPagosCliente); setShowPagoModal(true); }}><DollarSign size={13}/> Agregar Pago</button>
                   </div>
                 </div>
               </div>
             );
           })()}
+
           {/* Modal Pago Cliente */}
           {showPagoModal && pagoClienteTarget && (() => { const s = calcularSaldoCliente(pagoClienteTarget); return (
             <div className="modal show">
@@ -7975,43 +7735,6 @@ export default function App() {
       )}
 
       {/* Modal de sesión expirada */}
-      {/* MODAL WHATSAPP QR */}
-      {showWhatsappStatusModal && (
-        <div className="modal show">
-          <div className="modal-content" style={{ maxWidth:'420px', textAlign:'center' }}>
-            <div className="modal-header">
-              <h2>WhatsApp — PayTrack</h2>
-              <button className="close-btn" onClick={() => setShowWhatsappStatusModal(false)}>×</button>
-            </div>
-            <div style={{ padding:'1rem' }}>
-              {whatsappConectado ? (
-                <div>
-                  <div style={{ width:'60px', height:'60px', borderRadius:'50%', background:'#dcfce7', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1rem' }}>
-                    <MessageCircle size={28} style={{ color:'#16a34a' }}/>
-                  </div>
-                  <div style={{ fontSize:'16px', fontWeight:700, color:'#16a34a', marginBottom:'8px' }}>WhatsApp Conectado</div>
-                  <div style={{ fontSize:'13px', color:'#9a998f', marginBottom:'1.5rem' }}>Los mensajes se enviarán automáticamente</div>
-                  <button onClick={async () => { if(window.electronAPI) { await window.electronAPI.whatsappCerrarSesion(); setWhatsappConectado(false); setWhatsappQR(null); } }} style={{ padding:'8px 20px', borderRadius:'8px', fontSize:'13px', fontWeight:600, border:'1px solid #fca5a5', background:'#fee2e2', color:'#dc2626', cursor:'pointer' }}>
-                    Cerrar sesión WhatsApp
-                  </button>
-                </div>
-              ) : whatsappQR ? (
-                <div>
-                  <div style={{ fontSize:'13px', color:'#9a998f', marginBottom:'1rem' }}>Escanea este QR con tu WhatsApp</div>
-                  <img src={whatsappQR} alt="QR WhatsApp" style={{ width:'240px', height:'240px', borderRadius:'12px', border:'1px solid #e0dfd8' }}/>
-                  <div style={{ fontSize:'12px', color:'#9a998f', marginTop:'1rem' }}>Abre WhatsApp → Dispositivos vinculados → Vincular dispositivo</div>
-                </div>
-              ) : (
-                <div>
-                  <div style={{ fontSize:'13px', color:'#9a998f', marginBottom:'1rem' }}>Iniciando WhatsApp...</div>
-                  <div style={{ width:'40px', height:'40px', border:'3px solid #6366f1', borderTop:'3px solid transparent', borderRadius:'50%', margin:'0 auto', animation:'spin 1s linear infinite' }}></div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       {sessionExpired && (
         <div className="modal-overlay" style={{ zIndex: 9999, backdropFilter: 'blur(6px)' }}>
           <div className="modal-content" style={{ maxWidth: '380px', textAlign: 'center', padding: '2.5rem 2rem' }}>

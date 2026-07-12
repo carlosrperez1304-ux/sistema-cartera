@@ -74,7 +74,7 @@ export async function PUT(req, { params }) {
     ...body,
     id,
     pagosRealizados: body.pagosRealizados || (data?.pagos || []).map(p => ({
-      id: p.id, monto: parseFloat(p.monto), fecha: p.fecha, fechaFormato: p.fecha_formato || '', nota: p.nota || '', mesFactura: p.mes_factura || '', banco: p.banco || '',
+      id: p.id, monto: parseFloat(p.monto), fecha: p.fecha, fechaFormato: p.fecha_formato || '', nota: p.nota || '', mesFactura: p.mes_factura || '', banco: p.banco || '', bloqueado: p.bloqueado || false,
     })),
   });
 }
