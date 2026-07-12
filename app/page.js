@@ -429,6 +429,7 @@ export default function App() {
     cargarClientes();
     cargarCreditos();
     fetch('/api/vendedores').then(r => r.ok ? r.json() : []).then(setVendedores).catch(() => {});
+    fetch('/api/clientes-vinculos?empresa_id=' + (session?.user?.empresa_id || 1)).then(r => r.ok ? r.json() : []).then(setClientesVinculos).catch(() => {});
     cargarNotasDashboard();
     cargarTodosDocumentos();
     if (['contabilidad', 'supervisor_cobro', 'supervisor_contabilidad', 'admin'].includes(session?.user?.rol)) {
@@ -677,6 +678,12 @@ export default function App() {
   const [showPagoModal, setShowPagoModal] = useState(false);
   const [pagoClienteTarget, setPagoClienteTarget] = useState(null);
   const [showHistorialPagosModal, setShowHistorialPagosModal] = useState(false);
+  const [clientesVinculos, setClientesVinculos] = useState([]);
+  const [showVincularModal, setShowVincularModal] = useState(false);
+  const [vincularClienteBase, setVincularClienteBase] = useState(null);
+  const [vincularBuscar, setVincularBuscar] = useState('');
+  const [vincularSeleccionado, setVincularSeleccionado] = useState(null);
+  const [vincularNombre, setVincularNombre] = useState('');
   const [historialPagosCliente, setHistorialPagosCliente] = useState(null);
   const [editandoPago, setEditandoPago] = useState(null);
   const [editPagoMonto, setEditPagoMonto] = useState('');
@@ -1590,6 +1597,39 @@ export default function App() {
     setPaginaActual(1);
   };
 
+  const abrirVincularModal = (cliente) => {
+    setVincularClienteBase(cliente);
+    setVincularBuscar('');
+    setVincularSeleccionado(null);
+    setVincularNombre(cliente.nombre);
+    setShowVincularModal(true);
+  };
+  const crearVinculoCliente = async () => {
+    if (!vincularClienteBase || !vincularSeleccionado || !vincularNombre.trim()) return;
+    const ids = [vincularClienteBase.id, vincularSeleccionado.id];
+    const existentes = clientesVinculos.filter(v => v.ids.some(id => ids.includes(id)));
+    for (const e of existentes) {
+      await fetch('/api/clientes-vinculos?id=' + e.id, { method: 'DELETE' });
+    }
+    const res = await fetch('/api/clientes-vinculos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ empresa_id: session?.user?.empresa_id || 1, ids, nombre: vincularNombre.trim() })
+    });
+    if (res.ok) {
+      const nuevosVinculos = clientesVinculos.filter(v => !existentes.some(e => e.id === v.id));
+      const data = await res.json();
+      setClientesVinculos([...nuevosVinculos, data]);
+      setShowVincularModal(false);
+      showToast('Clientes vinculados', 'success');
+    }
+  };
+  const eliminarVinculoCliente = async (vinculoId) => {
+    await fetch('/api/clientes-vinculos?id=' + vinculoId, { method: 'DELETE' });
+    setClientesVinculos(prev => prev.filter(v => v.id !== vinculoId));
+    setShowVincularModal(false);
+    showToast('Vinculo eliminado', 'success');
+  };
   const abrirCreditoModal = (credito = null) => {
     setNuevoAbono('');
     if (credito) { setEditingCredito(credito); setCreditoFormData({ ...credito, abonos: credito.abonos || [] }); }
@@ -4805,6 +4845,10 @@ export default function App() {
                                         WhatsApp
                                       </button>
                                     )}
+                                    <button onClick={() => { abrirVincularModal(cliente); setMenuAbierto(null); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 1rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: clientesVinculos.some(v => v.ids.includes(cliente.id)) ? '#378ADD' : '#64748b', fontWeight: 600, borderBottom: '1px solid #f1f5f9' }}>
+                                      <ArrowLeftRight size={15}/>
+                                      {clientesVinculos.some(v => v.ids.includes(cliente.id)) ? 'Ver vínculo' : 'Vincular cliente'}
+                                    </button>
                                     {tienePermiso('editar_clientes') && (
                                       <button onClick={() => { !esModoPasado && abrirModal(cliente); setMenuAbierto(null); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 1rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#1e2d4a', fontWeight: 600, borderBottom: '1px solid #f1f5f9' }}>
                                         <Edit2 size={15}/>
@@ -6028,6 +6072,83 @@ export default function App() {
               </div>
             </div>
           )}
+          {/* Modal Vincular Clientes */}
+          {showVincularModal && vincularClienteBase && (() => {
+            const vinculoExistente = clientesVinculos.find(v => v.ids.includes(vincularClienteBase.id));
+            const otroClienteId = vinculoExistente ? vinculoExistente.ids.find(id => id !== vincularClienteBase.id) : null;
+            const otroCliente = otroClienteId ? clientes.find(c => c.id === otroClienteId) : null;
+            const resultadosBusqueda = vincularBuscar.trim().length > 1
+              ? clientes.filter(c => c.id !== vincularClienteBase.id && c.nombre.toLowerCase().includes(vincularBuscar.toLowerCase())).slice(0, 6)
+              : [];
+            return (
+              <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setShowVincularModal(false); }}>
+                <div className="modal-content" style={{ maxWidth: '420px', padding: 0, borderRadius: '16px', overflow: 'hidden' }}>
+                  <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0' }}>
+                    <div style={{ fontWeight: 700, fontSize: '16px', color: '#1a1915' }}>Vincular clientes</div>
+                    <div style={{ fontSize: '13px', color: '#9a998f', marginTop: '2px' }}>{vincularClienteBase.nombre}</div>
+                  </div>
+                  <div style={{ padding: '1.25rem 1.5rem' }}>
+                    {vinculoExistente ? (
+                      <div>
+                        <div style={{ background: '#E6F1FB', border: '1px solid #378ADD', borderRadius: '10px', padding: '12px', marginBottom: '14px' }}>
+                          <div style={{ fontSize: '13px', color: '#185FA5', marginBottom: '4px' }}>Actualmente vinculado con:</div>
+                          <div style={{ fontSize: '14px', fontWeight: 700, color: '#185FA5' }}>{otroCliente?.nombre || 'Cliente no encontrado'}</div>
+                          <div style={{ fontSize: '12px', color: '#185FA5', marginTop: '4px' }}>Nombre de notificacion: <strong>{vinculoExistente.nombre}</strong></div>
+                        </div>
+                        <button onClick={() => eliminarVinculoCliente(vinculoExistente.id)} style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #fca5a5', background: '#fee2e2', color: '#dc2626', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+                          Quitar vinculo
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#9a998f', textTransform: 'uppercase', marginBottom: '6px' }}>Buscar cliente para vincular</div>
+                        <input type="text" value={vincularBuscar} onChange={e => { setVincularBuscar(e.target.value); setVincularSeleccionado(null); }} placeholder="Nombre del cliente..." style={{ width: '100%', padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', marginBottom: '10px', boxSizing: 'border-box' }} />
+                        {resultadosBusqueda.length > 0 && !vincularSeleccionado && (
+                          <div style={{ marginBottom: '14px' }}>
+                            {resultadosBusqueda.map(c => (
+                              <div key={c.id} onClick={() => { setVincularSeleccionado(c); setVincularBuscar(c.nombre); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 10px', borderRadius: '8px', border: '1px solid #e2e8f0', cursor: 'pointer', marginBottom: '6px' }}>
+                                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#E6F1FB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, color: '#185FA5', flexShrink: 0 }}>{(c.nombre||'?').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase()}</div>
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ fontSize: '13px', color: '#1a1915' }}>{c.nombre}</div>
+                                  <div style={{ fontSize: '12px', color: '#9a998f' }}>Factura: ${parseFloat(c.monto||0).toLocaleString('en-US')}</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {vincularSeleccionado && (
+                          <>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: '#9a998f', textTransform: 'uppercase', marginBottom: '6px' }}>Nombre para las notificaciones</div>
+                            <input type="text" value={vincularNombre} onChange={e => setVincularNombre(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', marginBottom: '14px', boxSizing: 'border-box' }} />
+                            <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '12px', marginBottom: '14px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
+                                <span style={{ color: '#64748b' }}>{vincularClienteBase.nombre}</span>
+                                <span>${parseFloat(vincularClienteBase.monto||0).toLocaleString('en-US')}</span>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '8px' }}>
+                                <span style={{ color: '#64748b' }}>{vincularSeleccionado.nombre}</span>
+                                <span>${parseFloat(vincularSeleccionado.monto||0).toLocaleString('en-US')}</span>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 700, paddingTop: '8px', borderTop: '1px solid #e2e8f0' }}>
+                                <span>Total combinado</span>
+                                <span style={{ color: '#378ADD' }}>${(parseFloat(vincularClienteBase.monto||0) + parseFloat(vincularSeleccionado.monto||0)).toLocaleString('en-US')}</span>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ padding: '1rem 1.5rem', display: 'flex', gap: '10px', borderTop: '1px solid #e2e8f0' }}>
+                    <button onClick={() => setShowVincularModal(false)} style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#64748b', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>Cancelar</button>
+                    {!vinculoExistente && (
+                      <button onClick={crearVinculoCliente} disabled={!vincularSeleccionado || !vincularNombre.trim()} style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: 'none', background: (vincularSeleccionado && vincularNombre.trim()) ? '#1e2d4a' : '#e2e8f0', color: 'white', fontWeight: 700, fontSize: '0.85rem', cursor: (vincularSeleccionado && vincularNombre.trim()) ? 'pointer' : 'not-allowed' }}>Vincular</button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
           {/* Modal Historial de Pagos */}
           {showHistorialPagosModal && historialPagosCliente && (() => {
             const pagos = historialPagosCliente.pagosRealizados || [];
