@@ -6010,7 +6010,7 @@ export default function App() {
 
           {/* Modal Editar Pago */}
           {editandoPago && (
-            <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setEditandoPago(null); }}>
+            <div className="modal show" onClick={e => { if (e.target === e.currentTarget) setEditandoPago(null); }} style={{ zIndex: 9999 }}>
               <div className="modal-content" style={{ maxWidth: '340px' }}>
                 <h2>Editar Pago</h2>
                 <div className="form-group">
