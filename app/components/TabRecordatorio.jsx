@@ -152,10 +152,9 @@ function ColaEnvio({ titulo, clientes, empresaActual, showToast, tipo, diaVencim
     <div>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'12px' }}>
         <p style={{ fontSize:'0.8rem', color:'var(--text-muted)', margin:0 }}>
-          {pendientes.length} pendientes · cada 2 minutos
+          {pendientes.length} pendientes · tiempo aleatorio entre envios
         </p>
         <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-          {activo && <div style={{ fontSize:'12px', color, background:bgColor, border:`1px solid ${borderColor}`, borderRadius:'20px', padding:'4px 12px' }}>⏱ {countdown}s</div>}
           <button onClick={() => setShowConfig(!showConfig)} style={{ padding:'6px 10px', borderRadius:'6px', border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-muted)', cursor:'pointer', fontSize:'12px', display:'flex', alignItems:'center', gap:'4px' }}><Settings size={12}/> Mensaje</button>
           <button onClick={cargarLista} disabled={activo} style={{ padding:'6px 10px', borderRadius:'6px', border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text)', cursor:'pointer', fontSize:'12px', display:'flex', alignItems:'center', gap:'4px' }}><RefreshCw size={12}/></button>
           <button onClick={() => setActivo(!activo)} disabled={pendientes.length === 0} style={{ display:'flex', alignItems:'center', gap:'6px', padding:'8px 16px', borderRadius:'8px', fontSize:'13px', fontWeight:600, border:'none', cursor: pendientes.length === 0 ? 'not-allowed' : 'pointer', background: activo ? '#ef4444' : color, color:'white', opacity: pendientes.length === 0 ? 0.5 : 1 }}>
@@ -194,25 +193,37 @@ function ColaEnvio({ titulo, clientes, empresaActual, showToast, tipo, diaVencim
         </div>
         {cargando && <div style={{ padding:'30px', textAlign:'center', color:'var(--text-muted)' }}>Cargando...</div>}
         {!cargando && cola.length === 0 && <div style={{ padding:'30px', textAlign:'center', color:'var(--text-muted)', fontSize:'13px' }}>No hay clientes {estadoFiltro.toLowerCase()}s</div>}
-        {!cargando && cola.map(cliente => (
-          <div key={cliente.id} style={{ display:'grid', gridTemplateColumns:'1fr 120px 100px', gap:'10px', padding:'10px 16px', borderBottom:'1px solid var(--border)', background: cliente._enviado ? '#f0fdf4' : 'transparent', transition:'all 0.3s' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-              <div style={{ width:'26px', height:'26px', borderRadius:'50%', background: cliente._enviado ? '#16a34a' : color, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:'10px', fontWeight:700, flexShrink:0 }}>
-                {cliente._enviado ? <CheckCircle size={13}/> : (cliente.nombre||'?')[0]}
+        {!cargando && cola.map((cliente, idx) => {
+          const primerPendiente = cola.find(c => !c._enviado);
+          const enCola = activo && primerPendiente && primerPendiente.id === cliente.id;
+          return (
+          <div key={cliente.id} style={{ borderLeft: enCola ? '3px solid #16a34a' : '3px solid transparent', borderBottom:'1px solid var(--border)', background: cliente._enviado ? '#f0fdf4' : 'transparent', transition:'all 0.3s' }}>
+            {enCola && (
+              <div style={{ margin:'8px 16px 0', background:'#dcfce7', color:'#14532d', fontSize:'11px', fontWeight:700, borderRadius:'8px', padding:'6px 10px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                <span>Próxima notificación</span>
+                <span>{Math.floor(countdown/60)}:{String(countdown%60).padStart(2,'0')}</span>
               </div>
-              <div>
-                <div style={{ fontSize:'13px', fontWeight:600, color:'var(--text)', textDecoration: cliente._enviado ? 'line-through' : 'none' }}>{cliente.nombre}</div>
-                <div style={{ fontSize:'11px', color:'var(--text-muted)' }}>{cliente.contacto}</div>
+            )}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 120px 100px', gap:'10px', padding:'10px 16px' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+                <div style={{ width:'26px', height:'26px', borderRadius:'50%', background: cliente._enviado ? '#16a34a' : color, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:'10px', fontWeight:700, flexShrink:0 }}>
+                  {cliente._enviado ? <CheckCircle size={13}/> : (cliente.nombre||'?')[0]}
+                </div>
+                <div>
+                  <div style={{ fontSize:'13px', fontWeight:600, color:'var(--text)', textDecoration: cliente._enviado ? 'line-through' : 'none' }}>{cliente.nombre}</div>
+                  <div style={{ fontSize:'11px', color:'var(--text-muted)' }}>{cliente.contacto}</div>
+                </div>
               </div>
-            </div>
-            <div style={{ fontSize:'12px', color:'var(--text)', display:'flex', alignItems:'center', fontFamily:'monospace' }}>${parseFloat(cliente.monto||0).toLocaleString('en-US',{minimumFractionDigits:2})}</div>
-            <div style={{ display:'flex', alignItems:'center' }}>
-              <span style={{ fontSize:'11px', padding:'2px 8px', borderRadius:'20px', fontWeight:600, background: cliente._enviado ? '#dcfce7' : bgColor, color: cliente._enviado ? '#16a34a' : color }}>
-                {cliente._enviado ? '✓ Enviado' : estadoFiltro}
-              </span>
+              <div style={{ fontSize:'12px', color:'var(--text)', display:'flex', alignItems:'center', fontFamily:'monospace' }}>${parseFloat(cliente.monto||0).toLocaleString('en-US',{minimumFractionDigits:2})}</div>
+              <div style={{ display:'flex', alignItems:'center' }}>
+                <span style={{ fontSize:'11px', padding:'2px 8px', borderRadius:'20px', fontWeight:600, background: cliente._enviado ? '#dcfce7' : bgColor, color: cliente._enviado ? '#16a34a' : color }}>
+                  {cliente._enviado ? '✓ Enviado' : estadoFiltro}
+                </span>
+              </div>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
