@@ -2732,7 +2732,16 @@ export default function App() {
     const diaSusp = suspension.getDate();
     return `⚠️ Atención ⚠️\n\nEstimado Cliente, es bien informarle.\n\nQue la Fecha límite de pago finaliza el *15 de ${mes} del ${anio}*. Si ya realizó su pago favor notificarlo.\n\nDe no realizar el pago a partir del día 15, el servicio entrará en suspensión el día *${nombreDia} ${diaSusp} de ${mes} del ${anio}* a partir de las 10 AM.\n\nMuchas Gracias de antemano!!`;
   };
-  const getMsgFactura = (cliente) => `Saludos ${getSaludo()}!\n\nLa factura por *EL MES DE ${getMesFactura()}*📃 ha sido generada.\n\n💠Recordandole: que la misma tiene un plazo hasta el dia ${getMesLimite()} para el pago.\n\n💰 Monto a pagar: *$${(parseFloat(cliente.monto)||0).toLocaleString('en-US',{minimumFractionDigits:2})}*\n\n⚠LOS PAGOS SE REALIZAN A NUESTRAS CUENTAS DE BANCOS⚠\n\nCUENTAS:\nA nombre: 7LABS\n🟢Reservas: 248 013348 5\n🔵Popular:     782 6584 05\n🟢BHD:         1587 811 0015\n\n🧾RNC: 130-82698-6`;
+  const getMsgFactura = (cliente) => {
+    const montoActual = parseFloat(cliente.monto) || 0;
+    const pendiente = parseFloat(cliente.pendienteArrastrado || 0);
+    const tienePendiente = pendiente >= 100;
+    const totalAPagar = montoActual + (tienePendiente ? pendiente : 0);
+    const lineaPendiente = tienePendiente
+      ? `\n⚠️ Balance pendiente por saldar: *$${pendiente.toLocaleString('en-US',{minimumFractionDigits:2})}* (${cliente.pendienteArrastradoMes || 'mes anterior'})\n💰 Total a pagar: *$${totalAPagar.toLocaleString('en-US',{minimumFractionDigits:2})}*\n`
+      : '';
+    return `Saludos ${getSaludo()}!\n\nLa factura por *EL MES DE ${getMesFactura()}*📃 ha sido generada.\n\n💠Recordandole: que la misma tiene un plazo hasta el dia ${getMesLimite()} para el pago.\n\n💰 Monto a pagar: *$${montoActual.toLocaleString('en-US',{minimumFractionDigits:2})}*\n${lineaPendiente}\n⚠LOS PAGOS SE REALIZAN A NUESTRAS CUENTAS DE BANCOS⚠\n\nCUENTAS:\nA nombre: 7LABS\n🟢Reservas: 248 013348 5\n🔵Popular:     782 6584 05\n🟢BHD:         1587 811 0015\n\n🧾RNC: 130-82698-6`;
+  };
 
   const aplicarPlantilla = (texto, cliente) => texto
     .replace(/{nombre}/g, cliente.nombre)

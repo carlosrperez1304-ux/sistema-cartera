@@ -68,7 +68,9 @@ export async function POST(req) {
       .eq('cliente_id', match.id);
 
     const totalPagado = (pagosCliente || []).reduce((s, p) => s + parseFloat(p.monto || 0), 0);
-    const restante = montoFactura - totalPagado;
+    const pendienteArrastrado = parseFloat(match.pendiente_arrastrado || 0);
+    const totalADeber = montoFactura + pendienteArrastrado;
+    const restante = totalADeber - totalPagado;
     const esPagoCompleto = restante <= 0.01;
 
     const historial = [...(match.historial || []), {
@@ -83,6 +85,8 @@ export async function POST(req) {
         estado: esPagoCompleto ? 'Pagado' : match.estado,
         fecha_pago: esPagoCompleto ? new Date().toISOString().split('T')[0] : match.fechaPago,
         historial,
+        pendiente_arrastrado: esPagoCompleto ? 0 : pendienteArrastrado,
+        pendiente_arrastrado_mes: esPagoCompleto ? null : match.pendiente_arrastrado_mes,
         updated_at: new Date().toISOString(),
       })
       .eq('id', match.id);
@@ -97,7 +101,7 @@ export async function POST(req) {
         mensajeNotif = 'Muchas gracias por su pago.';
         programadaPara = new Date().toISOString();
       } else {
-        mensajeNotif = 'Muchas gracias por su pago. Recordando que su factura fue de $' + montoFactura.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' y su pago acumulado es de $' + totalPagado.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ', el restante a pagar es de $' + restante.toLocaleString('en-US', { minimumFractionDigits: 2 }) + '.';
+        mensajeNotif = 'Muchas gracias por su pago. Recordando que su factura fue de $' + totalADeber.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' y su pago acumulado es de $' + totalPagado.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ', el restante a pagar es de $' + restante.toLocaleString('en-US', { minimumFractionDigits: 2 }) + '.';
         const futuro = new Date();
         futuro.setMinutes(futuro.getMinutes() + MINUTOS_ESPERA_PARCIAL);
         programadaPara = futuro.toISOString();
