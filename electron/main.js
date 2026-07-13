@@ -108,7 +108,7 @@ function iniciarWatcher(carpeta) {
           // Buscar cliente y subir PDF siempre (independiente de WhatsApp)
           ;(async () => {
             try {
-              const res = await fetch(`${PROD_URL}/api/watcher?nombre=${encodeURIComponent(nombreCliente)}&secret=paytrack-watcher-2026`);
+              const res = await fetch(`${PROD_URL}/api/watcher?nombre=${encodeURIComponent(nombreCliente)}&usuario=${encodeURIComponent(usuarioActualPC || '')}&secret=paytrack-watcher-2026`);
               if (res.ok) {
                 const cliente = await res.json();
                 if (cliente?.id) {
@@ -127,7 +127,7 @@ function iniciarWatcher(carpeta) {
             try {
               const conectado = await baileys.esperarConexion(30000);
               if (!conectado) { log.warn('[watcher] Baileys no conectado, no se envió:', filename); return; }
-              const res = await fetch(`${PROD_URL}/api/watcher?nombre=${encodeURIComponent(nombreCliente)}&secret=paytrack-watcher-2026`);
+              const res = await fetch(`${PROD_URL}/api/watcher?nombre=${encodeURIComponent(nombreCliente)}&usuario=${encodeURIComponent(usuarioActualPC || '')}&secret=paytrack-watcher-2026`);
                 if (res.ok) {
                   const cliente = await res.json();
                   if (!cliente) { log.warn('[watcher] No se encontró cliente ni subgrupo para:', nombreCliente); return; }
@@ -590,6 +590,11 @@ ipcMain.handle('estado-watcher', () => ({ activo: !!watcherActivo, carpeta: carp
 // ── IPC: WhatsApp Baileys ─────────────────────────────────────
 ipcMain.handle('whatsapp-status', () => ({ conectado: baileys.estaConectado() }));
 
+let usuarioActualPC = null;
+ipcMain.on('set-current-user', (event, username) => {
+  usuarioActualPC = username;
+  log.info('[usuario] Usuario actual de esta PC:', username);
+});
 ipcMain.handle('whatsapp-enviar-mensaje', async (event, { numero, mensaje }) => {
   try {
     await baileys.enviarMensaje(numero, mensaje);

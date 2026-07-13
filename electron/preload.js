@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('send-pdf-whatsapp', { base64, filename, phone, message }),
   whatsappEnviarMensaje: (numero, mensaje) =>
     ipcRenderer.invoke('whatsapp-enviar-mensaje', { numero, mensaje }),
+  setCurrentUser: (username) => ipcRenderer.send('set-current-user', username),
   onWhatsappQR: (cb) => {
     const listener = (_, qr) => cb(qr);
     ipcRenderer.on('whatsapp-qr', listener);

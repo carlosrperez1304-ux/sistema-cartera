@@ -159,6 +159,12 @@ export default function App() {
       if (s?.conectado) setWhatsappConectado(true);
     }).catch(() => {});
   }, []);
+  // Informar a Electron cual es el usuario actual (para el watcher filtrar por agente)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.electronAPI?.setCurrentUser && currentUser) {
+      window.electronAPI.setCurrentUser(currentUser);
+    }
+  }, [currentUser]);
   // Revisar notificaciones pendientes (de Keeper) cada 30 segundos
   useEffect(() => {
     if (typeof window === 'undefined' || !window.electronAPI?.whatsappEnviarMensaje) return;
