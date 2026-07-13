@@ -6232,6 +6232,7 @@ export default function App() {
                             <span style={{ fontSize: '14px', fontWeight: 700, color: '#16a34a' }}>+${parseFloat(pago.monto||0).toLocaleString('en-US')}</span>
                           </div>
                           <div style={{ fontSize: '12px', color: '#9a998f' }}>{pago.fechaFormato || new Date(pago.fecha).toLocaleDateString('es-DO')}{pago.banco ? ' · ' + pago.banco : ''}</div>
+                          {pago.nota && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '3px', padding: '3px 8px', background: '#f8fafc', borderRadius: '6px', display: 'inline-block' }}>{pago.nota}</div>}
                         </div>
                         <div style={{ display: 'flex', gap: '8px', alignSelf: 'center' }}>
                           {!pago.bloqueado && <button onClick={() => { setEditandoPago(pago); setEditPagoMonto(String(pago.monto)); setEditPagoFecha(pago.fecha ? new Date(pago.fecha).toISOString().split('T')[0] : ''); }} title="Editar pago" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 0 }}><Pencil size={13}/></button>}
