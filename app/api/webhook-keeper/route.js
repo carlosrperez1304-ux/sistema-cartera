@@ -33,7 +33,28 @@ export async function POST(req) {
 
     if (error) return Response.json({ error: error.message }, { status: 500 });
 
-    const match = (clientes || []).find(c => normalizar(c.nombre) === nombreNorm);
+    let match = (clientes || []).find(c => normalizar(c.nombre) === nombreNorm);
+
+    if (!match) {
+      // Busqueda de respaldo: nombres que empiecen igual (ej: "Virgilio" encuentra "Virgilio Sport")
+      const candidatos = (clientes || []).filter(c => {
+        const cNorm = normalizar(c.nombre);
+        return cNorm.startsWith(nombreNorm) || nombreNorm.startsWith(cNorm);
+      });
+
+      if (candidatos.length === 1) {
+        match = candidatos[0];
+      } else if (candidatos.length > 1) {
+        // Desempatar usando el monto: buscar el candidato cuyo monto coincida con el pago recibido
+        const montoPagadoNum = parseFloat(monto);
+        const porMonto = candidatos.find(c => Math.abs(parseFloat(c.monto || 0) - montoPagadoNum) < 0.01);
+        if (porMonto) {
+          match = porMonto;
+        } else {
+          return Response.json({ ok: false, mensaje: 'Se encontraron ' + candidatos.length + ' clientes similares a "' + nombreCliente + '" y ninguno coincide con el monto. Verificar manualmente: ' + candidatos.map(c => c.nombre).join(', ') });
+        }
+      }
+    }
 
     if (!match) {
       return Response.json({ ok: false, mensaje: 'No se encontro cliente con nombre: ' + nombreCliente });
