@@ -24,6 +24,7 @@ export default withAuth(
         if (pathname === '/api/activaciones') return true;
         if (pathname === '/api/watcher') return true;
         if (pathname === '/api/webhook-keeper') return true;
+        if (pathname === '/api/watcher-vinculo') return true;
         if (pathname.startsWith('/api/subgrupos')) return true;
         if (pathname.startsWith('/api/recordatorios')) return true;
         if (pathname === '/api/leer-pdf') return true;
