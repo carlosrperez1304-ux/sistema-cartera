@@ -176,9 +176,15 @@ export default function App() {
         for (const n of pendientes) {
           if (n.contacto) {
             try {
-              await window.electronAPI.whatsappEnviarMensaje(n.contacto, n.mensaje);
-              await fetch('/api/notificaciones-pendientes', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: n.id }) });
-            } catch {}
+              const resultado = await window.electronAPI.whatsappEnviarMensaje(n.contacto, n.mensaje);
+              if (resultado?.ok) {
+                await fetch('/api/notificaciones-pendientes', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: n.id }) });
+              } else {
+                console.warn('[Notificaciones] Fallo el envio, se reintentara:', n.nombre, resultado?.error);
+              }
+            } catch (err) {
+              console.warn('[Notificaciones] Error enviando, se reintentara:', n.nombre, err);
+            }
           }
         }
       } catch {}
