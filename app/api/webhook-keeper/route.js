@@ -132,19 +132,19 @@ export async function POST(req) {
       let mensajeNotif;
       let programadaPara;
 
-      if (esPagoCompleto) {
-        mensajeNotif = 'Muchas gracias por su pago.';
-        programadaPara = new Date().toISOString();
-      } else {
-        let desglose = '';
-        if (vinculo && clientesGrupo.length > 1) {
-          desglose = clientesGrupo.map(c => '\\n- ' + c.nombre + ': $' + parseFloat(c.monto||0).toLocaleString('en-US',{minimumFractionDigits:2})).join('');
+        if (esPagoCompleto) {
+          mensajeNotif = '\u2705 Muchas gracias por su pago.';
+          programadaPara = new Date().toISOString();
+        } else {
+          let desglose = '';
+          if (vinculo && clientesGrupo.length > 1) {
+            desglose = clientesGrupo.map(c => '\n- ' + c.nombre + ': $' + parseFloat(c.monto||0).toLocaleString('en-US',{minimumFractionDigits:2})).join('') + '\n';
+          }
+          mensajeNotif = '\u2705 Muchas gracias por su pago.\nRecordando que:\n\n\ud83d\udcb0 Su factura fue de: $' + totalADeber.toLocaleString('en-US', { minimumFractionDigits: 2 }) + '\n' + desglose + '\ud83d\udcb5 Su pago acumulado es de: $' + totalPagado.toLocaleString('en-US', { minimumFractionDigits: 2 }) + '\n\u26a0\ufe0f Su restante a pagar es de: $' + restante.toLocaleString('en-US', { minimumFractionDigits: 2 });
+          const futuro = new Date();
+          futuro.setMinutes(futuro.getMinutes() + MINUTOS_ESPERA_PARCIAL);
+          programadaPara = futuro.toISOString();
         }
-        mensajeNotif = 'Muchas gracias por su pago. Recordando que su factura fue de $' + totalADeber.toLocaleString('en-US', { minimumFractionDigits: 2 }) + desglose + '\\n\\nSu pago acumulado es de $' + totalPagado.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ', el restante a pagar es de $' + restante.toLocaleString('en-US', { minimumFractionDigits: 2 }) + '.';
-        const futuro = new Date();
-        futuro.setMinutes(futuro.getMinutes() + MINUTOS_ESPERA_PARCIAL);
-        programadaPara = futuro.toISOString();
-      }
 
       await db().from('notificaciones_pendientes').delete().in('cliente_id', idsGrupo).eq('enviado', false);
 
