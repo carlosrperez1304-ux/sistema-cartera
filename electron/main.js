@@ -212,14 +212,21 @@ function iniciarWatcher(carpeta) {
                       const pendientes = loadPendingVinculo();
                       const clave = vinculoInfo.nombreGrupo || String(cliente.id);
                       const retenidos = pendientes[clave] || [];
+                      // 1. Enviar primero el mensaje de texto combinado (solo)
+                      try {
+                        await baileys.enviarMensaje(cliente.contacto, vinculoInfo.mensajeCombinado);
+                        log.info('[watcher] Mensaje combinado enviado:', vinculoInfo.nombreGrupo);
+                      } catch(e) { log.warn('[watcher] Error enviando mensaje combinado:', e.message); }
+                      // 2. Luego enviar los PDFs retenidos, sin texto
                       for (const r of retenidos) {
                         try {
                           await baileys.enviarPDF(r.contacto, r.pdfPath, r.filename, '');
                           log.info('[watcher] PDF retenido enviado:', r.filename);
                         } catch(e) { log.warn('[watcher] Error enviando PDF retenido:', e.message); }
                       }
-                      await baileys.enviarPDF(cliente.contacto, pdfPath, filename, vinculoInfo.mensajeCombinado);
-                      log.info('[watcher] Cliente vinculado y completo, enviando mensaje combinado:', vinculoInfo.nombreGrupo);
+                      // 3. Por ultimo el PDF actual, sin texto
+                      await baileys.enviarPDF(cliente.contacto, pdfPath, filename, '');
+                      log.info('[watcher] Cliente vinculado y completo:', vinculoInfo.nombreGrupo);
                       delete pendientes[clave];
                       savePendingVinculo(pendientes);
                     } else {
