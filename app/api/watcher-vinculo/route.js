@@ -31,7 +31,7 @@ export async function GET(req) {
   const todosListos = (clientesGrupo || []).every(c => parseFloat(c.monto || 0) > 0);
 
   if (!todosListos) {
-    return Response.json({ vinculado: true, listo: false });
+    return Response.json({ vinculado: true, listo: false, nombreGrupo: vinculo.nombre, idsGrupo: vinculo.ids });
   }
 
   const hoy = new Date();
