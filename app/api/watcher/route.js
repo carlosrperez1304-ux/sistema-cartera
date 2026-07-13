@@ -1,5 +1,5 @@
 import { db } from '../../../lib/supabase.js';
-const SECRET = 'paytrack-watcher-2026';
+const SECRET = process.env.WATCHER_SECRET || 'paytrack-watcher-2026';
 
 function normalizar(str) {
   return (str || '').toLowerCase()

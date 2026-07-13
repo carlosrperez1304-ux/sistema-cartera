@@ -1,6 +1,6 @@
 import { db } from '../../../lib/supabase.js';
 
-const SECRET = 'paytrack-watcher-2026';
+const SECRET = process.env.WATCHER_SECRET || 'paytrack-watcher-2026';
 const MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
 
 export async function GET(req) {
