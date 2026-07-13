@@ -27,6 +27,15 @@ function loadActivation() {
   return null;
 }
 function saveActivation(data) { fs.writeFileSync(ACTIVATION_FILE, JSON.stringify(data), 'utf8'); }
+// Archivo para retener PDFs de clientes vinculados hasta que ambas facturas esten listas
+const PENDING_VINCULO_FILE = path.join(app.getPath('userData'), 'pending-vinculo.json');
+function loadPendingVinculo() {
+  try { if (fs.existsSync(PENDING_VINCULO_FILE)) return JSON.parse(fs.readFileSync(PENDING_VINCULO_FILE, 'utf8')); } catch (_) {}
+  return {};
+}
+function savePendingVinculo(data) {
+  try { fs.writeFileSync(PENDING_VINCULO_FILE, JSON.stringify(data), 'utf8'); } catch (_) {}
+}
 function getOrCreateDeviceId() {
   const saved = loadActivation();
   if (saved?.deviceId) return saved.deviceId;
@@ -172,26 +181,51 @@ function iniciarWatcher(carpeta) {
 
                     let mensaje = `Saludos ${saludo}!\nLa factura por EL MES DE ${mesNombre.toUpperCase()} ${anio}📃 ha sido generada.\n💠Recordandole: que la misma tiene un plazo hasta el dia 15 DE ${mesSiguiente} ${anio} para el pago.\n💰 Monto a pagar: ${monto}\n⚠️LOS PAGOS SE REALIZAN A NUESTRAS CUENTAS DE BANCOS⚠️\nCUENTAS:\nA nombre: 7LABS\n🟢Reservas: 248 013348 5\n🔵Popular:     782 6584 05\n🟢BHD:         1587 811 0015\n🧾RNC: 130-82698-6`;
                     // Verificar si el cliente esta vinculado a otro (no rompe el flujo normal si falla)
+                    let vinculoInfo = null;
                     if (cliente._tipo !== 'subgrupo') {
                       try {
                         const resVinc = await fetch(`${PROD_URL}/api/watcher-vinculo?cliente_id=${cliente.id}&secret=paytrack-watcher-2026`);
-                        if (resVinc.ok) {
-                          const dataVinc = await resVinc.json();
-                          if (dataVinc.vinculado && !dataVinc.listo) {
-                            mensaje = '';
-                            log.info('[watcher] Cliente vinculado, esperando la otra factura:', cliente.nombre);
-                          } else if (dataVinc.vinculado && dataVinc.listo) {
-                            mensaje = dataVinc.mensajeCombinado;
-                            log.info('[watcher] Cliente vinculado y completo, enviando mensaje combinado:', dataVinc.nombreGrupo);
-                          }
-                        }
+                        if (resVinc.ok) vinculoInfo = await resVinc.json();
                       } catch(e) { log.warn('[watcher] Error verificando vinculo:', e.message); }
                     }
-
                     const pdfPath = path.join(PDFS_DIR, `${Date.now()}_${filename}`);
                     fs.writeFileSync(pdfPath, buffer);
-                    await baileys.enviarPDF(cliente.contacto, pdfPath, filename, mensaje);
-                    log.info('[watcher] PDF enviado por WhatsApp a:', cliente.nombre);
+
+                    if (vinculoInfo?.vinculado && !vinculoInfo.listo) {
+                      const pendientes = loadPendingVinculo();
+                      const clave = vinculoInfo.nombreGrupo || String(cliente.id);
+                      if (!pendientes[clave]) pendientes[clave] = [];
+                      pendientes[clave].push({ pdfPath, filename, contacto: cliente.contacto });
+                      savePendingVinculo(pendientes);
+                      log.info('[watcher] PDF retenido, esperando la otra factura:', cliente.nombre);
+                      try {
+                        const { Notification } = require('electron');
+                        if (Notification.isSupported()) {
+                          new Notification({
+                            title: 'CashRD — En espera',
+                            body: `⏳ ${cliente.nombre} vinculado, esperando la factura del otro cliente`,
+                            icon: path.join(__dirname, 'assets', 'icon.png')
+                          }).show();
+                        }
+                      } catch (_) {}
+                    } else if (vinculoInfo?.vinculado && vinculoInfo.listo) {
+                      const pendientes = loadPendingVinculo();
+                      const clave = vinculoInfo.nombreGrupo || String(cliente.id);
+                      const retenidos = pendientes[clave] || [];
+                      for (const r of retenidos) {
+                        try {
+                          await baileys.enviarPDF(r.contacto, r.pdfPath, r.filename, '');
+                          log.info('[watcher] PDF retenido enviado:', r.filename);
+                        } catch(e) { log.warn('[watcher] Error enviando PDF retenido:', e.message); }
+                      }
+                      await baileys.enviarPDF(cliente.contacto, pdfPath, filename, vinculoInfo.mensajeCombinado);
+                      log.info('[watcher] Cliente vinculado y completo, enviando mensaje combinado:', vinculoInfo.nombreGrupo);
+                      delete pendientes[clave];
+                      savePendingVinculo(pendientes);
+                    } else {
+                      await baileys.enviarPDF(cliente.contacto, pdfPath, filename, mensaje);
+                    }
+                    log.info('[watcher] PDF procesado para:', cliente.nombre);
 
                     // Notificación nativa de Windows
                     const { Notification } = require('electron');
