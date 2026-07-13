@@ -168,9 +168,10 @@ export default function App() {
   // Revisar notificaciones pendientes (de Keeper) cada 30 segundos
   useEffect(() => {
     if (typeof window === 'undefined' || !window.electronAPI?.whatsappEnviarMensaje) return;
+    if (!currentUser) return;
     const revisar = async () => {
       try {
-        const res = await fetch('/api/notificaciones-pendientes');
+        const res = await fetch('/api/notificaciones-pendientes?agente=' + encodeURIComponent(currentUser));
         if (!res.ok) return;
         const pendientes = await res.json();
         for (const n of pendientes) {
@@ -192,7 +193,7 @@ export default function App() {
     revisar();
     const interval = setInterval(revisar, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [currentUser]);
 
   const esAdmin = session
     ? (session.user?.rol === 'admin')

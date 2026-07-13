@@ -1,13 +1,21 @@
 import { db } from '../../../lib/supabase.js';
 
 export async function GET(req) {
-  const { data, error } = await db()
+  const { searchParams } = new URL(req.url);
+  const agente = searchParams.get('agente');
+
+  let query = db()
     .from('notificaciones_pendientes')
     .select('*')
     .eq('enviado', false)
     .lte('programada_para', new Date().toISOString())
     .order('created_at', { ascending: true });
 
+  if (agente) {
+    query = query.eq('agente', agente);
+  }
+
+  const { data, error } = await query;
   if (error) return Response.json([]);
   return Response.json(data || []);
 }

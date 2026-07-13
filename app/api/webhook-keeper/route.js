@@ -155,6 +155,7 @@ export async function POST(req) {
         mensaje: mensajeNotif,
         enviado: false,
         programada_para: programadaPara,
+        agente: clienteContacto.creado_por || match.creado_por || null,
       });
     }
 
