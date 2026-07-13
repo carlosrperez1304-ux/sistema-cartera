@@ -13,7 +13,7 @@ function normalizar(str) {
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { secret, nombreCliente, monto } = body;
+    const { secret, nombreCliente, monto, nota } = body;
 
     if (secret !== SECRET_KEY) {
       return Response.json({ error: 'No autorizado' }, { status: 401 });
@@ -86,7 +86,8 @@ export async function POST(req) {
       fecha_formato: new Date().toLocaleDateString('es-DO'),
       fecha_pago: new Date().toISOString().split('T')[0],
       banco: 'Keeper',
-      referencia: 'Sincronizado desde Keeper',
+      referencia: nota || 'Sincronizado desde Keeper',
+      nota: nota || null,
       tipo_negocio: 'Servicio y Repuestos',
       estado: 'pendiente',
       creado_por: 'Sistema-Keeper',
