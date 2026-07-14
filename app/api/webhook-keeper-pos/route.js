@@ -1,6 +1,7 @@
 import { db } from '../../../lib/supabase.js';
 
 const SECRET_KEY = process.env.WEBHOOK_KEEPER_SECRET || 'ba10e5cf30066fadd14b87f844ba1993de2ccb692be920426284ac3dc690a7cb';
+const MINUTOS_ESPERA_PARCIAL = 5;
 
 function normalizar(str) {
   return (str || '').toLowerCase()
@@ -17,7 +18,6 @@ export async function POST(req) {
       return Response.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    // Extraer numero de orden del texto de la nota/referencia (ej: "Abono de orden #147435 ...")
     const matchOrden = (nota || '').match(/#\s*(\d+)/);
     if (!matchOrden) {
       return Response.json({ ok: false, mensaje: 'No se encontro numero de orden en la referencia, se ignora (posible compra normal, no credito)' });
@@ -47,7 +47,13 @@ export async function POST(req) {
       fecha_formato: new Date().toLocaleDateString('es-DO'),
     });
 
-    const totalAbonado = (credito.abonos || []).reduce((s, a) => s + parseFloat(a.monto || 0), 0) + montoPagado;
+    // Sumar TODOS los abonos acumulados de este credito (incluyendo el que acabamos de insertar)
+    const { data: abonosCredito } = await db()
+      .from('abonos')
+      .select('monto')
+      .eq('credito_id', credito.id);
+
+    const totalAbonado = (abonosCredito || []).reduce((s, a) => s + parseFloat(a.monto || 0), 0);
     const montoCredito = parseFloat(credito.monto || 0);
     const restante = montoCredito - totalAbonado;
     const esCreditoSaldado = restante < 100;
@@ -67,7 +73,6 @@ export async function POST(req) {
       })
       .eq('id', credito.id);
 
-    // Buscar contacto: el credito puede tener vendedor_whatsapp, pero necesitamos el contacto del cliente
     const { data: clienteData } = await db()
       .from('clientes')
       .select('contacto')
@@ -80,19 +85,29 @@ export async function POST(req) {
 
     if (contacto) {
       let mensajeNotif;
+      let programadaPara;
+
       if (esCreditoSaldado) {
         mensajeNotif = '\u2705 Muchas gracias por su abono.\nRecordando que:\n\n\ud83d\udccb Orden: #' + numeroOrden + '\n\ud83d\udcb0 Su credito fue de: $' + montoCredito.toLocaleString('en-US', { minimumFractionDigits: 2 }) + '\n\ud83c\udf89 Su credito ha quedado saldado en su totalidad.';
+        programadaPara = new Date().toISOString();
       } else {
         mensajeNotif = '\u2705 Muchas gracias por su abono.\nRecordando que:\n\n\ud83d\udccb Orden: #' + numeroOrden + '\n\ud83d\udcb0 Su credito fue de: $' + montoCredito.toLocaleString('en-US', { minimumFractionDigits: 2 }) + '\n\ud83d\udcb5 Su pago acumulado es de: $' + totalAbonado.toLocaleString('en-US', { minimumFractionDigits: 2 }) + '\n\u26a0\ufe0f Su restante a pagar es de: $' + restante.toLocaleString('en-US', { minimumFractionDigits: 2 });
+        const futuro = new Date();
+        futuro.setMinutes(futuro.getMinutes() + MINUTOS_ESPERA_PARCIAL);
+        programadaPara = futuro.toISOString();
       }
+
+      // Si ya existe una notificacion pendiente para este credito (abono parcial anterior), la reemplazamos
+      await db().from('notificaciones_pendientes').delete().eq('credito_id', credito.id).eq('enviado', false);
 
       await db().from('notificaciones_pendientes').insert({
         cliente_id: null,
+        credito_id: credito.id,
         contacto: contacto,
         nombre: credito.cliente,
         mensaje: mensajeNotif,
         enviado: false,
-        programada_para: new Date().toISOString(),
+        programada_para: programadaPara,
         agente: credito.creado_por || null,
       });
     }
