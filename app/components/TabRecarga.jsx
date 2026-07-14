@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Phone, Send } from 'lucide-react';
 
-export default function TabRecarga({ clientes, empresaActual, showToast }) {
+export default function TabRecarga({ clientes, empresaActual, showToast, actualizarCliente }) {
   const [recargas, setRecargas] = useState([]);
   const [telRecarga, setTelRecarga] = useState('');
   const [showConfigTel, setShowConfigTel] = useState(false);
@@ -76,7 +76,7 @@ export default function TabRecarga({ clientes, empresaActual, showToast }) {
     if (!cliente) { setMasivoActivo(false); return; }
     const rec = getRecarga(cliente.id);
     const comision = rec?.comision || 0;
-    const servicio = parseFloat(cliente.monto || 0);
+    const servicio = (cliente.montoOriginal !== undefined && cliente.montoOriginal !== null && cliente.montoOriginal !== '') ? parseFloat(cliente.montoOriginal) : parseFloat(cliente.monto || 0);
     const diferencia = servicio - comision;
     let msg;
     if (diferencia <= 0) {
@@ -132,12 +132,22 @@ export default function TabRecarga({ clientes, empresaActual, showToast }) {
 
   const actualizarComision = async (cliente, comision) => {
     const existente = getRecarga(cliente.id);
-    const montoServicio = parseFloat(cliente.monto || 0);
+    // El monto original (factura completa) se guarda una sola vez; si ya existe, siempre se usa ese
+    const montoOriginalActual = (cliente.montoOriginal !== undefined && cliente.montoOriginal !== null && cliente.montoOriginal !== '')
+      ? parseFloat(cliente.montoOriginal)
+      : parseFloat(cliente.monto || 0);
+    const nuevoMontoCartera = Math.max(0, montoOriginalActual - comision);
+
+    // Actualizar el cliente en Cartera: guardar montoOriginal (si es la primera vez) y el nuevo monto descontado
+    if (actualizarCliente) {
+      await actualizarCliente({ ...cliente, monto: nuevoMontoCartera, montoOriginal: montoOriginalActual });
+    }
+
     if (existente) {
       const res = await fetch('/api/recargas', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: existente.id, comision, monto_servicio: montoServicio })
+        body: JSON.stringify({ id: existente.id, comision, monto_servicio: montoOriginalActual })
       });
       if (res.ok) {
         const data = await res.json();
@@ -147,7 +157,7 @@ export default function TabRecarga({ clientes, empresaActual, showToast }) {
       const res = await fetch('/api/recargas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cliente_id: cliente.id, empresa_id: empresaId, mes: mesActual, comision, monto_servicio: montoServicio })
+        body: JSON.stringify({ cliente_id: cliente.id, empresa_id: empresaId, mes: mesActual, comision, monto_servicio: montoOriginalActual })
       });
       if (res.ok) {
         const data = await res.json();
@@ -161,7 +171,7 @@ export default function TabRecarga({ clientes, empresaActual, showToast }) {
     if (rec?.aplicar_a === 'recarga') { showToast && showToast('Este cliente aplica a recarga, no se notifica', 'error'); return; }
     const comision = rec?.comision || 0;
     if (comision <= 0) { showToast && showToast('Sin comision de recarga registrada este mes', 'error'); return; }
-    const servicio = parseFloat(cliente.monto || 0);
+    const servicio = (cliente.montoOriginal !== undefined && cliente.montoOriginal !== null && cliente.montoOriginal !== '') ? parseFloat(cliente.montoOriginal) : parseFloat(cliente.monto || 0);
     const diferencia = servicio - comision;
     let msg;
     if (diferencia <= 0) {
@@ -216,7 +226,7 @@ export default function TabRecarga({ clientes, empresaActual, showToast }) {
         {clientesRecarga.map(c => {
           const rec = getRecarga(c.id);
           const comision = rec?.comision || 0;
-          const servicio = parseFloat(c.monto || 0);
+          const servicio = (c.montoOriginal !== undefined && c.montoOriginal !== null && c.montoOriginal !== '') ? parseFloat(c.montoOriginal) : parseFloat(c.monto || 0);
           const diferencia = servicio - comision;
           const saldado = diferencia <= 0;
           const enCola = masivoActivo && masivoActualId === c.id;

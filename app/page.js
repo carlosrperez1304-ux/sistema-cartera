@@ -4523,7 +4523,7 @@ export default function App() {
 
           {/* TAB RECARGA */}
           <div className={`tab-content ${activeTab === 'recarga' ? 'active' : ''}`}>
-            <TabRecarga clientes={clientes} empresaActual={empresaActual} showToast={showToast} />
+            <TabRecarga clientes={clientes} empresaActual={empresaActual} showToast={showToast} actualizarCliente={actualizarCliente} />
           </div>
           {/* TAB CARTERA */}
           <div className={`tab-content ${activeTab === 'cartera' ? 'active' : ''}`}>

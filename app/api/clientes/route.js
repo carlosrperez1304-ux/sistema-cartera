@@ -29,6 +29,7 @@ function toFront(c) {
     tags:               c.tags            || [],
     historial:          c.historial       || [],
     generaRecarga:      c.genera_recarga  || false,
+    montoOriginal:      c.monto_original !== null && c.monto_original !== undefined ? String(c.monto_original) : '',
     pendienteArrastrado:      parseFloat(c.pendiente_arrastrado || 0),
     pendienteArrastradoMes:   c.pendiente_arrastrado_mes || null,
     pagosRealizados: (c.pagos || []).map(p => ({

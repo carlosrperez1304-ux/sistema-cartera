@@ -60,6 +60,7 @@ export async function PUT(req, { params }) {
   if (body.suspendido !== undefined)         row.suspendido = body.suspendido || false;
   if (body.tags !== undefined)               row.tags = body.tags || [];
   if (body.generaRecarga !== undefined)        row.genera_recarga = body.generaRecarga || false;
+  if (body.montoOriginal !== undefined && body.montoOriginal !== null && body.montoOriginal !== '') row.monto_original = parseFloat(body.montoOriginal);
   if (body.historial !== undefined)          row.historial = body.historial || [];
 
   const { error } = await db().from('clientes').update(row).eq('id', id);
