@@ -88,7 +88,7 @@ export async function POST(req) {
       let programadaPara;
 
       if (esCreditoSaldado) {
-        mensajeNotif = '\u2705 Muchas gracias por su abono.\nRecordando que:\n\n\ud83d\udccb Orden: #' + numeroOrden + '\n\ud83d\udcb0 Su credito fue de: $' + montoCredito.toLocaleString('en-US', { minimumFractionDigits: 2 }) + '\n\ud83c\udf89 Su credito ha quedado saldado en su totalidad.';
+        mensajeNotif = '\u2705 Muchas gracias por su pago.\n\ud83d\udccb Su orden #' + numeroOrden + '\n\ud83d\udcb0 De su credito de: $' + montoCredito.toLocaleString('en-US', { minimumFractionDigits: 2 }) + '\n\ud83c\udf89 Fue saldada completamente.';
         programadaPara = new Date().toISOString();
       } else {
         mensajeNotif = '\u2705 Muchas gracias por su abono.\nRecordando que:\n\n\ud83d\udccb Orden: #' + numeroOrden + '\n\ud83d\udcb0 Su credito fue de: $' + montoCredito.toLocaleString('en-US', { minimumFractionDigits: 2 }) + '\n\ud83d\udcb5 Su pago acumulado es de: $' + totalAbonado.toLocaleString('en-US', { minimumFractionDigits: 2 }) + '\n\u26a0\ufe0f Su restante a pagar es de: $' + restante.toLocaleString('en-US', { minimumFractionDigits: 2 });
