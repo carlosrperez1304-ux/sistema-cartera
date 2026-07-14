@@ -140,20 +140,41 @@ export default function TabRecarga({ clientes, empresaActual, showToast, actuali
     const nuevoMontoCartera = Math.max(0, montoOriginalActual - comision);
     const quedaSaldado = nuevoMontoCartera <= 0.01;
 
-    if (actualizarCliente) {
+    // El monto en Cartera SIEMPRE se mantiene como el monto real generado (montoOriginal), nunca se descuenta ahi.
+    // El descuento se refleja registrando un pago en el historial, igual que un pago normal.
+    if (actualizarCliente && quedaSaldado && !yaNotificadoAntes) {
       const historialNuevo = [...(cliente.historial || []), {
         fecha: new Date().toISOString(),
-        accion: quedaSaldado ? 'Marcado Pagado (via Recarga)' : 'Monto actualizado por Recarga',
+        accion: 'Marcado Pagado (via Recarga)',
         usuario: 'Sistema-Recarga'
       }];
       await actualizarCliente({
         ...cliente,
-        monto: nuevoMontoCartera,
+        monto: montoOriginalActual,
         montoOriginal: montoOriginalActual,
-        estado: quedaSaldado ? 'Pagado' : cliente.estado,
-        fechaPago: quedaSaldado ? new Date().toISOString().split('T')[0] : cliente.fechaPago,
+        estado: 'Pagado',
+        fechaPago: new Date().toISOString().split('T')[0],
         historial: historialNuevo,
       });
+
+      // Registrar el pago en el historial de pagos del cliente
+      await fetch('/api/pagos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cliente_id: cliente.id,
+          cliente_nombre: cliente.nombre,
+          monto: montoOriginalActual,
+          fecha_pago: new Date().toISOString().split('T')[0],
+          banco: 'Recarga',
+          referencia: 'Saldado con Recarga',
+          nota: 'Saldado con Recarga',
+          tipo_negocio: 'Servicio y Repuestos',
+        }),
+      }).catch(() => null);
+    } else if (actualizarCliente) {
+      // Aun no esta saldado: solo guardar montoOriginal si es la primera vez, sin tocar el monto ni el estado
+      await actualizarCliente({ ...cliente, montoOriginal: montoOriginalActual });
     }
 
     if (quedaSaldado && !yaNotificadoAntes && cliente.contacto && typeof window !== 'undefined' && window.electronAPI?.whatsappEnviarMensaje) {
