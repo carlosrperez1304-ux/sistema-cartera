@@ -57,6 +57,7 @@ export default function TabRecarga({ clientes, empresaActual, showToast, actuali
       const rec = getRecarga(c.id);
       if (rec?.aplicar_a === 'recarga') return false;
       if ((rec?.comision || 0) <= 0) return false;
+      if (rec?.notificado) return false;
       return true;
     });
     if (cola.length === 0) { showToast && showToast('No hay clientes con comision registrada para notificar', 'error'); return; }
@@ -132,22 +133,41 @@ export default function TabRecarga({ clientes, empresaActual, showToast, actuali
 
   const actualizarComision = async (cliente, comision) => {
     const existente = getRecarga(cliente.id);
-    // El monto original (factura completa) se guarda una sola vez; si ya existe, siempre se usa ese
+    const yaNotificadoAntes = existente?.notificado || false;
     const montoOriginalActual = (cliente.montoOriginal !== undefined && cliente.montoOriginal !== null && cliente.montoOriginal !== '')
       ? parseFloat(cliente.montoOriginal)
       : parseFloat(cliente.monto || 0);
     const nuevoMontoCartera = Math.max(0, montoOriginalActual - comision);
+    const quedaSaldado = nuevoMontoCartera <= 0.01;
 
-    // Actualizar el cliente en Cartera: guardar montoOriginal (si es la primera vez) y el nuevo monto descontado
     if (actualizarCliente) {
-      await actualizarCliente({ ...cliente, monto: nuevoMontoCartera, montoOriginal: montoOriginalActual });
+      const historialNuevo = [...(cliente.historial || []), {
+        fecha: new Date().toISOString(),
+        accion: quedaSaldado ? 'Marcado Pagado (via Recarga)' : 'Monto actualizado por Recarga',
+        usuario: 'Sistema-Recarga'
+      }];
+      await actualizarCliente({
+        ...cliente,
+        monto: nuevoMontoCartera,
+        montoOriginal: montoOriginalActual,
+        estado: quedaSaldado ? 'Pagado' : cliente.estado,
+        fechaPago: quedaSaldado ? new Date().toISOString().split('T')[0] : cliente.fechaPago,
+        historial: historialNuevo,
+      });
     }
+
+    if (quedaSaldado && !yaNotificadoAntes && cliente.contacto && typeof window !== 'undefined' && window.electronAPI?.whatsappEnviarMensaje) {
+      const msgSaldado = 'Saludos ' + cliente.nombre + ', le informamos que sus comisiones de recarga saldaron el pago de su servicio.';
+      window.electronAPI.whatsappEnviarMensaje(cliente.contacto, msgSaldado).catch(() => null);
+    }
+
+    const notificadoFinal = quedaSaldado ? true : yaNotificadoAntes;
 
     if (existente) {
       const res = await fetch('/api/recargas', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: existente.id, comision, monto_servicio: montoOriginalActual })
+        body: JSON.stringify({ id: existente.id, comision, monto_servicio: montoOriginalActual, notificado: notificadoFinal })
       });
       if (res.ok) {
         const data = await res.json();
@@ -157,7 +177,7 @@ export default function TabRecarga({ clientes, empresaActual, showToast, actuali
       const res = await fetch('/api/recargas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cliente_id: cliente.id, empresa_id: empresaId, mes: mesActual, comision, monto_servicio: montoOriginalActual })
+        body: JSON.stringify({ cliente_id: cliente.id, empresa_id: empresaId, mes: mesActual, comision, monto_servicio: montoOriginalActual, notificado: notificadoFinal })
       });
       if (res.ok) {
         const data = await res.json();
@@ -169,6 +189,7 @@ export default function TabRecarga({ clientes, empresaActual, showToast, actuali
   const notificarCliente = (cliente) => {
     const rec = getRecarga(cliente.id);
     if (rec?.aplicar_a === 'recarga') { showToast && showToast('Este cliente aplica a recarga, no se notifica', 'error'); return; }
+    if (rec?.notificado) { showToast && showToast('Este cliente ya fue notificado', 'error'); return; }
     const comision = rec?.comision || 0;
     if (comision <= 0) { showToast && showToast('Sin comision de recarga registrada este mes', 'error'); return; }
     const servicio = (cliente.montoOriginal !== undefined && cliente.montoOriginal !== null && cliente.montoOriginal !== '') ? parseFloat(cliente.montoOriginal) : parseFloat(cliente.monto || 0);
