@@ -31,7 +31,7 @@ export async function POST(req) {
 
     if (tipoNorm.includes('pos')) {
       // Redirigir a la logica de creditos
-      const resPOS = await fetch(new URL('/api/webhook-keeper-pos', req.url), {
+      const resPOS = await fetch(new URL('/api/webhook-pagos-pos', req.url), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -94,7 +94,7 @@ export async function POST(req) {
     const mesAnterior = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
     const mesFactura = MESES[mesAnterior.getMonth()] + ' ' + mesAnterior.getFullYear();
 
-    // Registrar el pago a nombre del cliente real que llego desde Keeper
+    // Registrar el pago a nombre del cliente real
     await db().from('pagos').insert({
       cliente_id: match.id,
       cliente_nombre: match.nombre,
@@ -102,12 +102,12 @@ export async function POST(req) {
       fecha: new Date().toISOString(),
       fecha_formato: new Date().toLocaleDateString('es-DO'),
       fecha_pago: new Date().toISOString().split('T')[0],
-      banco: 'Keeper',
-      referencia: nota || 'Sincronizado desde Keeper',
+      banco: 'Sistema',
+      referencia: nota || 'Sincronizado automaticamente',
       nota: nota || null,
       tipo_negocio: 'Servicio y Repuestos',
       estado: 'pendiente',
-      creado_por: 'Sistema-Keeper',
+      creado_por: 'Sistema',
       mes_factura: mesFactura,
     });
 
@@ -128,8 +128,8 @@ export async function POST(req) {
     for (const c of clientesGrupo) {
       const historial = [...(c.historial || []), {
         fecha: new Date().toISOString(),
-        accion: 'Marco Pagado (via Keeper' + (vinculo ? ' - grupo: ' + nombreGrupo : '') + ')',
-        usuario: 'Sistema-Keeper'
+        accion: 'Marco Pagado (automatico' + (vinculo ? ' - grupo: ' + nombreGrupo : '') + ')',
+        usuario: 'Sistema'
       }];
       await db()
         .from('clientes')

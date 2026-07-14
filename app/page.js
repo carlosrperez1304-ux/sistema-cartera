@@ -165,7 +165,7 @@ export default function App() {
       window.electronAPI.setCurrentUser(currentUser);
     }
   }, [currentUser]);
-  // Revisar notificaciones pendientes (de Keeper) cada 30 segundos
+  // Revisar notificaciones pendientes de facturacion cada 30 segundos
   useEffect(() => {
     if (typeof window === 'undefined' || !window.electronAPI?.whatsappEnviarMensaje) return;
     if (!currentUser) return;
@@ -1160,10 +1160,10 @@ export default function App() {
     if (!('Notification' in window)) return;
     const enviarNotif = () => {
       if (creditosVencidos.length > 0) {
-        new Notification('PayTrack - Créditos Vencidos', { body: `Tienes ${creditosVencidos.length} crédito(s) vencido(s) que requieren atención.`, icon: '/favicon.ico' });
+        new Notification('CashRD - Créditos Vencidos', { body: `Tienes ${creditosVencidos.length} crédito(s) vencido(s) que requieren atención.`, icon: '/favicon.ico' });
       }
       if (creditosAlerta.length > 0) {
-        new Notification('PayTrack - Créditos por Vencer', { body: `${creditosAlerta.length} crédito(s) vencen en los próximos 7 días.`, icon: '/favicon.ico' });
+        new Notification('CashRD - Créditos por Vencer', { body: `${creditosAlerta.length} crédito(s) vencen en los próximos 7 días.`, icon: '/favicon.ico' });
       }
     };
     if (Notification.permission === 'granted') { enviarNotif(); }
@@ -1912,7 +1912,7 @@ export default function App() {
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       doc.setFillColor(30, 45, 74); doc.rect(0, 0, 210, 40, 'F');
       doc.setTextColor(255, 255, 255); doc.setFontSize(22); doc.setFont(undefined, 'bold');
-      doc.text('PayTrack', 15, 18);
+      doc.text('CashRD', 15, 18);
       doc.setFontSize(11); doc.setFont(undefined, 'normal');
       doc.text('Recibo de Pago', 15, 28);
       doc.text(`Fecha: ${new Date().toLocaleDateString('es-DO')}`, 150, 28);
@@ -1934,7 +1934,7 @@ export default function App() {
       doc.text(`Saldo pendiente:`, 20, 135); doc.setTextColor(s.pendiente > 0 ? 220 : 5, s.pendiente > 0 ? 38 : 150, s.pendiente > 0 ? 38 : 105);
       doc.text(`$${s.pendiente.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 80, 135);
       doc.setTextColor(148, 163, 184); doc.setFontSize(9);
-      doc.text('Este recibo fue generado automáticamente por PayTrack.', 15, 270);
+      doc.text('Este recibo fue generado automáticamente por CashRD.', 15, 270);
       doc.save(`recibo-${cliente.nombre.replace(/ /g,'-')}-${new Date().toISOString().split('T')[0]}.pdf`);
     });
   };
@@ -1945,7 +1945,7 @@ export default function App() {
       import('jspdf-autotable').then((autotableModule) => { const autoTable = autotableModule.default || autotableModule;
         const doc = new jsPDF({ orientation: 'landscape' });
         doc.setFontSize(16); doc.setFont(undefined, 'bold');
-        doc.text('PayTrack - Reporte de Cartera', 14, 15);
+        doc.text('CashRD - Reporte de Cartera', 14, 15);
         doc.setFontSize(10); doc.setFont(undefined, 'normal');
         doc.text(`Generado: ${new Date().toLocaleDateString('es-DO')} | Total clientes: ${clientes.length}`, 14, 22);
         autoTable(doc, {
@@ -1967,7 +1967,7 @@ export default function App() {
       import('jspdf-autotable').then((autotableModule) => { const autoTable = autotableModule.default || autotableModule;
         const doc = new jsPDF({ orientation: 'landscape' });
         doc.setFontSize(16); doc.setFont(undefined, 'bold');
-        doc.text('PayTrack - Reporte de Créditos', 14, 15);
+        doc.text('CashRD - Reporte de Créditos', 14, 15);
         doc.setFontSize(10); doc.setFont(undefined, 'normal');
         doc.text(`Generado: ${new Date().toLocaleDateString('es-DO')} | Total créditos: ${creditos.length}`, 14, 22);
         autoTable(doc, {
@@ -2910,7 +2910,7 @@ export default function App() {
         // Header
         doc.setFillColor(15,28,63); doc.rect(0,0,210,40,'F');
         doc.setTextColor(255,255,255); doc.setFontSize(20); doc.setFont(undefined,'bold');
-        doc.text('PayTrack', 15, 16);
+        doc.text('CashRD', 15, 16);
         doc.setFontSize(10); doc.setFont(undefined,'normal');
         doc.text('Estado de Cuenta', 15, 25);
         doc.text(`Generado: ${new Date().toLocaleDateString('es-DO')}`, 15, 33);
@@ -2992,7 +2992,7 @@ export default function App() {
         // Header
         doc.setFillColor(15, 28, 63); doc.rect(0, 0, 210, 45, 'F');
         doc.setTextColor(255,255,255); doc.setFontSize(22); doc.setFont(undefined,'bold');
-        doc.text('PayTrack', 15, 18);
+        doc.text('CashRD', 15, 18);
         doc.setFontSize(11); doc.setFont(undefined,'normal');
         doc.text('Resumen Ejecutivo Mensual', 15, 27);
         doc.text(mesNombre, 15, 35);
@@ -3042,7 +3042,7 @@ export default function App() {
         for (let i = 1; i <= totalPages; i++) {
           doc.setPage(i);
           doc.setTextColor(148,163,184); doc.setFontSize(8); doc.setFont(undefined,'normal');
-          doc.text('PayTrack — Reporte Confidencial', 15, 287);
+          doc.text('CashRD — Reporte Confidencial', 15, 287);
           doc.text(`Página ${i} de ${totalPages}`, 170, 287);
         }
         doc.save(`resumen-ejecutivo-${mesVisualizando}.pdf`);
@@ -3256,7 +3256,7 @@ export default function App() {
               </div>
               {loginError && <div style={{ background:'#fef2f2', border:'1px solid #fca5a5', borderRadius:'8px', padding:'10px 12px', fontSize:'13px', color:'#dc2626', marginBottom:'16px' }}>{loginError}</div>}
               <button type="button" onClick={handleLogin} style={{ width:'100%', padding:'11px', background:'#1a1915', color:'white', border:'none', borderRadius:'8px', fontSize:'14px', fontWeight:700, cursor:'pointer' }}>Iniciar sesión</button>
-              <p style={{ textAlign:'center', fontSize:'11px', color:'#b4b2a9', margin:'18px 0 0' }}>PayTrack · 7LABS © 2026</p>
+              <p style={{ textAlign:'center', fontSize:'11px', color:'#b4b2a9', margin:'18px 0 0' }}>CashRD © 2026</p>
             </div>
           </div>
         </div>
@@ -3273,7 +3273,7 @@ export default function App() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem', WebkitAppRegion: 'no-drag' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'white', fontSize: '0.75rem', fontWeight: 800 }}>
               <BarChart2 size={13} style={{ color: '#6366f1' }}/>
-              PayTrack
+              CashRD
             </div>
             <button onClick={() => window.electronAPI?.toggleMini()} title="Expandir" style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '5px', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', padding: '0.2rem 0.45rem', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
               <Maximize2 size={11}/> Expandir
@@ -7015,7 +7015,7 @@ export default function App() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
                       <div className="form-group" style={{ margin: 0 }}>
                         <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Nombre Empresa</label>
-                        <input type="text" value={empresaActual?.nombre || ''} onChange={e => setEmpresaActual(prev => ({...prev, nombre: e.target.value}))} placeholder="Ej: 7 LABS SRL" style={{ padding: '0.45rem 0.7rem', border: '1px solid var(--border-2)', borderRadius: '7px', fontSize: '0.82rem', background: 'var(--surface-2)', color: 'var(--text)', width: '100%', boxSizing: 'border-box' }} />
+                        <input type="text" value={empresaActual?.nombre || ''} onChange={e => setEmpresaActual(prev => ({...prev, nombre: e.target.value}))} placeholder="Ej: Mi Empresa SRL" style={{ padding: '0.45rem 0.7rem', border: '1px solid var(--border-2)', borderRadius: '7px', fontSize: '0.82rem', background: 'var(--surface-2)', color: 'var(--text)', width: '100%', boxSizing: 'border-box' }} />
                       </div>
                       <div className="form-group" style={{ margin: 0 }}>
                         <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>RNC</label>
@@ -8144,7 +8144,7 @@ export default function App() {
         <div className="modal show">
           <div className="modal-content" style={{ maxWidth:'420px', textAlign:'center' }}>
             <div className="modal-header">
-              <h2>WhatsApp — PayTrack</h2>
+              <h2>WhatsApp — CashRD</h2>
               <button className="close-btn" onClick={() => setShowWhatsappStatusModal(false)}>×</button>
             </div>
             <div style={{ padding:'1rem' }}>

@@ -60,8 +60,8 @@ export async function POST(req) {
 
     const historial = [...(credito.historial || []), {
       fecha: new Date().toISOString(),
-      accion: 'Abono registrado (via Keeper)',
-      usuario: 'Sistema-Keeper'
+      accion: 'Abono registrado (automatico)',
+      usuario: 'Sistema'
     }];
 
     await db()
