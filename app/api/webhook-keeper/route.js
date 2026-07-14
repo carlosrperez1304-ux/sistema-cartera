@@ -13,7 +13,7 @@ function normalizar(str) {
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { secret, nombreCliente, monto, nota } = body;
+    const { secret, nombreCliente, monto, nota, tipoNegocio } = body;
 
     if (secret !== SECRET_KEY) {
       return Response.json({ error: 'No autorizado' }, { status: 401 });
@@ -21,6 +21,23 @@ export async function POST(req) {
 
     if (!nombreCliente || !monto) {
       return Response.json({ error: 'Faltan datos: nombreCliente y monto son requeridos' }, { status: 400 });
+    }
+
+    const tipoNorm = (tipoNegocio || '').toLowerCase();
+
+    if (tipoNorm.includes('papel')) {
+      return Response.json({ ok: false, mensaje: 'Tipo de negocio Papel, se ignora este pago' });
+    }
+
+    if (tipoNorm.includes('pos')) {
+      // Redirigir a la logica de creditos
+      const resPOS = await fetch(new URL('/api/webhook-keeper-pos', req.url), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const dataPOS = await resPOS.json();
+      return Response.json(dataPOS, { status: resPOS.status });
     }
 
     const nombreNorm = normalizar(nombreCliente);
@@ -105,7 +122,7 @@ export async function POST(req) {
     const pendienteArrastradoTotal = clientesGrupo.reduce((s, c) => s + parseFloat(c.pendiente_arrastrado || 0), 0);
     const totalADeber = montoFacturaTotal + pendienteArrastradoTotal;
     const restante = totalADeber - totalPagado;
-    const esPagoCompleto = restante <= 0.01;
+    const esPagoCompleto = restante < 100;
 
     // Actualizar el estado de TODOS los clientes del grupo
     for (const c of clientesGrupo) {
