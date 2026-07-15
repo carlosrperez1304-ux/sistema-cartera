@@ -23,8 +23,6 @@ export default withAuth(
         if (pathname === '/') return true;
         if (pathname === '/api/activaciones') return true;
         if (pathname === '/api/watcher') return true;
-        if (pathname === '/api/webhook-pagos') return true;
-        if (pathname === '/api/webhook-pagos-pos') return true;
         if (pathname === '/api/watcher-vinculo') return true;
         if (pathname.startsWith('/api/subgrupos')) return true;
         if (pathname.startsWith('/api/recordatorios')) return true;
