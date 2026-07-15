@@ -77,7 +77,6 @@ export default function App() {
   const [bancoFiltro, setBancoFiltro] = useState('todos');
   const [bancoFechaDesde, setBancoFechaDesde] = useState('');
   const [bancoFechaHasta, setBancoFechaHasta] = useState('');
-  const [historialConciliaciones, setHistorialConciliaciones] = useState([]);
   const [pagosPendientes, setPagosPendientes] = useState([]);
   const [pagosPendientesCount, setPagosPendientesCount] = useState(0);
   const [motivoRechazo, setMotivoRechazo] = useState('');
@@ -842,10 +841,6 @@ export default function App() {
     fetch('/api/plantillas')
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (Array.isArray(data) && data.length > 0) setPlantillas(data); })
-      .catch(() => {});
-    fetch('/api/historial-conciliaciones')
-      .then(r => r.ok ? r.json() : [])
-      .then(data => { if (Array.isArray(data)) setHistorialConciliaciones(data); })
       .catch(() => {});
     fetch('/api/permisos-rol')
       .then(r => r.ok ? r.json() : {})
@@ -2719,7 +2714,6 @@ export default function App() {
     { key: 'subir_documentos',      label: 'Subir documentos' },
     { key: 'ver_reportes_pdf',      label: 'Ver reportes PDF' },
     { key: 'acceder_delegaciones',  label: 'Delegaciones' },
-    { key: 'ver_conciliacion',      label: 'Conciliación bancaria' },
     { key: 'acceder_configuracion', label: 'Configuración' },
   ];
   const togglePermiso = async (rol, permiso, activoActual) => {
@@ -3721,7 +3715,6 @@ export default function App() {
             <div className={`sidebar-item ${activeTab === 'documentos' ? 'active' : ''}`} onClick={() => { setActiveTab('documentos'); cargarTodosDocumentos(); }}><span className="icon"><FileText size={14}/></span> Documentos</div>
             {puedeVerTodo && <div className={`sidebar-item ${activeTab === 'carteras' ? 'active' : ''}`} onClick={() => setActiveTab('carteras')}><span className="icon"><Users size={14}/></span> Carteras por Agente</div>}
             {tienePermiso('acceder_delegaciones') && <div className={`sidebar-item ${activeTab === 'delegations' ? 'active' : ''}`} onClick={() => { setActiveTab('delegations'); cargarDelegations(); }} style={{ position: 'relative' }}><span className="icon"><ArrowLeftRight size={14}/></span> Delegations{delegationsPendientes.length > 0 && <span style={{ position: 'absolute', top: '6px', right: '8px', width: '8px', height: '8px', background: '#f97316', borderRadius: '50%' }}></span>}</div>}
-            {esContabilidad && tienePermiso('ver_conciliacion') && <div className={`sidebar-item ${activeTab === 'conciliacion' ? 'active' : ''}`} onClick={() => setActiveTab('conciliacion')}><span className="icon"><List size={14}/></span> Conciliación</div>}
             {esContabilidad && <div className={`sidebar-item ${activeTab === 'validar_pagos' ? 'active' : ''}`} onClick={() => { setActiveTab('validar_pagos'); cargarPagosPendientes(); }}><span className="icon"><Check size={14}/></span> Validar Pagos{pagosPendientesCount > 0 && <span style={{ marginLeft:'6px', background:'#f97316', color:'#fff', borderRadius:'10px', padding:'0 6px', fontSize:'0.7rem', fontWeight:700 }}>{pagosPendientesCount}</span>}</div>}
             {tienePermiso('ver_clientes') && (() => { const noGen = datosActuales.clientes.filter(c => c.estado === 'No Generaron' || c.estado === 'Archivado').length; return <div className={`sidebar-item ${activeTab === 'reactivacion' ? 'active' : ''}`} onClick={() => setActiveTab('reactivacion')} style={{ position: 'relative' }}><span className="icon"><Archive size={14}/></span> Reactivación{noGen > 0 && <span style={{ marginLeft:'6px', background:'#64748b', color:'#fff', borderRadius:'10px', padding:'0 6px', fontSize:'0.7rem', fontWeight:700 }}>{noGen}</span>}</div>; })()}
             <div className="sidebar-item" onClick={() => { abrirCargaMasiva(); }}><span className="icon"><Upload size={14}/></span> Carga Masiva PDF</div>
@@ -5079,273 +5072,6 @@ export default function App() {
           </div>}
 
           {/* TAB CONCILIACION */}
-          {esContabilidad && <div className={`tab-content ${activeTab === 'conciliacion' ? 'active' : ''}`}>
-            <div style={{ display:'flex', flexDirection:'column', gap:'1rem' }}>
-
-              {/* Header */}
-              <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'14px', padding:'1.25rem 1.5rem' }}>
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'1rem' }}>
-                  <div>
-                    <div style={{ fontWeight:800, fontSize:'1.05rem', color:'var(--text)' }}>Conciliación Bancaria</div>
-                    <div style={{ fontSize:'0.78rem', color:'var(--text-muted)', marginTop:'0.2rem' }}>Compara los movimientos del banco contra los pagos registrados en el sistema</div>
-                  </div>
-                  <div style={{ display:'flex', gap:'0.5rem' }}>
-                  {bancoMovimientos.length > 0 && (
-                    <button onClick={() => {
-                      const conciliacion = {
-                        id: Date.now(),
-                        fecha: new Date().toLocaleDateString('es-DO'),
-                        archivo: bancoArchivoNombre,
-                        total: bancoMovimientos.length,
-                        conciliados: bancoMovimientos.filter(m => m.conciliado).length,
-                        pendientes: bancoMovimientos.filter(m => !m.conciliado).length,
-                        movimientos: bancoMovimientos,
-                        usuario: currentUser || session?.user?.name || 'Usuario',
-                      };
-                      const nuevo = [conciliacion, ...historialConciliaciones].slice(0, 20);
-                      setHistorialConciliaciones(nuevo);
-                      fetch('/api/historial-conciliaciones', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ mes_key: new Date().toISOString().slice(0,7), datos: conciliacion }) }).catch(()=>{});
-                      showToast('Conciliación guardada en historial', 'success');
-                    }} style={{ display:'flex', alignItems:'center', gap:'0.5rem', padding:'0.6rem 1rem', background:'#059669', color:'white', borderRadius:'9px', fontSize:'0.84rem', fontWeight:600, cursor:'pointer', border:'none' }}>
-                      <Save size={13}/> Guardar Conciliación
-                    </button>
-                  )}
-                  <label style={{ display:'flex', alignItems:'center', gap:'0.6rem', padding:'0.6rem 1rem', background:'var(--brand)', color:'white', borderRadius:'9px', fontSize:'0.84rem', fontWeight:600, cursor:'pointer' }}>
-                    <Upload size={14}/>
-                    Subir Excel del Banco
-                    <input type="file" accept=".xlsx,.csv" style={{ display:'none' }} onChange={(e) => {
-                      const file = e.target.files[0];
-                      if (!file) return;
-                      const reader = new FileReader();
-                      reader.onload = (ev) => {
-                        try {
-                          // Parsear xlsx en el browser usando SheetJS
-                          const data = new Uint8Array(ev.target.result);
-                          // Guardamos el archivo para procesarlo
-                          setBancoArchivoNombre(file.name);
-                          // Leer con SheetJS (cargado via CDN en el layout)
-                          if (typeof XLSX !== 'undefined') {
-                            const wb = XLSX.read(data, { type: 'array', cellDates: false });
-                            const ws = wb.Sheets[wb.SheetNames[0]];
-                            const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true });
-                            // Detectar fila de encabezado (buscar "Fecha")
-                            let headerRow = -1;
-                            for (let i = 0; i < rows.length; i++) {
-                              if (rows[i].some(c => String(c||'').toLowerCase().includes('fecha'))) {
-                                headerRow = i; break;
-                              }
-                            }
-                            if (headerRow === -1) { showToast('No se pudo detectar el formato del banco', 'error'); return; }
-                            const headers = rows[headerRow];
-                            const fechaIdx = headers.findIndex(h => String(h||'').toLowerCase().includes('fecha'));
-                            const refIdx = headers.findIndex(h => String(h||'').toLowerCase().includes('referencia') || String(h||'').toLowerCase().includes('ref'));
-                            const descIdx = headers.findIndex(h => String(h||'').toLowerCase().includes('descripci'));
-                            const debitoIdx = headers.findIndex(h => String(h||'').toLowerCase().includes('d\u00e9bito') || String(h||'').toLowerCase().includes('debito'));
-                            const creditoIdx = headers.findIndex(h => String(h||'').toLowerCase().includes('cr\u00e9dito') || String(h||'').toLowerCase().includes('credito'));
-                            const movimientos = [];
-                            for (let i = headerRow + 1; i < rows.length; i++) {
-                              const row = rows[i];
-                              if (!row[fechaIdx]) continue;
-                              const debito = parseFloat(row[debitoIdx]) || 0;
-                              const credito = parseFloat(row[creditoIdx]) || 0;
-                              if (debito === 0 && credito === 0) continue;
-                              movimientos.push({
-                                id: i,
-                                fecha: String(row[fechaIdx] || ''),
-                                referencia: String(row[refIdx] || ''),
-                                descripcion: String(row[descIdx] || ''),
-                                debito,
-                                credito,
-                                tipo: credito > 0 ? 'credito' : 'debito',
-                                monto: credito > 0 ? credito : debito,
-                                conciliado: false,
-                                clienteMatch: null,
-                              });
-                            }
-                            // Match automático: por monto + por nombre en descripción
-                            const movsConciliados = movimientos.map(mov => {
-                              if (mov.tipo !== 'credito') return mov;
-                              const descUpper = mov.descripcion.toUpperCase();
-                              // 1. Match por nombre del cliente en la descripción
-                              let match = clientes.find(c => {
-                                if (!c.nombre) return false;
-                                const palabras = c.nombre.toUpperCase().split(' ').filter(p => p.length > 3);
-                                return palabras.some(p => descUpper.includes(p));
-                              });
-                              // 2. Si no hay match por nombre, buscar por monto exacto
-                              if (!match) {
-                                match = clientes.find(c => {
-                                  const monto = parseFloat(c.monto) || 0;
-                                  return Math.abs(monto - mov.monto) < 1;
-                                });
-                              }
-                              // 3. Match por referencia/contacto
-                              if (!match) {
-                                match = clientes.find(c => {
-                                  const contacto = (c.contacto || '').replace(/\D/g, '');
-                                  return contacto.length > 6 && descUpper.includes(contacto.slice(-7));
-                                });
-                              }
-                              const confianza = match ? (descUpper.includes(match.nombre.toUpperCase().split(' ')[0]) ? 'alto' : 'medio') : null;
-                              return { ...mov, conciliado: !!match, clienteMatch: match ? match.nombre : null, confianza };
-                            });
-                            setBancoMovimientos(movsConciliados);
-                            showToast(`${movsConciliados.length} movimientos importados`, 'success');
-                          } else {
-                            showToast('Error cargando librería Excel', 'error');
-                          }
-                        } catch(err) {
-                          showToast('Error al leer el archivo: ' + err.message, 'error');
-                        }
-                      };
-                      reader.readAsArrayBuffer(file);
-                    }} />
-                  </label>
-                  </div>
-                </div>
-              </div>
-
-              {/* Resumen */}
-              {bancoMovimientos.length > 0 && (() => {
-                const creditos = bancoMovimientos.filter(m => m.tipo === 'credito');
-                const conciliados = creditos.filter(m => m.conciliado);
-                const noConciliados = creditos.filter(m => !m.conciliado);
-                const totalBanco = creditos.reduce((s, m) => s + m.monto, 0);
-                const totalConciliado = conciliados.reduce((s, m) => s + m.monto, 0);
-                return (
-                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:'0.75rem' }}>
-                    {[
-                      { label:'Total Créditos Banco', value:`$${totalBanco.toLocaleString('en-US', { maximumFractionDigits:0 })}`, color:'#0284c7', sub:`${creditos.length} movimientos` },
-                      { label:'Conciliados', value:`$${totalConciliado.toLocaleString('en-US', { maximumFractionDigits:0 })}`, color:'#059669', sub:`${conciliados.length} coinciden` },
-                      { label:'Sin conciliar', value:`$${(totalBanco - totalConciliado).toLocaleString('en-US', { maximumFractionDigits:0 })}`, color:'#dc2626', sub:`${noConciliados.length} pendientes` },
-                      { label:'Registrado en Sistema', value:`$${(estadisticas.montoPagado||0).toLocaleString('en-US', { maximumFractionDigits:0 })}`, color:'#7c3aed', sub:'Pagados este mes' },
-                    ].map((k, i) => (
-                      <div key={i} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'12px', padding:'1rem 1.1rem' }}>
-                        <div style={{ fontSize:'0.65rem', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--text-muted)', marginBottom:'0.3rem' }}>{k.label}</div>
-                        <div style={{ fontSize:'1.4rem', fontWeight:800, color:k.color, fontFamily:'var(--mono)' }}>{k.value}</div>
-                        <div style={{ fontSize:'0.7rem', color:'var(--text-muted)', marginTop:'0.15rem' }}>{k.sub}</div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-
-              {/* Tabla de movimientos */}
-              {bancoMovimientos.length > 0 ? (
-                <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'14px', overflow:'hidden' }}>
-                  <div style={{ padding:'1rem 1.25rem', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'0.75rem' }}>
-                    <div style={{ fontWeight:700, fontSize:'0.9rem' }}>Movimientos del Banco — {bancoArchivoNombre}</div>
-                    <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap', alignItems:'center' }}>
-                      <input type="date" value={bancoFechaDesde} onChange={e => setBancoFechaDesde(e.target.value)} style={{ padding:'0.3rem 0.6rem', border:'1px solid var(--border)', borderRadius:'6px', fontSize:'0.75rem', background:'var(--surface-2)', color:'var(--text)' }} />
-                      <span style={{ fontSize:'0.75rem', color:'var(--text-muted)' }}>—</span>
-                      <input type="date" value={bancoFechaHasta} onChange={e => setBancoFechaHasta(e.target.value)} style={{ padding:'0.3rem 0.6rem', border:'1px solid var(--border)', borderRadius:'6px', fontSize:'0.75rem', background:'var(--surface-2)', color:'var(--text)' }} />
-                      {(bancoFechaDesde || bancoFechaHasta) && <button onClick={() => { setBancoFechaDesde(''); setBancoFechaHasta(''); }} style={{ padding:'0.3rem 0.5rem', borderRadius:'6px', fontSize:'0.72rem', fontWeight:700, cursor:'pointer', background:'rgba(220,38,38,0.1)', color:'#dc2626', border:'1px solid rgba(220,38,38,0.2)' }}>✕</button>}
-                      <div style={{ width:'1px', height:'20px', background:'var(--border)' }}></div>
-                      {['todos','conciliado','pendiente'].map(f => (
-                        <button key={f} onClick={() => setBancoFiltro(f)} style={{ padding:'0.3rem 0.75rem', borderRadius:'6px', fontSize:'0.75rem', fontWeight:600, cursor:'pointer', background: bancoFiltro === f ? 'var(--brand)' : 'var(--surface-2)', color: bancoFiltro === f ? 'white' : 'var(--text-muted)', border:'1px solid var(--border)' }}>
-                          {f === 'todos' ? 'Todos' : f === 'conciliado' ? <><CheckCircle size={12}/> Conciliados</> : <><AlertTriangle size={12}/> Pendientes</>}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div style={{ overflowX:'auto' }}>
-                    <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.82rem' }}>
-                      <thead>
-                        <tr style={{ background:'var(--surface-2)' }}>
-                          {['Fecha','Referencia','Descripción','Débito','Crédito','Estado','Cliente Match'].map(h => (
-                            <th key={h} style={{ padding:'0.6rem 0.9rem', textAlign:'left', fontWeight:700, fontSize:'0.68rem', textTransform:'uppercase', letterSpacing:'0.05em', color:'var(--text-muted)', whiteSpace:'nowrap' }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {bancoMovimientos
-                          .filter(m => {
-                            const estadoOk = bancoFiltro === 'todos' ? true : bancoFiltro === 'conciliado' ? m.conciliado : !m.conciliado;
-                            if (!estadoOk) return false;
-                            if (bancoFechaDesde && m.fecha < bancoFechaDesde.split('-').reverse().join('-')) return false;
-                            if (bancoFechaHasta && m.fecha > bancoFechaHasta.split('-').reverse().join('-')) return false;
-                            return true;
-                          })
-                          .map((m, i) => (
-                          <tr key={m.id} style={{ borderBottom:'1px solid var(--border)', background: m.conciliado ? 'rgba(5,150,105,0.03)' : 'transparent' }}>
-                            <td style={{ padding:'0.6rem 0.9rem', color:'var(--text-muted)', whiteSpace:'nowrap' }}>{m.fecha}</td>
-                            <td style={{ padding:'0.6rem 0.9rem', fontFamily:'var(--mono)', fontSize:'0.75rem', color:'var(--text-muted)' }}>{m.referencia}</td>
-                            <td style={{ padding:'0.6rem 0.9rem', color:'var(--text)', maxWidth:'200px' }}>{m.descripcion}</td>
-                            <td style={{ padding:'0.6rem 0.9rem', fontFamily:'var(--mono)', color:'#dc2626', fontWeight:600 }}>{m.debito > 0 ? `$${m.debito.toLocaleString('en-US', { maximumFractionDigits:0 })}` : ''}</td>
-                            <td style={{ padding:'0.6rem 0.9rem', fontFamily:'var(--mono)', color:'#059669', fontWeight:600 }}>{m.credito > 0 ? `$${m.credito.toLocaleString('en-US', { maximumFractionDigits:0 })}` : ''}</td>
-                            <td style={{ padding:'0.6rem 0.9rem' }}>
-                              <span style={{ padding:'0.2rem 0.6rem', borderRadius:'5px', fontSize:'0.7rem', fontWeight:700, background: m.conciliado ? 'rgba(5,150,105,0.1)' : 'rgba(220,38,38,0.1)', color: m.conciliado ? '#059669' : '#dc2626' }}>
-                                {m.conciliado ? (m.confianza === 'alto' ? <><CheckCircle size={12}/> Alto</> : <><AlertTriangle size={12}/> Medio</>) : <><AlertTriangle size={12}/> Pendiente</>}
-                              </span>
-                            </td>
-                            <td style={{ padding:'0.6rem 0.9rem', fontSize:'0.78rem', color:'var(--text-muted)' }}>
-                              {m.clienteMatch || '—'}
-                              {!m.conciliado && m.tipo === 'credito' && (
-                                <select style={{ marginLeft:'0.5rem', fontSize:'0.72rem', padding:'0.2rem 0.4rem', border:'1px solid var(--border)', borderRadius:'5px', background:'var(--surface-2)', color:'var(--text)', cursor:'pointer' }}
-                                  onChange={e => {
-                                    if (!e.target.value) return;
-                                    setBancoMovimientos(prev => prev.map(x => x.id === m.id ? { ...x, conciliado: true, clienteMatch: e.target.value, confianza: 'manual' } : x));
-                                  }}
-                                  defaultValue="">
-                                  <option value="">+ Asignar cliente</option>
-                                  {clientes.map(c => <option key={c.id} value={c.nombre}>{c.nombre}</option>)}
-                                </select>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ) : (
-                <div style={{ background:'var(--surface)', border:'2px dashed var(--border)', borderRadius:'14px', padding:'3rem', textAlign:'center' }}>
-                  <Briefcase size={40} style={{ color:'var(--text-muted)', marginBottom:'0.75rem' }}/>
-                  <div style={{ fontWeight:700, fontSize:'0.95rem', color:'var(--text)', marginBottom:'0.4rem' }}>Sube el estado de cuenta del banco</div>
-                  <div style={{ fontSize:'0.82rem', color:'var(--text-muted)' }}>Compatible con BHD, Reservas y Popular · Formato Excel (.xlsx)</div>
-                </div>
-              )}
-
-              {/* Historial de Conciliaciones */}
-              {historialConciliaciones.length > 0 && (
-                <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'14px', overflow:'hidden', marginTop:'1rem' }}>
-                  <div style={{ padding:'1rem 1.25rem', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                    <div style={{ fontWeight:700, fontSize:'0.9rem' }}>📁 Historial de Conciliaciones</div>
-                    <button onClick={() => { setHistorialConciliaciones([]); fetch('/api/historial-conciliaciones', { method:'DELETE' }).catch(()=>{}); }} style={{ fontSize:'0.72rem', color:'#dc2626', background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.2)', borderRadius:'6px', padding:'0.25rem 0.6rem', cursor:'pointer', fontWeight:600 }}>Limpiar historial</button>
-                  </div>
-                  <div style={{ overflowX:'auto' }}>
-                    <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.82rem' }}>
-                      <thead>
-                        <tr style={{ background:'var(--surface-2)' }}>
-                          {['Fecha','Archivo','Total Movs','Conciliados','Pendientes','Usuario','Acción'].map(h => (
-                            <th key={h} style={{ padding:'0.6rem 0.9rem', textAlign:'left', fontWeight:700, fontSize:'0.68rem', textTransform:'uppercase', letterSpacing:'0.05em', color:'var(--text-muted)', whiteSpace:'nowrap' }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {historialConciliaciones.map((h, i) => (
-                          <tr key={h.id} style={{ borderBottom:'1px solid var(--border)' }}>
-                            <td style={{ padding:'0.6rem 0.9rem', whiteSpace:'nowrap', color:'var(--text-muted)' }}>{h.fecha}</td>
-                            <td style={{ padding:'0.6rem 0.9rem', fontSize:'0.78rem', color:'var(--text)' }}>{h.archivo}</td>
-                            <td style={{ padding:'0.6rem 0.9rem', fontFamily:'var(--mono)', fontWeight:600 }}>{h.total}</td>
-                            <td style={{ padding:'0.6rem 0.9rem', fontFamily:'var(--mono)', color:'#059669', fontWeight:700 }}>{h.conciliados}</td>
-                            <td style={{ padding:'0.6rem 0.9rem', fontFamily:'var(--mono)', color: h.pendientes > 0 ? '#dc2626' : '#059669', fontWeight:700 }}>{h.pendientes}</td>
-                            <td style={{ padding:'0.6rem 0.9rem', fontSize:'0.78rem', color:'var(--text-muted)' }}>{h.usuario}</td>
-                            <td style={{ padding:'0.6rem 0.9rem' }}>
-                              <button onClick={() => { setBancoMovimientos(h.movimientos); setBancoArchivoNombre(h.archivo); showToast('Conciliación restaurada', 'success'); }} style={{ fontSize:'0.72rem', padding:'0.25rem 0.6rem', borderRadius:'6px', border:'1px solid var(--border)', background:'var(--surface-2)', color:'var(--text)', cursor:'pointer', fontWeight:600 }}>
-                                Restaurar
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-            </div>
-          </div>}
 
           {/* TAB CARTERAS POR AGENTE */}
           {puedeVerTodo && (
@@ -6882,12 +6608,6 @@ export default function App() {
                 Preferencias
               </button>
               {esAdmin && (
-                <button className={`settings-nav-item ${settingsSection === 'empresas' ? 'active' : ''}`} onClick={() => { setSettingsSection('empresas'); fetch('/api/empresas').then(r=>r.json()).then(setEmpresas); }}>
-                  <Briefcase size={14}/>
-                  Empresas
-                </button>
-              )}
-              {esAdmin && (
                 <button className={`settings-nav-item ${settingsSection === 'auditoria' ? 'active' : ''}`} onClick={() => setSettingsSection('auditoria')}>
                   <FileText size={14}/>
                   Auditoría
@@ -7009,45 +6729,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {esAdmin && <div style={{ marginBottom: '1.5rem' }}>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: '0.75rem', paddingBottom: '0.4rem', borderBottom: '1px solid var(--border)', display:'flex', alignItems:'center', gap:'0.4rem' }}><FileText size={11}/> Datos de Empresa (Cotizaciones)</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Nombre Empresa</label>
-                        <input type="text" value={empresaActual?.nombre || ''} onChange={e => setEmpresaActual(prev => ({...prev, nombre: e.target.value}))} placeholder="Ej: Mi Empresa SRL" style={{ padding: '0.45rem 0.7rem', border: '1px solid var(--border-2)', borderRadius: '7px', fontSize: '0.82rem', background: 'var(--surface-2)', color: 'var(--text)', width: '100%', boxSizing: 'border-box' }} />
-                      </div>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>RNC</label>
-                        <input type="text" value={empresaActual?.rnc || ''} onChange={e => setEmpresaActual(prev => ({...prev, rnc: e.target.value}))} placeholder="Ej: 130826986" style={{ padding: '0.45rem 0.7rem', border: '1px solid var(--border-2)', borderRadius: '7px', fontSize: '0.82rem', background: 'var(--surface-2)', color: 'var(--text)', width: '100%', boxSizing: 'border-box' }} />
-                      </div>
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Dirección</label>
-                      <input type="text" value={empresaActual?.direccion || ''} onChange={e => setEmpresaActual(prev => ({...prev, direccion: e.target.value}))} placeholder="Ej: CALLE C NO. 39 LAS PRADERAS" style={{ padding: '0.45rem 0.7rem', border: '1px solid var(--border-2)', borderRadius: '7px', fontSize: '0.82rem', background: 'var(--surface-2)', color: 'var(--text)', width: '100%', boxSizing: 'border-box' }} />
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Ciudad</label>
-                        <input type="text" value={empresaActual?.ciudad || ''} onChange={e => setEmpresaActual(prev => ({...prev, ciudad: e.target.value}))} placeholder="Ej: Santo Domingo, Rep. Dom." style={{ padding: '0.45rem 0.7rem', border: '1px solid var(--border-2)', borderRadius: '7px', fontSize: '0.82rem', background: 'var(--surface-2)', color: 'var(--text)', width: '100%', boxSizing: 'border-box' }} />
-                      </div>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Teléfono</label>
-                        <input type="text" value={empresaActual?.telefono || ''} onChange={e => setEmpresaActual(prev => ({...prev, telefono: e.target.value}))} placeholder="Ej: 809-722-9225" style={{ padding: '0.45rem 0.7rem', border: '1px solid var(--border-2)', borderRadius: '7px', fontSize: '0.82rem', background: 'var(--surface-2)', color: 'var(--text)', width: '100%', boxSizing: 'border-box' }} />
-                      </div>
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Logo URL (imagen)</label>
-                      <input type="text" value={empresaActual?.logo_url || ''} onChange={e => setEmpresaActual(prev => ({...prev, logo_url: e.target.value}))} placeholder="https://..." style={{ padding: '0.45rem 0.7rem', border: '1px solid var(--border-2)', borderRadius: '7px', fontSize: '0.82rem', background: 'var(--surface-2)', color: 'var(--text)', width: '100%', boxSizing: 'border-box' }} />
-                    </div>
-                    <button className="btn btn-secondary" style={{ alignSelf: 'flex-end' }} onClick={async () => {
-                      if (!empresaActual?.id) return;
-                      const res = await fetch('/api/empresas', { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ id: empresaActual.id, nombre: empresaActual.nombre, direccion: empresaActual.direccion, telefono: empresaActual.telefono, rnc: empresaActual.rnc, logo_url: empresaActual.logo_url, ciudad: empresaActual.ciudad, activa: empresaActual.activa }) });
-                      if (res.ok) showToast('Datos de empresa guardados', 'success');
-                      else showToast('Error al guardar', 'error');
-                    }}>Guardar datos empresa</button>
-                  </div>
-                </div>}
 
                 <div style={{ marginTop: '0.5rem' }}>
                   <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => { setShowSettingsPanel(false); showToast('Configuración guardada', 'success'); }}>Guardar cambios</button>
@@ -7128,85 +6809,6 @@ export default function App() {
                   </div>
                 </div>
               )}
-              {settingsSection === 'empresas' && esAdmin && (<>
-                <div className="settings-content-header">
-                  <div className="settings-content-title">Gestión de Empresas</div>
-                  <button className="settings-close-btn" onClick={() => setShowSettingsPanel(false)}>×</button>
-                </div>
-                {/* Crear empresa */}
-                <div style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'10px', padding:'1rem', marginBottom:'1rem' }}>
-                  <div style={{ fontWeight:700, fontSize:'0.85rem', marginBottom:'0.75rem' }}>Nueva Empresa</div>
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.5rem', marginBottom:'0.5rem' }}>
-                    <input placeholder="Nombre (ej: Empresa A)" value={empresaForm.nombre} onChange={e => setEmpresaForm(f => ({ ...f, nombre: e.target.value }))} style={{ padding:'0.5rem 0.75rem', border:'1px solid var(--border)', borderRadius:'7px', fontSize:'0.83rem', background:'var(--surface)', color:'var(--text)' }} />
-                    <input placeholder="Slug (ej: empresa-a)" value={empresaForm.slug} onChange={e => setEmpresaForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/\s+/g,'-') }))} style={{ padding:'0.5rem 0.75rem', border:'1px solid var(--border)', borderRadius:'7px', fontSize:'0.83rem', background:'var(--surface)', color:'var(--text)' }} />
-                  </div>
-                  <button className="btn btn-primary" style={{ width:'100%' }} onClick={async () => {
-                    if (!empresaForm.nombre || !empresaForm.slug) return showToast('Completa los campos', 'error');
-                    const r = await fetch('/api/empresas', { method:'POST', headers:{ 'Content-Type':'application/json', 'x-csrf-token': document.cookie.match(/csrf-token=([^;]+)/)?.[1] || '' }, body: JSON.stringify(empresaForm) });
-                    if (r.ok) { const d = await r.json(); setEmpresas(prev => [...prev, d]); setEmpresaForm({ nombre:'', slug:'' }); showToast('Empresa creada', 'success'); }
-                    else showToast('Error creando empresa', 'error');
-                  }}>Crear Empresa</button>
-                </div>
-                {/* Lista de empresas */}
-                <div style={{ fontWeight:700, fontSize:'0.85rem', marginBottom:'0.5rem' }}>Empresas registradas</div>
-                {empresas.map(emp => (
-                  <div key={emp.id} style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'9px', padding:'0.75rem 1rem', marginBottom:'0.5rem', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'0.5rem' }}>
-                    <div style={{ flex:1 }}>
-                      <input defaultValue={emp.nombre} onBlur={async e => {
-                        const nuevoNombre = e.target.value.trim();
-                        if (!nuevoNombre || nuevoNombre === emp.nombre) return;
-                        const r = await fetch('/api/empresas', { method:'PATCH', headers:{ 'Content-Type':'application/json', 'x-csrf-token': document.cookie.match(/csrf-token=([^;]+)/)?.[1] || '' }, body: JSON.stringify({ id: emp.id, nombre: nuevoNombre, activa: emp.activa }) });
-                        if (r.ok) { setEmpresas(prev => prev.map(e => e.id === emp.id ? { ...e, nombre: nuevoNombre } : e)); showToast('Nombre actualizado', 'success'); }
-                        else showToast('Error actualizando', 'error');
-                      }} style={{ fontWeight:700, fontSize:'0.88rem', background:'transparent', border:'1px solid transparent', borderRadius:'5px', padding:'0.2rem 0.4rem', color:'var(--text)', width:'100%', cursor:'text' }} onFocus={e => e.target.style.borderColor='var(--brand)'} />
-                      <div style={{ fontSize:'0.72rem', color:'var(--text-muted)', paddingLeft:'0.4rem', display:'flex', alignItems:'center', gap:'0.3rem' }}>/{emp.slug} · ID: {emp.id} · {emp.activa ? <><CheckCircle size={11} style={{color:'#059669'}}/> Activa</> : <><Ban size={11} style={{color:'#dc2626'}}/> Inactiva</>}</div>
-                    </div>
-                    <div style={{ display:'flex', flexDirection:'column', gap:'0.4rem', alignItems:'flex-end' }}>
-                      {emp.config?.logoUrl && <img src={emp.config.logoUrl} alt="logo" style={{ height:'32px', objectFit:'contain', borderRadius:'4px', marginBottom:'0.25rem' }} />}
-                      <label style={{ fontSize:'0.72rem', padding:'0.25rem 0.6rem', borderRadius:'6px', border:'1px solid var(--brand)', background:'rgba(99,91,255,0.08)', color:'var(--brand)', cursor:'pointer', whiteSpace:'nowrap', fontWeight:600 }}>
-                        {emp.config?.logoUrl ? <><RefreshCw size={11}/> Cambiar logo</> : <><FileText size={11}/> Subir logo</>}
-                        <input type="file" accept="image/*" style={{ display:'none' }} onChange={async e => {
-                          const file = e.target.files[0];
-                          if (!file) return;
-                          const fd = new FormData();
-                          fd.append('logo', file);
-                          fd.append('empresa_id', emp.id);
-                          const r = await fetch('/api/empresas/logo', { method:'POST', body: fd });
-                          if (r.ok) {
-                            const { logoUrl } = await r.json();
-                            setEmpresas(prev => prev.map(e => e.id === emp.id ? { ...e, config: { ...e.config, logoUrl } } : e));
-                            if (empresaActual?.id === emp.id) setEmpresaActual(prev => ({ ...prev, config: { ...prev.config, logoUrl } }));
-                            showToast('Logo actualizado', 'success');
-                          } else showToast('Error subiendo logo', 'error');
-                        }} />
-                      </label>
-                      <button onClick={async () => {
-                        const r = await fetch('/api/empresas', { method:'PATCH', headers:{ 'Content-Type':'application/json', 'x-csrf-token': document.cookie.match(/csrf-token=([^;]+)/)?.[1] || '' }, body: JSON.stringify({ id: emp.id, nombre: emp.nombre, activa: !emp.activa }) });
-                        if (r.ok) { setEmpresas(prev => prev.map(e => e.id === emp.id ? { ...e, activa: !e.activa } : e)); showToast('Estado actualizado', 'success'); }
-                      }} style={{ fontSize:'0.72rem', padding:'0.25rem 0.6rem', borderRadius:'6px', border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text-muted)', cursor:'pointer', whiteSpace:'nowrap' }}>
-                        {emp.activa ? 'Desactivar' : 'Activar'}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                {/* Asignar usuario a empresa */}
-                <div style={{ marginTop:'1rem', fontWeight:700, fontSize:'0.85rem', marginBottom:'0.5rem' }}>Asignar usuario a empresa</div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr auto', gap:'0.5rem' }}>
-                  <select id="emp-user-select" style={{ padding:'0.5rem', border:'1px solid var(--border)', borderRadius:'7px', fontSize:'0.83rem', background:'var(--surface)', color:'var(--text)' }}>
-                    {Object.keys(usuarios || {}).map(u => <option key={u} value={u}>{u}</option>)}
-                  </select>
-                  <select id="emp-empresa-select" style={{ padding:'0.5rem', border:'1px solid var(--border)', borderRadius:'7px', fontSize:'0.83rem', background:'var(--surface)', color:'var(--text)' }}>
-                    {empresas.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
-                  </select>
-                  <button className="btn btn-primary" onClick={async () => {
-                    const username = document.getElementById('emp-user-select').value;
-                    const empresa_id = parseInt(document.getElementById('emp-empresa-select').value);
-                    const r = await fetch('/api/empresas', { method:'PATCH', headers:{ 'Content-Type':'application/json', 'x-csrf-token': document.cookie.match(/csrf-token=([^;]+)/)?.[1] || '' }, body: JSON.stringify({ username, empresa_id }) });
-                    if (r.ok) showToast(`${username} asignado a empresa`, 'success');
-                    else showToast('Error', 'error');
-                  }}>Asignar</button>
-                </div>
-              </>)}
 
               {/* ── Panel Licencias App (Electron) ── */}
               {settingsSection === 'activaciones' && esAdmin && (<>

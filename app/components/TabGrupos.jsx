@@ -153,7 +153,7 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
   const cargar = async () => {
     setLoading(true);
     try {
-      const url = empresaId ? '/api/grupos-blueline?empresa_id=' + empresaId : '/api/grupos-blueline';
+      const url = empresaId ? '/api/grupos-servicio?empresa_id=' + empresaId : '/api/grupos-servicio';
       const res = await fetch(url);
       const data = await res.json();
       if (Array.isArray(data)) setGrupos(data);
@@ -163,7 +163,7 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
 
   const cargarFactura = async () => {
     const mes = getMesActual();
-    const url = '/api/factura-blueline?mes=' + encodeURIComponent(mes) + (empresaId ? '&empresa_id=' + empresaId : '');
+    const url = '/api/factura-servicio?mes=' + encodeURIComponent(mes) + (empresaId ? '&empresa_id=' + empresaId : '');
     const res = await fetch(url);
     const data = await res.json();
     if (data) {
@@ -193,9 +193,9 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
     const mes = getMesActual();
     const payload = { mes, empresa_id: empresaId, tau_cantidad: Number(tauCantidad), tau_precio: Number(tauPrecio), pos_cantidad: Number(posCantidad), pos_precio: Number(posPrecio) };
     if (factura?.id) {
-      await fetch('/api/factura-blueline', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: factura.id, ...payload }) });
+      await fetch('/api/factura-servicio', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: factura.id, ...payload }) });
     } else {
-      const res = await fetch('/api/factura-blueline', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      const res = await fetch('/api/factura-servicio', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
       const data = await res.json();
       setFactura(data);
     }
@@ -207,7 +207,7 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
     const nuevoPos = Math.max(0, pos);
     const nuevoMonto = nuevoTau * Number(tauPrecio) + nuevoPos * Number(posPrecio);
     setGrupos(prev => prev.map(g => g.id === grupo.id ? { ...g, tau_cantidad: nuevoTau, pos_cantidad: nuevoPos, monto_total: nuevoMonto } : g));
-    await fetch('/api/grupos-blueline', {
+    await fetch('/api/grupos-servicio', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: grupo.id, tau_cantidad: nuevoTau, pos_cantidad: nuevoPos, monto_total: nuevoMonto })
@@ -234,7 +234,7 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
         accion: esPagado ? 'Marcado PENDIENTE' : 'Marcado PAGADO',
         monto: g.monto_total
       }];
-      await fetch('/api/grupos-blueline', {
+      await fetch('/api/grupos-servicio', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -249,7 +249,7 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
     }
     await cargar();
     if (grupoSeleccionado?.id === grupo.id) {
-      const res = await fetch(empresaId ? '/api/grupos-blueline?empresa_id=' + empresaId : '/api/grupos-blueline');
+      const res = await fetch(empresaId ? '/api/grupos-servicio?empresa_id=' + empresaId : '/api/grupos-servicio');
       const data = await res.json();
       const g = data.find(x => x.id === grupo.id);
       if (g) setGrupoSeleccionado(g);
@@ -258,7 +258,7 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
   };
 
   const toggleSuspendido = async (grupo) => {
-    await fetch('/api/grupos-blueline', {
+    await fetch('/api/grupos-servicio', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: grupo.id, suspendido: !grupo.suspendido })
@@ -269,13 +269,13 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
 
   const eliminar = async (id) => {
     if (!confirm('¿Eliminar este grupo?')) return;
-    await fetch('/api/grupos-blueline?id=' + id, { method: 'DELETE' });
+    await fetch('/api/grupos-servicio?id=' + id, { method: 'DELETE' });
     await cargar();
     if (showToast) showToast('Grupo eliminado', 'info');
   };
 
   const guardarNota = async (grupo) => {
-    await fetch('/api/grupos-blueline', {
+    await fetch('/api/grupos-servicio', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: grupo.id, notas: notaTemp })
@@ -301,7 +301,7 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
         deuda: nuevaDeuda,
         estado: g.estado
       }];
-      await fetch('/api/grupos-blueline', {
+      await fetch('/api/grupos-servicio', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: g.id, monto_total: 0, monto_pagado: 0, deuda_pendiente: nuevaDeuda, estado: 'PENDIENTE', fecha_pago: '', historial, tau_cantidad: 0, pos_cantidad: 0 })
@@ -340,14 +340,14 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
           const grupoExistente = grupos.find(g => g.id === item.grupoId);
           const deudaAcumulada = grupoExistente?.deuda_pendiente || 0;
           const nuevaDeuda = deudaAcumulada + item.monto;
-          const r = await fetch('/api/grupos-blueline', {
+          const r = await fetch('/api/grupos-servicio', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id: item.grupoId, monto_total: item.monto, deuda_pendiente: nuevaDeuda, estado: 'PENDIENTE', tau_cantidad: item.tau, pos_cantidad: item.pos })
           });
           if (r.ok) actualizados++;
         } else {
-          const r = await fetch('/api/grupos-blueline', {
+          const r = await fetch('/api/grupos-servicio', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ nombre: item.nombre, monto_total: item.monto, monto_pagado: 0, deuda_pendiente: item.monto, estado: 'PENDIENTE', empresa_id: empresaId, numero: grupos.length + creados + 1, historial: [], tau_cantidad: item.tau, pos_cantidad: item.pos })
@@ -461,7 +461,7 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
     <div>
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:'1.25rem' }}>
         <div>
-          <div style={{ fontSize:'22px', fontWeight:700, color:'#1a1915', letterSpacing:'-0.03em' }}>Grupos BlueLine</div>
+          <div style={{ fontSize:'22px', fontWeight:700, color:'#1a1915', letterSpacing:'-0.03em' }}>Grupose</div>
           <div style={{ fontSize:'13px', color:'#9a998f', marginTop:'3px' }}>{getMesActual()} · Cobranza mensual recurrente</div>
         </div>
         <div style={{ display:'flex', gap:'8px' }}>
@@ -566,8 +566,8 @@ export default function TabGrupos({ session, currentUser, empresaActual, showToa
 
       {showImport && (
         <div style={{ background:'#fff', border:'1px solid #e0dfd8', borderRadius:'12px', padding:'16px', marginBottom:'12px' }}>
-          <div style={{ fontSize:'11px', fontWeight:700, color:'#6366f1', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'8px' }}>Importar reporte BlueLine</div>
-          <textarea value={texto} onChange={e => setTexto(e.target.value)} style={{ width:'100%', height:'120px', border:'1px solid #e0dfd8', borderRadius:'8px', padding:'10px', fontSize:'12px', fontFamily:'monospace', color:'#3d3c35', resize:'vertical', background:'#faf9f5', outline:'none' }} placeholder="Pega aquí el reporte completo de BlueLine..."/>
+          <div style={{ fontSize:'11px', fontWeight:700, color:'#6366f1', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'8px' }}>Importar reporte</div>
+          <textarea value={texto} onChange={e => setTexto(e.target.value)} style={{ width:'100%', height:'120px', border:'1px solid #e0dfd8', borderRadius:'8px', padding:'10px', fontSize:'12px', fontFamily:'monospace', color:'#3d3c35', resize:'vertical', background:'#faf9f5', outline:'none' }} placeholder="Pega aquí el reporte completo..."/>
           <div style={{ display:'flex', gap:'8px', marginTop:'8px' }}>
             <button onClick={procesar} disabled={!texto.trim()||procesando} style={{ padding:'8px 20px', borderRadius:'8px', fontSize:'13px', fontWeight:700, border:'none', background:texto.trim()?'#6366f1':'#e0dfd8', color:texto.trim()?'#fff':'#9a998f', cursor:texto.trim()?'pointer':'not-allowed' }}>
               {procesando ? 'Procesando...' : 'Procesar reporte'}

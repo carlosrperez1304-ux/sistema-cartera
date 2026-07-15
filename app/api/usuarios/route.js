@@ -20,10 +20,21 @@ export async function GET(req) {
   }
 
   const users = await getUsers();
-  const safe  = Object.fromEntries(
-    Object.entries(users).map(([k, v]) => [k, { rol: v.rol, nombre: v.nombre || k }])
-  );
-  return Response.json(safe);
+  const rolActual = auth.session.user.rol || '';
+  const esAdminOSupervisor = ['admin', 'supervisor_cobro', 'supervisor_contabilidad'].includes(rolActual);
+  const username = auth.session.user.username || '';
+
+  if (esAdminOSupervisor) {
+    const safe = Object.fromEntries(
+      Object.entries(users).map(([k, v]) => [k, { rol: v.rol, nombre: v.nombre || k }])
+    );
+    return Response.json(safe);
+  }
+
+  // Usuarios normales solo ven su propia informacion, no la de los demas
+  const propio = users[username];
+  const safeLimitado = propio ? { [username]: { rol: propio.rol, nombre: propio.nombre || username } } : {};
+  return Response.json(safeLimitado);
 }
 
 // POST — crear o actualizar usuario (solo admins)
