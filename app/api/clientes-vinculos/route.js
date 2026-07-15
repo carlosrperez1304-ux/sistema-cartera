@@ -1,6 +1,10 @@
 import { db } from '../../../lib/supabase.js';
+import { requireAuth } from '../../../lib/security.js';
 
 export async function GET(req) {
+  const auth = await requireAuth(req);
+  if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
+
   const { searchParams } = new URL(req.url);
   const empresa_id = searchParams.get('empresa_id');
   if (!empresa_id) return Response.json([]);
@@ -10,6 +14,9 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
+  const auth = await requireAuth(req);
+  if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
+
   const body = await req.json();
   const { empresa_id, ids, nombre } = body;
   if (!empresa_id || !ids || !nombre) return Response.json({ error: 'Faltan datos' }, { status: 400 });
@@ -19,6 +26,9 @@ export async function POST(req) {
 }
 
 export async function DELETE(req) {
+  const auth = await requireAuth(req);
+  if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
+
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
   if (!id) return Response.json({ error: 'Falta id' }, { status: 400 });

@@ -1,6 +1,10 @@
 import { db } from '../../../lib/supabase.js';
+import { requireAuth } from '../../../lib/security.js';
 
 export async function GET(req) {
+  const auth = await requireAuth(req);
+  if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
+
   const { searchParams } = new URL(req.url);
   const agente = searchParams.get('agente');
 
@@ -21,6 +25,9 @@ export async function GET(req) {
 }
 
 export async function PUT(req) {
+  const auth = await requireAuth(req);
+  if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
+
   const body = await req.json();
   const { id } = body;
   if (!id) return Response.json({ error: 'Falta id' }, { status: 400 });
