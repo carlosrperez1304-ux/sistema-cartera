@@ -1,6 +1,6 @@
 import { db } from '../../../lib/supabase.js';
 
-const SECRET_KEY = process.env.WEBHOOK_KEEPER_SECRET || 'ba10e5cf30066fadd14b87f844ba1993de2ccb692be920426284ac3dc690a7cb';
+const SECRET_KEY = process.env.WEBHOOK_PAGOS_SECRET || 'ba10e5cf30066fadd14b87f844ba1993de2ccb692be920426284ac3dc690a7cb';
 const MINUTOS_ESPERA_PARCIAL = 5;
 
 function normalizar(str) {
