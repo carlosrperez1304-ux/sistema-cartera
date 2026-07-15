@@ -1,4 +1,5 @@
 import { db } from '../../../lib/supabase.js';
+import { requireAdmin } from '../../../lib/security.js';
 
 function escapeSQL(val) {
   if (val === null || val === undefined) return 'null';
@@ -23,6 +24,9 @@ function generarInserts(tabla, rows) {
 
 export async function GET(req) {
   try {
+    const auth = await requireAdmin(req);
+    if (auth.error) return Response.json({ error: auth.error }, { status: auth.status });
+
     const tablas = [
       'empresas', 'usuarios', 'clientes', 'creditos', 'abonos',
       'subgrupos_cliente', 'grupos_blueline', 'grupos_vinculos',
