@@ -1,55 +1,55 @@
 {
-    "name":  "paytrack",
-    "version":  "2.2.0",
-    "description":  "PayTrack — Gestión de Cartera",
-    "author":  "7LABS",
-    "main":  "main.js",
-    "scripts":  {
-                    "start":  "electron .",
-                    "build":  "electron-builder --win"
-                },
-    "build":  {
-                  "appId":  "com.paytrack.app",
-                  "productName":  "PayTrack",
-                  "copyright":  "7LABS",
-                  "publish": [
-                                  {
-                                      "provider": "github",
-                                      "owner": "carlosrperez1304-ux",
-                                      "repo": "sistema-cartera",
-                                      "releaseType": "release"
-                                  }
-                              ],
-                  "win":  {
-                              "target":  "nsis",
-                              "icon":  "assets/icon.ico",
-                              "signAndEditExecutable":  false
-                          },
-                  "nsis":  {
-                               "oneClick":  false,
-                               "perMachine":  false,
-                               "allowToChangeInstallationDirectory":  true,
-                               "createDesktopShortcut":  true,
-                               "createStartMenuShortcut":  true
-                           },
-                  "files":  [
-                                "main.js",
-                                "preload.js",
-                                "preload-activation.js",
-                                "activation.html",
-                                "splash.html",
-                                "assets/**",
-                                "baileys.js"
-                            ]
-              },
-    "dependencies":  {
-                         "@whiskeysockets/baileys":  "^7.0.0-rc13",
-                         "electron-log":  "^5.4.3",
-                         "electron-updater":  "^6.0.0",
-                         "qrcode":  "^1.5.4"
-                     },
-    "devDependencies":  {
-                            "electron":  "^33.0.0",
-                            "electron-builder":  "^25.0.0"
-                        }
+    "name": "paytrack",
+    "version": "2.2.0",
+    "description": "PayTrack — Gestión de Cartera",
+    "author": "7LABS",
+    "main": "main.js",
+    "scripts": {
+        "start": "electron .",
+        "build": "electron-builder --win"
+    },
+    "build": {
+        "appId": "com.paytrack.app",
+        "productName": "PayTrack",
+        "copyright": "7LABS",
+        "publish": [
+            {
+                "provider": "github",
+                "owner": "carlosrperez1304-ux",
+                "repo": "sistema-cartera",
+                "releaseType": "release"
+            }
+        ],
+        "win": {
+            "target": "nsis",
+            "icon": "assets/icon.ico",
+            "signAndEditExecutable": false
+        },
+        "nsis": {
+            "oneClick": false,
+            "perMachine": false,
+            "allowToChangeInstallationDirectory": true,
+            "createDesktopShortcut": true,
+            "createStartMenuShortcut": true
+        },
+        "files": [
+            "main.js",
+            "preload.js",
+            "preload-activation.js",
+            "activation.html",
+            "splash.html",
+            "assets/**",
+            "baileys.js"
+        ]
+    },
+    "dependencies": {
+        "@whiskeysockets/baileys": "^7.0.0-rc14",
+        "electron-log": "^5.4.3",
+        "electron-updater": "^6.0.0",
+        "qrcode": "^1.5.4"
+    },
+    "devDependencies": {
+        "electron": "^33.0.0",
+        "electron-builder": "^25.0.0"
+    }
 }

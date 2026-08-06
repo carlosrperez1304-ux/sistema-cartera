@@ -16,7 +16,7 @@ autoUpdater.logger = log;
 autoUpdater.logger.transports.file.level = 'info';
 autoUpdater.autoDownload = false;
 
-const PROD_URL       = 'https://sistema-cartera.vercel.app';
+const PROD_URL       = 'https://app.cashrd.com';
 const ACTIVATION_FILE = path.join(app.getPath('userData'), 'activation.json');
 const CARPETA_FILE    = path.join(app.getPath('userData'), 'ultima-carpeta.json');
 const PDFS_DIR        = path.join(app.getPath('userData'), 'pdfs');
